@@ -6,9 +6,18 @@
        =========================================== */
     const RPC_URL = (function () {
         const params = new URLSearchParams(location.search || '');
-        if (params.get('rpc')) return params.get('rpc');
+        const customRpc = params.get('rpc');
+        if (customRpc) {
+            try {
+                const url = new URL(customRpc);
+                if (url.origin === location.origin) return customRpc;
+                console.warn('Custom RPC URL detected:', customRpc);
+                return customRpc;
+            } catch { /* invalid URL */ }
+        }
         return location.origin + '/rpc';
     })();
+    const CUSTOM_RPC = RPC_URL !== location.origin + '/rpc';
 
     const CHAIN_ID        = 7919;
     const BLOCK_TIME_SECS = 1;
@@ -28,6 +37,10 @@
         '0xb88d63a65691effbf4b6808325b1588912c15cf4': { name: 'MockDAI',          type: 'token',  symbol: 'DAI',   decimals: 18,         compiler: 'solc 0.8.20', source: 'contracts/src/foundation/MockERC20.sol',    license: 'MIT' },
         '0x63f7a64db6d2b965189b8b48b7435668021f6b17': { name: 'PrimeSwapFactory', type: 'dex',                                           compiler: 'solc 0.8.20', source: 'contracts/src/dex/PrimeSwapFactory.sol',    license: 'GPL-3.0' },
         '0x9f337f433e71ce969b991511f1dcd3d0622116bb': { name: 'PrimeSwapRouter',  type: 'dex',                                           compiler: 'solc 0.8.20', source: 'contracts/src/dex/PrimeSwapRouter.sol',     license: 'GPL-3.0' },
+        '0xad98d3b1c27a33487dd1f450dc60b2d88626250c': { name: 'UniswapV3Factory',     type: 'dex',                                      compiler: 'solc 0.7.6', source: 'Uniswap V3 Core',               license: 'BUSL-1.1' },
+        '0x77066b50f9a6fae7867abee3742d4b7c438946ae': { name: 'SwapRouter',           type: 'dex',                                      compiler: 'solc 0.7.6', source: 'Uniswap V3 Periphery',           license: 'GPL-2.0' },
+        '0x6c12f22a793e0560ba0387d808fef69299f6ccb6': { name: 'NonfungiblePositionManager', type: 'dex',                                 compiler: 'solc 0.7.6', source: 'Uniswap V3 Periphery',           license: 'GPL-2.0' },
+        '0x6e61a0e95230ee7011dac75bd23eb7cd9dc67ac7': { name: 'Quoter',               type: 'dex',                                      compiler: 'solc 0.7.6', source: 'Uniswap V3 Periphery',           license: 'GPL-2.0' },
     };
 
     /* ===========================================
@@ -35,26 +48,36 @@
        =========================================== */
     const KNOWN_METHODS = {
         '0xa9059cbb': { name: 'transfer',                    badge: 'badge-success' },
-        '0x095ea7b3': { name: 'approve',                     badge: 'badge-value' },
+        '0x095ea7b3': { name: 'approve',                     badge: 'badge-secondary' },
         '0x23b872dd': { name: 'transferFrom',                badge: 'badge-success' },
-        '0x40c10f19': { name: 'mint',                        badge: 'badge-value' },
-        '0xd0e30db0': { name: 'deposit',                     badge: 'badge-value' },
-        '0x2e1a7d4d': { name: 'withdraw',                    badge: 'badge-fail' },
-        '0x38ed1739': { name: 'swapExactTokensForTokens',    badge: 'badge-txcount' },
-        '0x8803dbee': { name: 'swapTokensForExactTokens',    badge: 'badge-txcount' },
-        '0xe8e33700': { name: 'addLiquidity',                badge: 'badge-value' },
-        '0xbaa2abde': { name: 'removeLiquidity',             badge: 'badge-fail' },
-        '0x022c0d9f': { name: 'swap',                        badge: 'badge-txcount' },
-        '0x6a627842': { name: 'mint (pair)',                  badge: 'badge-value' },
-        '0x89afcb44': { name: 'burn (pair)',                  badge: 'badge-fail' },
-        '0xc9c65396': { name: 'createPair',                  badge: 'badge-value' },
+        '0x40c10f19': { name: 'mint',                        badge: 'badge-secondary' },
+        '0xd0e30db0': { name: 'deposit',                     badge: 'badge-secondary' },
+        '0x2e1a7d4d': { name: 'withdraw',                    badge: 'badge-danger' },
+        '0x38ed1739': { name: 'swapExactTokensForTokens',    badge: 'badge-info' },
+        '0x8803dbee': { name: 'swapTokensForExactTokens',    badge: 'badge-info' },
+        '0xe8e33700': { name: 'addLiquidity',                badge: 'badge-secondary' },
+        '0xbaa2abde': { name: 'removeLiquidity',             badge: 'badge-danger' },
+        '0x022c0d9f': { name: 'swap',                        badge: 'badge-info' },
+        '0x6a627842': { name: 'mint (pair)',                  badge: 'badge-secondary' },
+        '0x89afcb44': { name: 'burn (pair)',                  badge: 'badge-danger' },
+        '0xc9c65396': { name: 'createPair',                  badge: 'badge-secondary' },
+        '0x414bf389': { name: 'exactInputSingle',        badge: 'badge-info' },
+        '0xc04b8d59': { name: 'exactInput',              badge: 'badge-info' },
+        '0xdb3e2198': { name: 'exactOutputSingle',        badge: 'badge-info' },
+        '0xf28c0498': { name: 'exactOutput',              badge: 'badge-info' },
+        '0x88316456': { name: 'mint (position)',           badge: 'badge-secondary' },
+        '0x0c49ccbe': { name: 'decreaseLiquidity',        badge: 'badge-danger' },
+        '0xfc6f7865': { name: 'collect',                  badge: 'badge-secondary' },
+        '0xac9650d8': { name: 'multicall',                badge: 'badge-info' },
+        '0x13ead562': { name: 'createPool',               badge: 'badge-secondary' },
+        '0x5ae401dc': { name: 'multicall (v2)',            badge: 'badge-info' },
+        '0x42966c68': { name: 'burn',                      badge: 'badge-danger' },
     };
 
     /* ===========================================
        TOKEN EVENT TOPICS
        =========================================== */
     const TOPIC_TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-    const TOPIC_APPROVAL = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925';
 
     /* ===========================================
        SVG ICONS
@@ -78,7 +101,25 @@
         layers:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>',
         code:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>',
         coin:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M8 10h8M8 14h8"/></svg>',
+        sun:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>',
+        moon:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>',
     };
+
+    function initTheme() {
+        var saved = localStorage.getItem('primescan-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', saved);
+        var btn = document.getElementById('themeToggle');
+        if (btn) btn.innerHTML = saved === 'dark' ? ICONS.sun : ICONS.moon;
+    }
+    function toggleTheme() {
+        var current = document.documentElement.getAttribute('data-theme') || 'light';
+        var next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('primescan-theme', next);
+        var btn = document.getElementById('themeToggle');
+        if (btn) btn.innerHTML = next === 'dark' ? ICONS.sun : ICONS.moon;
+    }
+    initTheme();
 
     /* ===========================================
        UTILITIES
@@ -207,13 +248,6 @@
         return '<button class="copy-btn" data-copy="' + escapeHtml(text) + '" title="Copy">' + ICONS.copy + '</button>';
     }
 
-    function gasBarHtml(used, limit) {
-        const u = typeof used === 'string' ? hexToInt(used) : used;
-        const l = typeof limit === 'string' ? hexToInt(limit) : limit;
-        const pct = l > 0 ? Math.min(100, (u / l) * 100).toFixed(1) : 0;
-        return '<div class="gas-bar"><div class="gas-bar-fill" style="width:' + pct + '%"></div></div>';
-    }
-
     function contractLabel(addr) {
         if (!addr) return null;
         return KNOWN_CONTRACTS[addr.toLowerCase()] || null;
@@ -223,8 +257,8 @@
         if (!addr) return '—';
         const info = contractLabel(addr);
         const name = info ? '<span style="color:var(--text);font-weight:500;margin-left:4px">(' + escapeHtml(info.name) + ')</span>' : '';
-        if (withLink === false) return '<span class="td-addr">' + truncAddr(addr) + '</span>' + name;
-        return '<a href="#/address/' + addr + '" class="td-addr">' + truncAddr(addr) + '</a>' + name;
+        if (withLink === false) return '<span class="addr-link">' + truncAddr(addr) + '</span>' + name;
+        return '<a href="#/address/' + escapeHtml(addr) + '" class="addr-link">' + truncAddr(addr) + '</a>' + name;
     }
 
     /* ===========================================
@@ -311,16 +345,13 @@
         const match = matchRoute(location.hash);
         const content = $('#pageContent');
         if (!match) {
-            content.innerHTML = '<div class="main"><div class="container"><div class="table-empty">Page not found</div></div></div>';
+            content.innerHTML = '<div class="main-content"><div class="container"><div class="table-empty">Page not found</div></div></div>';
             return;
         }
 
-        content.innerHTML = '<div class="main"><div class="container">' +
-            '<div class="skeleton skeleton-block" style="width:100%;height:120px;margin-bottom:20px"></div>' +
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">' +
-            '<div class="skeleton skeleton-block" style="height:300px"></div>' +
-            '<div class="skeleton skeleton-block" style="height:300px"></div>' +
-            '</div></div></div>';
+        content.innerHTML = '<div class="main-content"><div class="container" style="padding-top:40px;padding-bottom:40px">' +
+            '<div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:60px 0;color:#8c98a4"><div class="spinner"></div><span>Loading...</span></div>' +
+            '</div></div>';
 
         $$('.nav-link').forEach(function (l) { l.classList.remove('active'); });
         const page = match.handler._page;
@@ -337,7 +368,7 @@
             if (typeof cleanup === 'function') currentCleanup = cleanup;
         } catch (e) {
             console.error('Route error:', e);
-            content.innerHTML = '<div class="main"><div class="container"><div class="table-empty">Error loading page: ' + escapeHtml(e.message) + '</div></div></div>';
+            content.innerHTML = '<div class="main-content"><div class="container"><div class="table-empty">Error loading page: ' + escapeHtml(e.message) + '</div></div></div>';
         }
     }
 
@@ -354,7 +385,35 @@
         } else if (/^0x[0-9a-fA-F]{40}$/i.test(q)) {
             navigate('#/address/' + q.toLowerCase());
         } else {
-            toast('Enter a block number, tx hash (0x + 64 hex), or address (0x + 40 hex)', true);
+            var qLower = q.toLowerCase();
+            var found = null;
+            var addrs = Object.keys(KNOWN_CONTRACTS);
+            for (var i = 0; i < addrs.length; i++) {
+                var c = KNOWN_CONTRACTS[addrs[i]];
+                if (c.name.toLowerCase() === qLower || (c.symbol && c.symbol.toLowerCase() === qLower)) {
+                    found = addrs[i];
+                    break;
+                }
+            }
+            if (!found) {
+                for (var j = 0; j < addrs.length; j++) {
+                    var c2 = KNOWN_CONTRACTS[addrs[j]];
+                    if (c2.name.toLowerCase().indexOf(qLower) !== -1 || (c2.symbol && c2.symbol.toLowerCase().indexOf(qLower) !== -1)) {
+                        found = addrs[j];
+                        break;
+                    }
+                }
+            }
+            if (found) {
+                var meta = KNOWN_CONTRACTS[found];
+                if (meta.type === 'token') {
+                    navigate('#/token/' + found);
+                } else {
+                    navigate('#/address/' + found);
+                }
+            } else {
+                toast('Search by block number, tx hash (0x + 64 hex), address (0x + 40 hex), or contract/token name', true);
+            }
         }
     }
 
@@ -366,10 +425,42 @@
         const el = $('#toast');
         if (!el) return;
         el.textContent = msg;
-        el.classList.toggle('error', !!isError);
+        el.classList.remove('error', 'success');
+        if (isError) el.classList.add('error');
+        else el.classList.add('success');
         el.classList.add('visible');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(function () { el.classList.remove('visible'); }, 3500);
+        toastTimer = setTimeout(function () { el.classList.remove('visible', 'error', 'success'); }, 2500);
+    }
+
+    function exportTableCSV(tableElement, filename) {
+        if (!tableElement) return;
+        var rows = [];
+        var headers = [];
+        tableElement.querySelectorAll('thead th').forEach(function(th) {
+            headers.push('"' + (th.textContent || '').trim().replace(/"/g, '""') + '"');
+        });
+        rows.push(headers.join(','));
+        tableElement.querySelectorAll('tbody tr').forEach(function(tr) {
+            var cols = [];
+            tr.querySelectorAll('td').forEach(function(td) {
+                var text = (td.textContent || '').trim().replace(/"/g, '""');
+                cols.push('"' + text + '"');
+            });
+            rows.push(cols.join(','));
+        });
+        var csv = rows.join('\n');
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename || 'export.csv';
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+    window.exportTableCSV = exportTableCSV;
+
+    function csvExportBtnHtml(tableId, filename) {
+        return '<button class="btn btn-outline" style="font-size:0.78rem;padding:4px 12px" onclick="document.querySelectorAll(\'#' + tableId + '\').forEach(function(t){exportTableCSV(t,\'' + filename + '\')})">📥 Download CSV</button>';
     }
 
     /* ===========================================
@@ -416,6 +507,52 @@
     });
 
     /* ===========================================
+       FETCH ERC-20 TOKEN BALANCE
+       =========================================== */
+    async function fetchTokenBalance(tokenAddr, userAddr) {
+        var selector = '0x70a08231';
+        var paddedAddr = userAddr.toLowerCase().replace('0x', '').padStart(64, '0');
+        var data = selector + paddedAddr;
+        try {
+            var result = await rpc('eth_call', [{ to: tokenAddr, data: data, from: '0x1a09b94d7dd32cf1903d1745effffae23ce76bca' }, 'latest']);
+            return { balance: (result && result !== '0x') ? result : '0x0', error: false };
+        } catch (e) { return { balance: '0x0', error: true }; }
+    }
+
+    /* ===========================================
+       DECODE INPUT DATA
+       =========================================== */
+    function decodeInputData(input) {
+        if (!input || input.length < 10) return null;
+        var selector = input.slice(0, 10).toLowerCase();
+        var method = KNOWN_METHODS[selector];
+        if (!method) return { method: 'Unknown', selector: selector, params: [] };
+
+        var data = input.slice(10);
+        var params = [];
+
+        if (selector === '0xa9059cbb') {
+            if (data.length >= 128) {
+                params.push({ name: 'to', type: 'address', value: '0x' + data.slice(24, 64) });
+                params.push({ name: 'amount', type: 'uint256', value: '0x' + data.slice(64, 128) });
+            }
+        } else if (selector === '0x095ea7b3') {
+            if (data.length >= 128) {
+                params.push({ name: 'spender', type: 'address', value: '0x' + data.slice(24, 64) });
+                params.push({ name: 'amount', type: 'uint256', value: '0x' + data.slice(64, 128) });
+            }
+        } else if (selector === '0x23b872dd') {
+            if (data.length >= 192) {
+                params.push({ name: 'from', type: 'address', value: '0x' + data.slice(24, 64) });
+                params.push({ name: 'to', type: 'address', value: '0x' + data.slice(88, 128) });
+                params.push({ name: 'amount', type: 'uint256', value: '0x' + data.slice(128, 192) });
+            }
+        }
+
+        return { method: method.name, selector: selector, params: params };
+    }
+
+    /* ===========================================
        DECODE METHOD
        =========================================== */
     function decodeMethod(input) {
@@ -423,13 +560,13 @@
         var selector = input.slice(0, 10).toLowerCase();
         var m = KNOWN_METHODS[selector];
         if (m) return { name: m.name, badge_class: m.badge };
-        return { name: selector, badge_class: 'badge-txcount' };
+        return { name: selector, badge_class: 'badge-info' };
     }
 
     function methodBadgeHtml(input) {
         var decoded = decodeMethod(input);
         if (!decoded) return '';
-        return '<span class="method-badge ' + decoded.badge_class + '">' + escapeHtml(decoded.name) + '</span>';
+        return '<span class="method-tag ' + decoded.badge_class + '">' + escapeHtml(decoded.name) + '</span>';
     }
 
     /* ===========================================
@@ -515,10 +652,11 @@
     function searchBarHtml(id) {
         var prefix = id || 'hero';
         return [
-            '<div class="search-box">',
-            '  <span class="search-icon">' + ICONS.search + '</span>',
-            '  <input type="text" id="' + prefix + 'SearchInput" placeholder="Search by Address / Tx Hash / Block Number" autocomplete="off" spellcheck="false">',
-            '  <button id="' + prefix + 'SearchBtn">Search</button>',
+            '<div class="search-form">',
+            '  <input type="text" id="' + prefix + 'SearchInput" class="search-input" placeholder="Search by Address / Tx Hash / Block / Token Name" autocomplete="off" spellcheck="false">',
+            '  <button id="' + prefix + 'SearchBtn" class="search-btn">',
+            '    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>',
+            '  </button>',
             '</div>',
         ].join('');
     }
@@ -587,80 +725,87 @@
             : '0.00';
 
         el.innerHTML = [
-            '<div class="hero">',
-            '  <div class="container">',
+            '<div class="hero-section">',
+            '  <div class="hero-content">',
             '    <h1 class="hero-title">The Prime Chain Blockchain Explorer</h1>',
-            '    <p class="hero-sub">Search transactions, blocks, addresses, and tokens on Prime Chain</p>',
-            '    <div class="hero-search">',
-            '      ' + searchBarHtml('hero'),
+            '    ' + searchBarHtml('hero'),
+            '  </div>',
+            '</div>',
+            '<div class="stats-section">',
+            '  <div class="container">',
+            '    <div class="stats-grid">',
+            '      <div class="stat-item">',
+            '        <div class="stat-label">PRIM PRICE</div>',
+            '        <div class="stat-value">$0.00 <span class="text-muted" style="font-size:0.75rem">@ 0.000 BTC</span></div>',
+            '      </div>',
+            '      <div class="stat-sep"></div>',
+            '      <div class="stat-item">',
+            '        <div class="stat-label">MARKET CAP</div>',
+            '        <div class="stat-value">$0.00</div>',
+            '      </div>',
+            '      <div class="stat-sep"></div>',
+            '      <div class="stat-item">',
+            '        <div class="stat-label">TRANSACTIONS</div>',
+            '        <div class="stat-value">' + formatNum(totalTxCount) + ' <span class="text-muted" style="font-size:0.75rem">(' + tps + ' TPS)</span></div>',
+            '      </div>',
+            '      <div class="stat-sep"></div>',
+            '      <div class="stat-item">',
+            '        <div class="stat-label">LAST FINALIZED BLOCK</div>',
+            '        <div class="stat-value" id="homeBlockHeight">' + formatNum(state.latestBlock) + '</div>',
+            '      </div>',
+            '      <div class="stat-sep"></div>',
+            '      <div class="stat-item">',
+            '        <div class="stat-label">MED GAS PRICE</div>',
+            '        <div class="stat-value">' + formatGwei(state.gasPrice) + '</div>',
+            '      </div>',
+            '      <div class="stat-sep"></div>',
+            '      <div class="stat-item">',
+            '        <div class="stat-label">LAST SAFE BLOCK</div>',
+            '        <div class="stat-value">' + formatNum(Math.max(0, state.latestBlock - 6)) + '</div>',
+            '      </div>',
+            '    </div>',
+            '    <div class="stats-grid" style="margin-top:8px;border-top:1px solid #e9ecef;padding-top:8px">',
+            '      <div class="stat-item">',
+            '        <div class="stat-label">VALIDATORS</div>',
+            '        <div class="stat-value">' + validators.length + '</div>',
+            '      </div>',
+            '      <div class="stat-sep"></div>',
+            '      <div class="stat-item">',
+            '        <div class="stat-label">MAX SUPPLY</div>',
+            '        <div class="stat-value">' + MAX_SUPPLY + '</div>',
+            '      </div>',
+            '      <div class="stat-sep"></div>',
+            '      <div class="stat-item">',
+            '        <div class="stat-label">TOTAL STAKED</div>',
+            '        <div class="stat-value">' + formatPRIMShort('0x' + totalStake.toString(16)) + ' PRIM</div>',
+            '      </div>',
             '    </div>',
             '  </div>',
             '</div>',
-            '<div class="main">',
+            '<div class="main-content">',
             '  <div class="container">',
-            '    <div class="stat-grid">',
-
-            '      <div class="stat-card">',
-            '        <div class="stat-card-head"><span class="stat-icon">' + ICONS.layers + '</span><span class="stat-card-label">Block Height</span></div>',
-            '        <div class="stat-card-value" id="homeBlockHeight">' + formatNum(state.latestBlock) + '</div>',
-            '        <div class="stat-card-sub">~' + BLOCK_TIME_SECS + 's block time</div>',
-            '      </div>',
-
-            '      <div class="stat-card">',
-            '        <div class="stat-card-head"><span class="stat-icon">' + ICONS.tx + '</span><span class="stat-card-label">Transactions</span></div>',
-            '        <div class="stat-card-value">' + formatNum(totalTxCount) + '</div>',
-            '        <div class="stat-card-sub">in last ' + blocks.length + ' blocks</div>',
-            '      </div>',
-
-            '      <div class="stat-card">',
-            '        <div class="stat-card-head"><span class="stat-icon" style="color:var(--accent)">' + ICONS.shield + '</span><span class="stat-card-label">Active Validators</span></div>',
-            '        <div class="stat-card-value"><span class="accent">' + validators.length + '</span></div>',
-            '        <div class="stat-card-sub">' + formatPRIMShort('0x' + totalStake.toString(16)) + ' PRIM staked</div>',
-            '      </div>',
-
-            '      <div class="stat-card">',
-            '        <div class="stat-card-head"><span class="stat-icon">' + ICONS.gas + '</span><span class="stat-card-label">Gas Price</span></div>',
-            '        <div class="stat-card-value">' + formatGwei(state.gasPrice) + '</div>',
-            '        <div class="stat-card-sub">current base fee</div>',
-            '      </div>',
-
-            '      <div class="stat-card">',
-            '        <div class="stat-card-head"><span class="stat-icon">' + ICONS.coin + '</span><span class="stat-card-label">Max Supply</span></div>',
-            '        <div class="stat-card-value">' + MAX_SUPPLY + '</div>',
-            '        <div class="stat-card-sub">PRIM</div>',
-            '      </div>',
-
-            '      <div class="stat-card">',
-            '        <div class="stat-card-head"><span class="stat-icon">' + ICONS.zap + '</span><span class="stat-card-label">TPS</span></div>',
-            '        <div class="stat-card-value" id="homeTps">' + tps + '</div>',
-            '        <div class="stat-card-sub">txs / second estimate</div>',
-            '      </div>',
-
-            '    </div>',
-
-            '    <div class="dashboard-grid">',
-            '      <div class="panel">',
-            '        <div class="panel-head">',
-            '          <span class="panel-title">Latest Blocks</span>',
-            '          <a href="#/blocks" class="panel-action">View All</a>',
+            '    <div class="latest-grid">',
+            '      <div class="card">',
+            '        <div class="card-header">',
+            '          <h2 class="card-title">Latest Blocks</h2>',
+            '          <a href="#/blocks" class="btn btn-outline">View All</a>',
             '        </div>',
-            '        <div class="panel-body" id="homeBlocks">',
+            '        <div class="card-body" id="homeBlocks">',
                        blocks.map(function (block) { return blockPanelItem(block, false); }).join(''),
             '        </div>',
             '      </div>',
-            '      <div class="panel">',
-            '        <div class="panel-head">',
-            '          <span class="panel-title">Latest Transactions</span>',
-            '          <a href="#/txs" class="panel-action">View All</a>',
+            '      <div class="card">',
+            '        <div class="card-header">',
+            '          <h2 class="card-title">Latest Transactions</h2>',
+            '          <a href="#/txs" class="btn btn-outline">View All</a>',
             '        </div>',
-            '        <div class="panel-body" id="homeTxs">',
+            '        <div class="card-body" id="homeTxs">',
                        txs.length > 0
                            ? txs.map(function (t) { return txPanelItem(t, false); }).join('')
                            : '<div class="table-empty">No transactions yet</div>',
             '        </div>',
             '      </div>',
             '    </div>',
-
             '  </div>',
             '</div>',
         ].join('\n');
@@ -681,7 +826,7 @@
 
                     var container = $('#homeBlocks');
                     if (container) {
-                        var items = container.querySelectorAll('.panel-item');
+                        var items = container.querySelectorAll('.block-item');
                         if (items.length >= HOME_ITEMS) items[items.length - 1].remove();
                         container.insertAdjacentHTML('afterbegin', blockPanelItem(newBlock, true));
                     }
@@ -695,7 +840,7 @@
                             for (var nt = 0; nt < newBlock.transactions.length && added < 3; nt++) {
                                 var ntx = newBlock.transactions[nt];
                                 if (typeof ntx === 'object' && ntx.hash) {
-                                    var txItems = txContainer.querySelectorAll('.panel-item');
+                                    var txItems = txContainer.querySelectorAll('.tx-item');
                                     if (txItems.length >= HOME_ITEMS) txItems[txItems.length - 1].remove();
                                     txContainer.insertAdjacentHTML('afterbegin', txPanelItem(Object.assign({}, ntx, { _blockNum: hexToInt(newBlock.number) }), true));
                                     added++;
@@ -718,19 +863,19 @@
         var proposer = b.miner || b.proposer || '';
         var proposerLabel = validatorName(proposer) || (proposer ? truncAddr(proposer) : '—');
         return [
-            '<div class="panel-item' + (isNew ? ' new-item' : '') + '" data-nav="#/block/' + num + '" style="cursor:pointer">',
-            '  <div class="panel-item-icon">' + ICONS.cube + '</div>',
-            '  <div class="panel-item-main">',
-            '    <div class="panel-item-row">',
-            '      <a href="#/block/' + num + '" class="td-hash" style="font-size:0.85rem">' + formatNum(num) + '</a>',
-            '      <span class="panel-item-badge badge-txcount">' + txCount + ' txn' + (txCount !== 1 ? 's' : '') + '</span>',
+            '<div class="block-item' + (isNew ? ' new-item' : '') + '" data-nav="#/block/' + num + '" style="cursor:pointer">',
+            '  <div class="item-icon item-icon-block">Bk</div>',
+            '  <div class="item-main">',
+            '    <div class="item-row-primary">',
+            '      <a href="#/block/' + num + '" class="hash-link">' + formatNum(num) + '</a>',
+            '      <span class="time-text">' + timeAgo(num, state.latestBlock) + '</span>',
             '    </div>',
-            '    <div class="panel-item-secondary">',
-            '      Proposer ' + (proposer ? '<a href="#/address/' + proposer + '" class="td-addr" style="font-size:0.75rem">' + escapeHtml(proposerLabel) + '</a>' : '—') + ' · Gas ' + formatGas(b.gasUsed || b.gas_used || '0x0'),
+            '    <div class="item-row-secondary">',
+            '      Proposer ' + (proposer ? '<a href="#/address/' + escapeHtml(proposer) + '" class="addr-link">' + escapeHtml(proposerLabel) + '</a>' : '—'),
             '    </div>',
             '  </div>',
-            '  <div class="panel-item-right">',
-            '    <div class="panel-item-time">' + timeAgo(num, state.latestBlock) + '</div>',
+            '  <div class="item-right">',
+            '    <span class="badge badge-sm badge-info">' + txCount + ' txn' + (txCount !== 1 ? 's' : '') + '</span>',
             '  </div>',
             '</div>',
         ].join('');
@@ -738,23 +883,21 @@
 
     function txPanelItem(tx, isNew) {
         var value = formatPRIMShort(tx.value || '0x0');
-        var method = methodBadgeHtml(tx.input);
         return [
-            '<div class="panel-item' + (isNew ? ' new-item' : '') + '" data-nav="#/tx/' + tx.hash + '" style="cursor:pointer">',
-            '  <div class="panel-item-icon">' + ICONS.tx + '</div>',
-            '  <div class="panel-item-main">',
-            '    <div class="panel-item-row">',
-            '      <a href="#/tx/' + tx.hash + '" class="td-hash mono">' + truncHash(tx.hash) + '</a>',
-            '      ' + method,
+            '<div class="tx-item' + (isNew ? ' new-item' : '') + '" data-nav="#/tx/' + escapeHtml(tx.hash) + '" style="cursor:pointer">',
+            '  <div class="item-icon item-icon-tx">Tx</div>',
+            '  <div class="item-main">',
+            '    <div class="item-row-primary">',
+            '      <a href="#/tx/' + escapeHtml(tx.hash) + '" class="hash-link mono">' + truncHash(tx.hash) + '</a>',
+            '      <span class="time-text">' + (tx._blockNum !== undefined ? timeAgo(tx._blockNum, state.latestBlock) : '') + '</span>',
             '    </div>',
-            '    <div class="panel-item-secondary">',
+            '    <div class="item-row-secondary">',
             '      From ' + addrDisplay(tx.from) + ' ' + ICONS.arrow + ' ',
             '      ' + (tx.to ? addrDisplay(tx.to) : '<span style="color:var(--warn)">Contract Create</span>'),
             '    </div>',
             '  </div>',
-            '  <div class="panel-item-right">',
-            '    <span class="panel-item-badge badge-value">' + value + ' PRIM</span>',
-            '    <div class="panel-item-time">' + (tx._blockNum !== undefined ? timeAgo(tx._blockNum, state.latestBlock) : '') + '</div>',
+            '  <div class="item-right">',
+            '    <span class="badge badge-sm badge-secondary">' + value + ' PRIM</span>',
             '  </div>',
             '</div>',
         ].join('');
@@ -780,39 +923,47 @@
             var gasUsed = hexToInt(b.gasUsed || b.gas_used || '0x0');
             var gasLimit = hexToInt(b.gasLimit || b.gas_limit || '0x0');
             var gasPercent = gasLimit > 0 ? ((gasUsed / gasLimit) * 100).toFixed(1) : '0.0';
+            var feeRecipient = b.miner || b.proposer || '';
+            var feeRecipientLabel = validatorName(feeRecipient) || truncAddr(feeRecipient);
+            var baseFee = b.baseFeePerGas || b.base_fee || '0x0';
+            var burntWei = hexToBigInt(baseFee) * BigInt(gasUsed);
+            var burntHex = '0x' + burntWei.toString(16);
             return [
                 '<tr data-nav="#/block/' + num + '" style="cursor:pointer">',
-                '  <td><a href="#/block/' + num + '" class="td-hash">' + formatNum(num) + '</a></td>',
+                '  <td><a href="#/block/' + num + '" class="hash-link">' + formatNum(num) + '</a></td>',
                 '  <td class="td-time">' + timeAgo(num, state.latestBlock) + '</td>',
-                '  <td><span class="badge-txcount" style="padding:2px 6px;border-radius:4px;font-size:0.75rem">' + txCount + '</span></td>',
+                '  <td>' + (feeRecipient ? '<a href="#/address/' + escapeHtml(feeRecipient) + '" class="addr-link">' + escapeHtml(feeRecipientLabel) + '</a>' : '—') + '</td>',
+                '  <td><span class="badge badge-sm badge-info">' + txCount + '</span></td>',
                 '  <td>',
                 '    <div style="display:flex;align-items:center;gap:0.5rem">',
-                '      <span class="td-mono">' + formatGas(b.gasUsed || b.gas_used || '0x0') + '</span>',
+                '      <span class="mono" style="font-size:0.82rem">' + formatGas(b.gasUsed || b.gas_used || '0x0') + '</span>',
                 '      <div class="gas-bar" style="width:60px"><div class="gas-bar-fill" style="width:' + gasPercent + '%"></div></div>',
-                '      <span style="font-size:0.7rem;color:var(--text-dim)">' + gasPercent + '%</span>',
+                '      <span style="font-size:0.7rem;color:#8c98a4">' + gasPercent + '%</span>',
                 '    </div>',
                 '  </td>',
-                '  <td class="td-mono">' + formatGas(b.gasLimit || b.gas_limit || '0x0') + '</td>',
-                '  <td class="td-mono">' + (b.baseFeePerGas || b.base_fee ? formatGwei(b.baseFeePerGas || b.base_fee) : '—') + '</td>',
+                '  <td class="mono">' + formatGas(b.gasLimit || b.gas_limit || '0x0') + '</td>',
+                '  <td class="mono">' + (baseFee !== '0x0' ? formatGwei(baseFee) : '—') + '</td>',
+                '  <td class="td-right mono text-muted" style="font-size:0.78rem">' + (burntWei > 0n ? formatPRIMShort(burntHex) : '0') + '</td>',
                 '</tr>',
             ].join('');
         }).join('');
 
         el.innerHTML = [
-            '<div class="main"><div class="container">',
-            '  <div class="page-head">',
+            '<div class="main-content"><div class="container">',
+            '  <div class="page-header">',
             '    <div>',
             '      <h1 class="page-title">Blocks</h1>',
-            '      <div class="page-sub">Block #' + formatNum(state.latestBlock) + ' (total ' + formatNum(state.latestBlock + 1) + ' blocks)</div>',
+            '      <div class="page-subtitle">Block #' + formatNum(state.latestBlock) + ' (total ' + formatNum(state.latestBlock + 1) + ' blocks)</div>',
             '    </div>',
             '  </div>',
-            '  <div class="table-wrap">',
-            '    <div class="overflow-x">',
-            '      <table class="data-table">',
+            '  <div class="card">',
+            '    <div class="card-header"><h2 class="card-title">Blocks</h2>' + csvExportBtnHtml('blocksTable', 'blocks.csv') + '</div>',
+            '    <div class="table-responsive">',
+            '      <table class="data-table" id="blocksTable">',
             '        <thead><tr>',
-            '          <th>Block</th><th>Age</th><th>Txn</th><th>Gas Used</th><th>Gas Limit</th><th>Base Fee</th>',
+            '          <th>Block</th><th>Age</th><th>Fee Recipient</th><th>Txn</th><th>Gas Used</th><th>Gas Limit</th><th>Base Fee</th><th class="td-right">Burnt Fees (PRIM)</th>',
             '        </tr></thead>',
-            '        <tbody>' + (rows || '<tr><td colspan="6" class="table-empty">No blocks</td></tr>') + '</tbody>',
+            '        <tbody>' + (rows || '<tr><td colspan="8" class="table-empty">No blocks</td></tr>') + '</tbody>',
             '      </table>',
             '    </div>',
             '    ' + paginationHtml(currentPage, totalPages, '#/blocks'),
@@ -831,7 +982,7 @@
         var hex = '0x' + num.toString(16);
         var block = await rpc('prime_getBlockByNumber', [hex, true]);
         if (!block) {
-            el.innerHTML = '<div class="main"><div class="container"><div class="table-empty">Block not found</div></div></div>';
+            el.innerHTML = '<div class="main-content"><div class="container"><div class="table-empty">Block not found</div></div></div>';
             return;
         }
 
@@ -841,6 +992,24 @@
         var gasPercent = gasLimit > 0 ? ((gasUsed / gasLimit) * 100).toFixed(1) : '0.0';
         var proposer = block.miner || block.proposer || '';
         var proposerLabel = validatorName(proposer);
+        var confirmations = Math.max(0, state.latestBlock - num);
+        var blockSize = hexToInt(block.size || '0x0');
+        var baseFeeRaw = block.baseFeePerGas || block.base_fee || '0x0';
+        var baseFeeWei = hexToBigInt(baseFeeRaw);
+        var burntFees = baseFeeWei * BigInt(gasUsed);
+        var burntFeesHex = '0x' + burntFees.toString(16);
+        var extraData = block.extraData || block.extra_data || '0x';
+        var extraDataDecoded = '';
+        try {
+            var hexStr = extraData.startsWith('0x') ? extraData.slice(2) : extraData;
+            for (var ci = 0; ci < hexStr.length; ci += 2) {
+                var charCode = parseInt(hexStr.substr(ci, 2), 16);
+                if (charCode >= 32 && charCode < 127) extraDataDecoded += String.fromCharCode(charCode);
+                else extraDataDecoded += '.';
+            }
+        } catch (e) { extraDataDecoded = ''; }
+        var difficulty = block.difficulty || block.totalDifficulty || '0x0';
+        var nonce = block.nonce || '0x0000000000000000';
 
         var txRows = '';
         if (txCount > 0) {
@@ -848,25 +1017,26 @@
                 var tx = typeof t === 'object' ? t : { hash: t };
                 return [
                     '<tr>',
-                    '  <td><a href="#/tx/' + tx.hash + '" class="td-hash">' + truncHash(tx.hash) + '</a></td>',
+                    '  <td><a href="#/tx/' + escapeHtml(tx.hash) + '" class="hash-link">' + truncHash(tx.hash) + '</a></td>',
                     '  <td>' + methodBadgeHtml(tx.input) + '</td>',
-                    '  <td>' + (tx.from ? '<a href="#/address/' + tx.from + '" class="td-addr">' + truncAddr(tx.from) + '</a>' : '—') + '</td>',
-                    '  <td style="color:var(--text-dim);font-size:0.75rem">→</td>',
-                    '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:var(--warn)">Contract Create</span>') + '</td>',
-                    '  <td class="td-right td-mono">' + formatPRIMShort(tx.value || '0x0') + ' PRIM</td>',
+                    '  <td>' + (tx.from ? '<a href="#/address/' + escapeHtml(tx.from) + '" class="addr-link">' + truncAddr(tx.from) + '</a>' : '—') + '</td>',
+                    '  <td style="color:#8c98a4;font-size:0.75rem">→</td>',
+                    '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:#e5a50a">Contract Create</span>') + '</td>',
+                    '  <td class="td-right mono">' + formatPRIMShort(tx.value || '0x0') + ' PRIM</td>',
+                    '  <td class="mono" style="font-size:0.78rem">' + formatGwei(txGasPrice(tx) || '0x0') + '</td>',
                     '</tr>',
                 ].join('');
             }).join('');
         }
 
         el.innerHTML = [
-            '<div class="main"><div class="container">',
+            '<div class="main-content"><div class="container">',
             '  <a href="#/blocks" class="back-link">' + ICONS.back + ' Back to Blocks</a>',
             '  <div class="detail-header">',
-            '    <div class="detail-icon">' + ICONS.cube + '</div>',
+            '    <div class="detail-icon" style="background:#f0f1f3">' + ICONS.cube + '</div>',
             '    <div class="detail-title-group">',
             '      <div class="detail-title">',
-            '        Block #' + formatNum(num),
+            '        Block <span class="mono">#' + formatNum(num) + '</span>',
             '        <div class="detail-nav">',
             '          <button class="detail-nav-btn"' + (num <= 0 ? ' disabled' : '') + ' data-nav="#/block/' + (num - 1) + '">' + ICONS.chevL + '</button>',
             '          <button class="detail-nav-btn"' + (num >= state.latestBlock ? ' disabled' : '') + ' data-nav="#/block/' + (num + 1) + '">' + ICONS.chevR + '</button>',
@@ -877,33 +1047,44 @@
             '',
             '  <div class="detail-card">',
             '    <div class="detail-card-title">Overview</div>',
-            '    <div class="detail-row"><div class="detail-label">Block Height</div><div class="detail-val">' + formatNum(num) + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Status</div><div class="detail-val"><span class="status status-success"><span class="status-dot"></span>Finalized</span></div></div>',
-            '    <div class="detail-row"><div class="detail-label">Timestamp</div><div class="detail-val">' + (formatTimestamp(block.timestamp) || timeAgo(num, state.latestBlock)) + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Proposer</div><div class="detail-val">' + (proposer ? '<a href="#/address/' + proposer + '" class="td-addr">' + proposer + '</a>' + (proposerLabel ? ' <span style="color:var(--text-secondary)">(' + escapeHtml(proposerLabel) + ')</span>' : '') + ' ' + copyBtnHtml(proposer) : '—') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Transactions</div><div class="detail-val"><a href="#/block/' + num + '#txs">' + txCount + ' transaction' + (txCount !== 1 ? 's' : '') + '</a> in this block</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Block Height</div><div class="detail-value">' + formatNum(num) + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Status</div><div class="detail-value"><span class="status-badge status-success"><span class="status-dot"></span>Finalized</span> <span class="text-muted" style="margin-left:8px">' + formatNum(confirmations) + ' Block Confirmations</span></div></div>',
+            '    <div class="detail-row"><div class="detail-label">Timestamp</div><div class="detail-value">' + (formatTimestamp(block.timestamp) || timeAgo(num, state.latestBlock)) + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Transactions</div><div class="detail-value"><a href="#/block/' + num + '#txs">' + txCount + ' transaction' + (txCount !== 1 ? 's' : '') + '</a> in this block</div></div>',
+            '    <div class="separator"></div>',
+            '    <div class="detail-row"><div class="detail-label">Fee Recipient</div><div class="detail-value">' + (proposer ? '<a href="#/address/' + escapeHtml(proposer) + '" class="addr-link">' + escapeHtml(proposer) + '</a>' + (proposerLabel ? ' <span class="text-muted">(' + escapeHtml(proposerLabel) + ')</span>' : '') + ' ' + copyBtnHtml(proposer) : '—') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Total Difficulty</div><div class="detail-value mono">' + formatNum(hexToInt(block.totalDifficulty || difficulty)) + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Size</div><div class="detail-value">' + (blockSize > 0 ? formatNum(blockSize) + ' bytes' : '0 bytes') + '</div></div>',
+            '    <div class="separator"></div>',
             '    <div class="detail-row">',
             '      <div class="detail-label">Gas Used</div>',
-            '      <div class="detail-val">',
-            '        <span class="td-mono">' + formatNum(gasUsed) + '</span>',
-            '        <span style="color:var(--text-muted);margin:0 0.5rem">(' + gasPercent + '%)</span>',
+            '      <div class="detail-value">',
+            '        <span class="mono">' + formatNum(gasUsed) + '</span>',
+            '        <span class="text-muted" style="margin:0 8px">(' + gasPercent + '%)</span>',
             '        <div class="gas-bar" style="width:120px;display:inline-block;vertical-align:middle"><div class="gas-bar-fill" style="width:' + gasPercent + '%"></div></div>',
             '      </div>',
             '    </div>',
-            '    <div class="detail-row"><div class="detail-label">Gas Limit</div><div class="detail-val mono">' + formatNum(gasLimit) + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Base Fee</div><div class="detail-val mono">' + (block.baseFeePerGas || block.base_fee ? formatGwei(block.baseFeePerGas || block.base_fee) : '—') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Block Hash</div><div class="detail-val mono">' + (block.hash || '—') + ' ' + (block.hash ? copyBtnHtml(block.hash) : '') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Parent Hash</div><div class="detail-val mono">' + ((block.parentHash || block.parent_hash) ? '<a href="#/block/' + (num - 1) + '" class="td-hash">' + truncHash(block.parentHash || block.parent_hash, 14, 10) + '</a> ' + copyBtnHtml(block.parentHash || block.parent_hash) : '—') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">State Root</div><div class="detail-val mono">' + (block.stateRoot || block.state_root || '—') + ' ' + (block.stateRoot || block.state_root ? copyBtnHtml(block.stateRoot || block.state_root) : '') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Gas Limit</div><div class="detail-value mono">' + formatNum(gasLimit) + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Base Fee Per Gas</div><div class="detail-value mono">' + (baseFeeRaw !== '0x0' ? formatGwei(baseFeeRaw) + ' <span class="text-muted">(' + formatPRIM(baseFeeRaw) + ')</span>' : '—') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Burnt Fees</div><div class="detail-value mono">' + (burntFees > 0n ? '<span style="color:#dc3545">🔥 ' + formatPRIM(burntFeesHex) + '</span>' : '0 PRIM') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Extra Data</div><div class="detail-value">' + (extraDataDecoded ? escapeHtml(extraDataDecoded) + ' <span class="text-muted mono" style="font-size:0.78rem">(Hex: ' + escapeHtml(extraData) + ')</span>' : '<span class="mono">' + escapeHtml(extraData) + '</span>') + '</div></div>',
+            '    <div class="separator"></div>',
+            '    <div class="detail-row"><div class="detail-label">Hash</div><div class="detail-value mono">' + (block.hash || '—') + ' ' + (block.hash ? copyBtnHtml(block.hash) : '') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Parent Hash</div><div class="detail-value mono">' + ((block.parentHash || block.parent_hash) ? '<a href="#/block/' + (num - 1) + '" class="hash-link">' + (block.parentHash || block.parent_hash) + '</a> ' + copyBtnHtml(block.parentHash || block.parent_hash) : '—') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">StateRoot</div><div class="detail-value mono">' + (block.stateRoot || block.state_root || '—') + ' ' + (block.stateRoot || block.state_root ? copyBtnHtml(block.stateRoot || block.state_root) : '') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">TransactionsRoot</div><div class="detail-value mono">' + (block.transactionsRoot || block.transactions_root || '—') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">ReceiptsRoot</div><div class="detail-value mono">' + (block.receiptsRoot || block.receipts_root || '—') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Sha3Uncles</div><div class="detail-value mono">' + (block.sha3Uncles || block.sha3_uncles || '—') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Nonce</div><div class="detail-value mono">' + nonce + '</div></div>',
             '  </div>',
             '',
             txCount > 0 ? [
                 '  <div class="detail-card" id="txs">',
                 '    <div class="detail-card-title">Transactions (' + txCount + ')</div>',
-                '    <div class="overflow-x">',
+                '    <div class="table-responsive">',
                 '      <table class="data-table">',
                 '        <thead><tr>',
-                '          <th>Tx Hash</th><th>Method</th><th>From</th><th></th><th>To</th><th class="td-right">Value</th>',
+                '          <th>Tx Hash</th><th>Method</th><th>From</th><th></th><th>To</th><th class="td-right">Value</th><th>Gas Price</th>',
                 '        </tr></thead>',
                 '        <tbody>' + txRows + '</tbody>',
                 '      </table>',
@@ -957,36 +1138,40 @@
         var pageTxList = txs.slice(startIdx, startIdx + ITEMS_PER_PAGE);
 
         var rows = pageTxList.map(function (tx) {
+            var txFee = BigInt(hexToInt(txGas(tx) || '0x0')) * hexToBigInt(txGasPrice(tx) || state.gasPrice);
+            var txFeeHex = '0x' + txFee.toString(16);
             return [
                 '<tr>',
-                '  <td><a href="#/tx/' + tx.hash + '" class="td-hash">' + truncHash(tx.hash) + '</a></td>',
+                '  <td><a href="#/tx/' + escapeHtml(tx.hash) + '" class="hash-link">' + truncHash(tx.hash) + '</a></td>',
                 '  <td>' + methodBadgeHtml(tx.input) + '</td>',
-                '  <td><a href="#/block/' + tx._blockNum + '" class="td-hash">' + formatNum(tx._blockNum) + '</a></td>',
+                '  <td><a href="#/block/' + tx._blockNum + '" class="hash-link">' + formatNum(tx._blockNum) + '</a></td>',
                 '  <td class="td-time">' + timeAgo(tx._blockNum, state.latestBlock) + '</td>',
-                '  <td><a href="#/address/' + tx.from + '" class="td-addr">' + truncAddr(tx.from) + '</a></td>',
-                '  <td style="color:var(--text-dim);font-size:0.75rem">→</td>',
-                '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:var(--warn)">Contract Create</span>') + '</td>',
-                '  <td class="td-right td-mono">' + formatPRIMShort(tx.value || '0x0') + ' PRIM</td>',
+                '  <td><a href="#/address/' + escapeHtml(tx.from) + '" class="addr-link">' + truncAddr(tx.from) + '</a></td>',
+                '  <td style="color:#8c98a4;font-size:0.75rem">→</td>',
+                '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:#e5a50a">Contract Create</span>') + '</td>',
+                '  <td class="td-right mono">' + formatPRIMShort(tx.value || '0x0') + '</td>',
+                '  <td class="td-right mono text-muted" style="font-size:0.78rem">' + formatPRIMShort(txFeeHex) + '</td>',
                 '</tr>',
             ].join('');
         }).join('');
 
         el.innerHTML = [
-            '<div class="main"><div class="container">',
-            '  <div class="page-head">',
+            '<div class="main-content"><div class="container">',
+            '  <div class="page-header">',
             '    <div>',
             '      <h1 class="page-title">Transactions</h1>',
-            '      <div class="page-sub">' + formatNum(txs.length) + ' transactions found (from recent blocks)</div>',
+            '      <div class="page-subtitle">' + formatNum(txs.length) + ' transactions found (from recent blocks)</div>',
             '    </div>',
             '  </div>',
-            '  <div class="table-wrap">',
-            '    <div class="overflow-x">',
-            '      <table class="data-table">',
+            '  <div class="card">',
+            '    <div class="card-header"><h2 class="card-title">Transactions</h2>' + csvExportBtnHtml('txsTable', 'transactions.csv') + '</div>',
+            '    <div class="table-responsive">',
+            '      <table class="data-table" id="txsTable">',
             '        <thead><tr>',
-            '          <th>Tx Hash</th><th>Method</th><th>Block</th><th>Age</th><th>From</th><th></th><th>To</th><th class="td-right">Value</th>',
+            '          <th>Tx Hash</th><th>Method</th><th>Block</th><th>Age</th><th>From</th><th></th><th>To</th><th class="td-right">Value</th><th class="td-right">Txn Fee</th>',
             '        </tr></thead>',
             '        <tbody>',
-                       rows || '<tr><td colspan="8" class="table-empty">No transactions found in recent blocks</td></tr>',
+                       rows || '<tr><td colspan="9" class="table-empty">No transactions found in recent blocks</td></tr>',
             '        </tbody>',
             '      </table>',
             '    </div>',
@@ -1016,7 +1201,7 @@
         }
 
         if (!tx) {
-            el.innerHTML = '<div class="main"><div class="container"><div class="table-empty">Transaction not found</div></div></div>';
+            el.innerHTML = '<div class="main-content"><div class="container"><div class="table-empty">Transaction not found</div></div></div>';
             return;
         }
 
@@ -1033,29 +1218,80 @@
 
         var gasBarPercent = txGasLimit > 0 ? ((rcptGasUsed / txGasLimit) * 100).toFixed(1) : '0.0';
 
+        var confirmations = blockNum !== null ? Math.max(0, state.latestBlock - blockNum) : 0;
+        var txType = tx.type !== undefined ? hexToInt(tx.type) : 0;
+        var txTypeLabel = txType === 2 ? '2 (EIP-1559)' : txType === 1 ? '1 (EIP-2930)' : '0 (Legacy)';
+        var positionInBlock = txTxIndex(tx) !== undefined ? hexToInt(txTxIndex(tx)) : '—';
+        var maxFeePerGas = tx.maxFeePerGas || tx.max_fee_per_gas;
+        var maxPriorityFee = tx.maxPriorityFeePerGas || tx.max_priority_fee_per_gas;
+
+        var blockForTimestamp = null;
+        if (blockNum !== null) {
+            try { blockForTimestamp = await rpc('prime_getBlockByNumber', ['0x' + blockNum.toString(16), false]); } catch (e) {}
+        }
+        var baseFeeFromBlock = blockForTimestamp ? (blockForTimestamp.baseFeePerGas || blockForTimestamp.base_fee || '0x0') : '0x0';
+        var burntFeesWei = hexToBigInt(baseFeeFromBlock) * BigInt(rcptGasUsed);
+        var burntFeesHex = '0x' + burntFeesWei.toString(16);
+        var savingsWei = feeWei - burntFeesWei;
+        if (savingsWei < 0n) savingsWei = 0n;
+
+        var txActionHtml = '';
+        if (tx.value && hexToBigInt(tx.value) > 0n && (!tx.input || tx.input === '0x')) {
+            txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="status-badge status-success" style="font-size:0.8rem"><span class="status-dot"></span>Transfer</span> <strong>' + formatPRIM(tx.value) + '</strong> to ' + (tx.to ? '<a href="#/address/' + escapeHtml(tx.to) + '" class="addr-link">' + truncAddr(tx.to) + '</a>' : 'Contract') + '</div></div>';
+        } else if (tx.input && tx.input.length >= 10) {
+            var actionDecoded = decodeMethod(tx.input);
+            if (actionDecoded) {
+                txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="method-tag">' + escapeHtml(actionDecoded.name) + '</span> on ' + (tx.to ? '<a href="#/address/' + escapeHtml(tx.to) + '" class="addr-link">' + truncAddr(tx.to) + '</a>' : '<span style="color:#e5a50a">New Contract</span>') + (hexToBigInt(tx.value || '0x0') > 0n ? ' with <strong>' + formatPRIM(tx.value) + '</strong>' : '') + '</div></div>';
+            }
+        }
+
         var toDisplay = '';
         if (tx.to) {
             var contractInfo = contractLabel(tx.to);
-            toDisplay = '<a href="#/address/' + tx.to + '" class="td-addr">' + tx.to + '</a>';
-            if (contractInfo) toDisplay += ' <span class="status status-success" style="margin-left:0.5rem"><span class="status-dot"></span>' + escapeHtml(contractInfo.name) + '</span>';
+            toDisplay = '<a href="#/address/' + escapeHtml(tx.to) + '" class="addr-link">' + escapeHtml(tx.to) + '</a>';
+            if (contractInfo) toDisplay += ' <span class="status-badge status-success" style="margin-left:0.5rem"><span class="status-dot"></span>' + escapeHtml(contractInfo.name) + '</span>';
             toDisplay += ' ' + copyBtnHtml(tx.to);
         } else {
             var contractAddr = receipt ? (receipt.contract_address || receipt.contractAddress) : null;
             toDisplay = '<span style="color:var(--warn)">Contract Creation</span>';
             if (contractAddr) {
-                toDisplay += ' → <a href="#/address/' + contractAddr + '" class="td-hash">' + contractAddr + '</a> ' + copyBtnHtml(contractAddr);
+                toDisplay += ' → <a href="#/address/' + escapeHtml(contractAddr) + '" class="hash-link">' + escapeHtml(contractAddr) + '</a> ' + copyBtnHtml(contractAddr);
             }
         }
 
         var decoded = decodeMethod(tx.input);
+        var decodedInput = decodeInputData(tx.input);
         var inputSection = '';
         if (tx.input && tx.input !== '0x') {
+            var decodedParamsHtml = '';
+            if (decodedInput && decodedInput.params.length > 0) {
+                var paramRows = decodedInput.params.map(function(p) {
+                    var displayVal = p.value;
+                    if (p.type === 'address') {
+                        displayVal = '<a href="#/address/' + escapeHtml(p.value) + '" class="addr-link">' + escapeHtml(p.value) + '</a>';
+                    } else if (p.type === 'uint256') {
+                        var targetAddr = tx.to ? tx.to.toLowerCase() : '';
+                        var tokenInfo = KNOWN_CONTRACTS[targetAddr];
+                        var dec = tokenInfo && tokenInfo.decimals !== undefined ? tokenInfo.decimals : 18;
+                        displayVal = '<span class="mono">' + escapeHtml(p.value) + '</span> <span style="color:var(--text-secondary)">(' + formatTokenAmount(p.value, dec) + (tokenInfo && tokenInfo.symbol ? ' ' + escapeHtml(tokenInfo.symbol) : '') + ')</span>';
+                    }
+                    return '<div style="display:flex;gap:0.75rem;padding:0.4rem 0;border-bottom:1px solid var(--border-subtle)">' +
+                        '<span style="color:var(--text-muted);min-width:80px;font-size:0.8rem">' + escapeHtml(p.name) + '</span>' +
+                        '<span style="color:var(--text-tertiary);min-width:60px;font-size:0.75rem">' + escapeHtml(p.type) + '</span>' +
+                        '<span style="font-size:0.82rem;word-break:break-all">' + displayVal + '</span>' +
+                        '</div>';
+                }).join('');
+                decodedParamsHtml = '<div style="margin-top:0.5rem;padding:0.5rem;background:var(--bg-surface);border-radius:var(--radius-xs);border:1px solid var(--border)">' +
+                    '<div style="font-size:0.75rem;font-weight:600;color:var(--text-muted);margin-bottom:0.35rem">Decoded Parameters</div>' +
+                    paramRows + '</div>';
+            }
             inputSection = [
                 '<div class="detail-row">',
                 '  <div class="detail-label">Input Data</div>',
-                '  <div class="detail-val">',
-                '    ' + (decoded ? '<span class="method-badge ' + decoded.badge_class + '" style="margin-bottom:0.5rem;display:inline-block">' + escapeHtml(decoded.name) + '</span><br>' : ''),
+                '  <div class="detail-value">',
+                '    ' + (decoded ? '<span class="method-tag ' + decoded.badge_class + '" style="margin-bottom:0.5rem;display:inline-block">' + escapeHtml(decoded.name) + '</span><br>' : ''),
                 '    <div class="mono" style="font-size:0.75rem;word-break:break-all;max-height:120px;overflow-y:auto;padding:0.5rem;background:var(--bg-surface);border-radius:var(--radius-xs);margin-top:0.25rem">' + escapeHtml(tx.input) + '</div>',
+                '    ' + decodedParamsHtml,
                 '    ' + copyBtnHtml(tx.input),
                 '  </div>',
                 '</div>',
@@ -1071,11 +1307,11 @@
                 var tokenName = tokenInfo ? tokenInfo.name : truncAddr(t.tokenAddr);
                 return [
                     '<div class="transfer-item" style="display:flex;align-items:center;gap:0.75rem;padding:0.65rem 1.25rem;border-bottom:1px solid var(--border-subtle);font-size:0.85rem">',
-                    '  <span class="method-badge badge-success" style="flex-shrink:0">Transfer</span>',
-                    '  <span>From</span> <a href="#/address/' + t.from + '" class="td-addr">' + truncAddr(t.from) + '</a>',
+                    '  <span class="method-tag badge-success" style="flex-shrink:0">Transfer</span>',
+                    '  <span>From</span> <a href="#/address/' + escapeHtml(t.from) + '" class="addr-link">' + truncAddr(t.from) + '</a>',
                     '  <span class="transfer-arrow" style="color:var(--accent)">→</span>',
-                    '  <span>To</span> <a href="#/address/' + t.to + '" class="td-addr">' + truncAddr(t.to) + '</a>',
-                    '  <span style="margin-left:auto" class="td-mono"><span style="color:var(--accent);font-weight:600">' + formattedAmount + '</span> <a href="#/address/' + t.tokenAddr + '" class="td-addr">' + escapeHtml(t.symbol) + '</a></span>',
+                    '  <span>To</span> <a href="#/address/' + escapeHtml(t.to) + '" class="addr-link">' + truncAddr(t.to) + '</a>',
+                    '  <span style="margin-left:auto" class="td-mono"><span style="color:var(--accent);font-weight:600">' + formattedAmount + '</span> <a href="#/address/' + escapeHtml(t.tokenAddr) + '" class="addr-link">' + escapeHtml(t.symbol) + '</a></span>',
                     '</div>',
                 ].join('');
             }).join('');
@@ -1099,7 +1335,7 @@
                     '<div style="padding:0.85rem 1.25rem;border-bottom:1px solid var(--border-subtle)">',
                     '  <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">',
                     '    <span style="background:var(--bg-surface);padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:600;color:var(--text-muted)">' + idx + '</span>',
-                    '    <a href="#/address/' + logAddr + '" class="td-addr" style="font-size:0.8rem">' + logAddr + '</a>',
+                    '    <a href="#/address/' + escapeHtml(logAddr) + '" class="addr-link" style="font-size:0.8rem">' + escapeHtml(logAddr) + '</a>',
                     '    ' + (logInfo ? '<span style="color:var(--text-secondary);font-size:0.8rem">(' + escapeHtml(logInfo.name) + ')</span>' : ''),
                     '  </div>',
                     '  <div style="margin-bottom:0.35rem"><span style="color:var(--text-muted);font-size:0.75rem;font-weight:600">Topics:</span></div>',
@@ -1118,7 +1354,7 @@
         }
 
         el.innerHTML = [
-            '<div class="main"><div class="container">',
+            '<div class="main-content"><div class="container">',
             '  <a href="#/txs" class="back-link">' + ICONS.back + ' Back to Transactions</a>',
             '  <div class="detail-header">',
             '    <div class="detail-icon">' + ICONS.tx + '</div>',
@@ -1130,25 +1366,32 @@
             '',
             '  <div class="detail-card">',
             '    <div class="detail-card-title">Overview</div>',
-            '    <div class="detail-row"><div class="detail-label">Status</div><div class="detail-val"><span class="status status-' + status + '"><span class="status-dot"></span>' + statusLabel + '</span></div></div>',
-            '    <div class="detail-row"><div class="detail-label">Block</div><div class="detail-val">' + (blockNum !== null ? '<a href="#/block/' + blockNum + '" class="td-hash">' + formatNum(blockNum) + '</a>' : '—') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Timestamp</div><div class="detail-val">' + (blockNum !== null ? timeAgo(blockNum, state.latestBlock) : '—') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">From</div><div class="detail-val mono"><a href="#/address/' + tx.from + '" class="td-addr">' + tx.from + '</a> ' + copyBtnHtml(tx.from) + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">To</div><div class="detail-val mono">' + toDisplay + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Value</div><div class="detail-val mono">' + formatPRIM(tx.value || '0x0') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Transaction Fee</div><div class="detail-val mono">' + (receipt ? formatPRIM(feeHex) : '—') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Gas Price</div><div class="detail-val mono">' + formatGwei(txGasPriceVal) + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Transaction Hash</div><div class="detail-value mono">' + escapeHtml(tx.hash) + ' ' + copyBtnHtml(tx.hash) + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Status</div><div class="detail-value"><span class="status-badge status-' + status + '"><span class="status-dot"></span>' + statusLabel + '</span></div></div>',
+            '    <div class="detail-row"><div class="detail-label">Block</div><div class="detail-value">' + (blockNum !== null ? '<a href="#/block/' + blockNum + '" class="hash-link">' + formatNum(blockNum) + '</a> <span class="text-muted" style="margin-left:8px">' + formatNum(confirmations) + ' Block Confirmations</span>' : '—') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Timestamp</div><div class="detail-value">' + (blockForTimestamp && blockForTimestamp.timestamp ? formatTimestamp(blockForTimestamp.timestamp) : (blockNum !== null ? timeAgo(blockNum, state.latestBlock) : '—')) + '</div></div>',
+            txActionHtml ? '    ' + txActionHtml : '',
+            '    <div class="separator"></div>',
+            '    <div class="detail-row"><div class="detail-label">From</div><div class="detail-value mono"><a href="#/address/' + escapeHtml(tx.from) + '" class="addr-link">' + escapeHtml(tx.from) + '</a> ' + copyBtnHtml(tx.from) + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">To</div><div class="detail-value mono">' + toDisplay + '</div></div>',
+            '    <div class="separator"></div>',
+            '    <div class="detail-row"><div class="detail-label">Value</div><div class="detail-value mono">' + formatPRIM(tx.value || '0x0') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Transaction Fee</div><div class="detail-value mono">' + (receipt ? formatPRIM(feeHex) : '—') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Gas Price</div><div class="detail-value mono">' + formatGwei(txGasPriceVal) + ' <span class="text-muted">(' + formatPRIM(txGasPriceVal) + ')</span></div></div>',
+            txType === 2 ? '    <div class="detail-row"><div class="detail-label">Gas Fees</div><div class="detail-value mono">Base: ' + formatGwei(baseFeeFromBlock) + (maxFeePerGas ? ' | Max: ' + formatGwei(maxFeePerGas) : '') + (maxPriorityFee ? ' | Max Priority: ' + formatGwei(maxPriorityFee) : '') + '</div></div>' : '',
             '    <div class="detail-row">',
-            '      <div class="detail-label">Gas Limit &amp; Usage</div>',
-            '      <div class="detail-val">',
-            '        <span class="td-mono">' + formatNum(txGasLimit) + '</span>',
-            '        <span style="color:var(--text-muted);margin:0 0.35rem">|</span>',
-            '        <span class="td-mono">' + formatNum(rcptGasUsed) + '</span>',
-            '        <span style="color:var(--text-muted);margin:0 0.35rem">(' + gasBarPercent + '%)</span>',
+            '      <div class="detail-label">Gas Limit &amp; Usage by Txn</div>',
+            '      <div class="detail-value">',
+            '        <span class="mono">' + formatNum(txGasLimit) + '</span>',
+            '        <span class="text-muted" style="margin:0 6px">|</span>',
+            '        <span class="mono">' + formatNum(rcptGasUsed) + '</span>',
+            '        <span class="text-muted" style="margin:0 6px">(' + gasBarPercent + '%)</span>',
             '        <div class="gas-bar" style="width:100px;display:inline-block;vertical-align:middle"><div class="gas-bar-fill" style="width:' + gasBarPercent + '%"></div></div>',
             '      </div>',
             '    </div>',
-            '    <div class="detail-row"><div class="detail-label">Nonce</div><div class="detail-val mono">' + (tx.nonce !== undefined ? hexToInt(tx.nonce) : '—') + '</div></div>',
+            receipt ? '    <div class="detail-row"><div class="detail-label">Burnt &amp; Txn Savings Fees</div><div class="detail-value mono"><span style="color:#dc3545">🔥 Burnt: ' + formatPRIM(burntFeesHex) + '</span> <span class="text-muted" style="margin:0 8px">|</span> 💸 Txn Savings: ' + formatPRIM('0x' + savingsWei.toString(16)) + '</div></div>' : '',
+            '    <div class="separator"></div>',
+            '    <div class="detail-row"><div class="detail-label">Other Attributes</div><div class="detail-value"><span class="method-tag">Txn Type: ' + txTypeLabel + '</span> <span class="method-tag" style="margin-left:6px">Nonce: ' + (tx.nonce !== undefined ? hexToInt(tx.nonce) : '—') + '</span> <span class="method-tag" style="margin-left:6px">Position In Block: ' + positionInBlock + '</span></div></div>',
             '    ' + inputSection,
             '  </div>',
             '',
@@ -1163,6 +1406,11 @@
        PAGE: ADDRESS
        =========================================== */
     async function pageAddress(el, addr) {
+        if (!/^0x[0-9a-fA-F]{1,40}$/i.test(addr)) {
+            el.innerHTML = '<div class="main-content"><div class="container"><div class="detail-card"><div class="detail-card-title" style="color:var(--fail)">Invalid Address</div><div style="padding:1rem 1.25rem">The address format is invalid.</div></div></div></div>';
+            return;
+        }
+
         await refreshGlobal();
         await fetchValidators();
 
@@ -1183,68 +1431,105 @@
             code = results[2] || '0x';
         } catch (e) { /* ignore */ }
 
+        var tokenBalances = [];
+        var tokenAddrs = Object.keys(KNOWN_CONTRACTS).filter(function(k) {
+            return KNOWN_CONTRACTS[k].type === 'token';
+        });
+        var tokenBalancePromises = tokenAddrs.map(function(tokenAddr) {
+            return fetchTokenBalance(tokenAddr, addr).then(function(result) {
+                return { addr: tokenAddr, balance: result.balance, error: result.error };
+            });
+        });
+        var tokenResults = await Promise.all(tokenBalancePromises);
+        var tokenFetchErrors = tokenResults.some(function(r) { return r.error; });
+        tokenResults.forEach(function(r) {
+            var meta = KNOWN_CONTRACTS[r.addr];
+            var rawBal = hexToBigInt(r.balance);
+            if (rawBal > 0n) {
+                tokenBalances.push({
+                    symbol: meta.symbol,
+                    name: meta.name,
+                    decimals: meta.decimals,
+                    balance: r.balance,
+                    address: r.addr,
+                });
+            }
+        });
+
         var isContract = code && code !== '0x' && code !== '0x0' && code.length > 2;
         var isValidator = state.validators.some(function (v) { return v.address && v.address.toLowerCase() === addrLower; });
         var validatorInfo = state.validators.find(function (v) { return v.address && v.address.toLowerCase() === addrLower; });
         var verified = KNOWN_CONTRACTS[addrLower];
 
         var badges = '';
-        if (isValidator) badges += '<span class="status status-success" style="margin-left:0.5rem"><span class="status-dot"></span>Validator</span>';
-        if (verified) badges += '<span class="status status-success" style="margin-left:0.5rem"><span class="status-dot"></span>Verified: ' + escapeHtml(verified.name) + '</span>';
-        if (isContract && !verified) badges += '<span class="status status-pending" style="margin-left:0.5rem"><span class="status-dot"></span>Contract</span>';
+        if (isValidator) badges += '<span class="status-badge status-success" style="margin-left:0.5rem"><span class="status-dot"></span>Validator</span>';
+        if (verified) badges += '<span class="status-badge status-success" style="margin-left:0.5rem"><span class="status-dot"></span>Verified: ' + escapeHtml(verified.name) + '</span>';
+        if (isContract && !verified) badges += '<span class="status-badge status-pending" style="margin-left:0.5rem"><span class="status-dot"></span>Contract</span>';
 
-        var typeLabel = isValidator ? 'Validator' : isContract ? 'Contract' : 'EOA';
+        var typeLabel = isValidator ? 'Validator' : isContract ? 'Contract' : 'EOA (Externally Owned Account)';
+        var nonce = hexToInt(txCount);
 
-        var overviewCards = [
-            '<div class="address-overview">',
-            '  <div class="stat-card">',
-            '    <div class="stat-card-label">Balance</div>',
-            '    <div class="stat-card-value" style="font-size:1.1rem">' + formatPRIM(balance) + '</div>',
-            '  </div>',
-            '  <div class="stat-card">',
-            '    <div class="stat-card-label">Transactions</div>',
-            '    <div class="stat-card-value">' + formatNum(hexToInt(txCount)) + '</div>',
-            '    <div class="stat-card-sub">nonce</div>',
-            '  </div>',
-            '  <div class="stat-card">',
-            '    <div class="stat-card-label">Type</div>',
-            '    <div class="stat-card-value" style="font-size:1.1rem">' + typeLabel + '</div>',
-            isValidator && validatorInfo ? '<div class="stat-card-sub">' + formatPRIMShort(validatorInfo.stake) + ' PRIM staked</div>' : '',
-            '  </div>',
+        var overviewHtml = [
+            '<div class="detail-card" style="margin-bottom:1.5rem">',
+            '  <div class="detail-card-title">Overview</div>',
+            '  <div class="detail-row"><div class="detail-label">PRIM Balance</div><div class="detail-value mono" style="font-size:1rem;font-weight:600">' + formatPRIM(balance) + '</div></div>',
+            '  <div class="detail-row"><div class="detail-label">Token Holdings</div><div class="detail-value">' + (tokenBalances.length > 0 ? '<span class="method-tag">' + tokenBalances.length + ' Token' + (tokenBalances.length !== 1 ? 's' : '') + '</span>' : 'None') + '</div></div>',
             '</div>',
         ].join('\n');
+
+        var moreInfoHtml = [
+            '<div class="detail-card" style="margin-bottom:1.5rem">',
+            '  <div class="detail-card-title">More Info</div>',
+            '  <div class="detail-row"><div class="detail-label">Address Type</div><div class="detail-value">' + typeLabel + '</div></div>',
+            '  <div class="detail-row"><div class="detail-label">Nonce</div><div class="detail-value mono">' + formatNum(nonce) + '</div></div>',
+            isValidator && validatorInfo ? '  <div class="detail-row"><div class="detail-label">Validator Stake</div><div class="detail-value mono">' + formatPRIM(validatorInfo.stake) + '</div></div>' : '',
+            isContract ? '  <div class="detail-row"><div class="detail-label">Contract Code</div><div class="detail-value">' + formatNum(code.length) + ' bytes' + (verified ? ' <span class="status-badge status-success"><span class="status-dot"></span>Verified</span>' : '') + '</div></div>' : '',
+            '</div>',
+        ].join('\n');
+
+        var tokenHoldingsHtml = '';
+        if (tokenBalances.length > 0) {
+            var tokenRows = tokenBalances.map(function(t) {
+                return '<div class="token-row" style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--border)">' +
+                    '<div><span style="font-weight:600;color:var(--text-primary)">' + escapeHtml(t.symbol) + '</span> <span style="color:var(--text-tertiary);font-size:0.8rem">' + escapeHtml(t.name) + '</span></div>' +
+                    '<div class="mono" style="font-weight:500">' + formatTokenAmount(t.balance, t.decimals) + '</div>' +
+                    '</div>';
+            }).join('');
+            var tokenErrorNote = tokenFetchErrors ? '<div style="padding:0.5rem 1.25rem;font-size:0.8rem;color:var(--warn)">⚠ Some token balances could not be fetched and may be incomplete.</div>' : '';
+            tokenHoldingsHtml = '<div class="detail-card" style="margin-bottom:1.5rem"><div class="detail-card-title">Token Holdings</div><div style="padding:0.75rem 1.25rem">' + tokenRows + '</div>' + tokenErrorNote + '</div>';
+        } else if (tokenFetchErrors) {
+            tokenHoldingsHtml = '<div class="detail-card" style="margin-bottom:1.5rem"><div class="detail-card-title">Token Holdings</div><div style="padding:0.75rem 1.25rem;font-size:0.8rem;color:var(--warn)">⚠ Token balances could not be fetched. RPC calls failed.</div></div>';
+        }
 
         var contractInfoSection = '';
         if (verified) {
             contractInfoSection = [
                 '<div class="detail-card" style="margin-bottom:1.5rem">',
                 '  <div class="detail-card-title" style="color:var(--accent)">✓ Verified Contract</div>',
-                '  <div class="detail-row"><div class="detail-label">Contract Name</div><div class="detail-val" style="font-weight:600">' + escapeHtml(verified.name) + '</div></div>',
-                '  <div class="detail-row"><div class="detail-label">Compiler</div><div class="detail-val mono">' + escapeHtml(verified.compiler) + '</div></div>',
-                '  <div class="detail-row"><div class="detail-label">Source File</div><div class="detail-val mono">' + escapeHtml(verified.source) + '</div></div>',
-                '  <div class="detail-row"><div class="detail-label">License</div><div class="detail-val">' + escapeHtml(verified.license) + '</div></div>',
-                '  <div class="detail-row"><div class="detail-label">Optimization</div><div class="detail-val">Enabled (200 runs, via-ir)</div></div>',
-                '  <div class="detail-row"><div class="detail-label">EVM Version</div><div class="detail-val">Shanghai</div></div>',
-                '  <div class="detail-row"><div class="detail-label">Source Code</div><div class="detail-val"><a href="https://github.com/PrimeNumbersLabs/prime-chain/tree/main/' + escapeHtml(verified.source) + '" target="_blank" rel="noopener">View on GitHub →</a></div></div>',
+                '  <div class="detail-row"><div class="detail-label">Contract Name</div><div class="detail-value" style="font-weight:600">' + escapeHtml(verified.name) + '</div></div>',
+                '  <div class="detail-row"><div class="detail-label">Compiler</div><div class="detail-value mono">' + escapeHtml(verified.compiler) + '</div></div>',
+                '  <div class="detail-row"><div class="detail-label">Source File</div><div class="detail-value mono">' + escapeHtml(verified.source) + '</div></div>',
+                '  <div class="detail-row"><div class="detail-label">License</div><div class="detail-value">' + escapeHtml(verified.license) + '</div></div>',
+                '  <div class="detail-row"><div class="detail-label">Optimization</div><div class="detail-value">Enabled (200 runs, via-ir)</div></div>',
+                '  <div class="detail-row"><div class="detail-label">EVM Version</div><div class="detail-value">Shanghai</div></div>',
+                '  <div class="detail-row"><div class="detail-label">Source Code</div><div class="detail-value"><a href="https://github.com/PrimeNumbersLabs/prime-chain/tree/main/' + escapeHtml(verified.source) + '" target="_blank" rel="noopener">View on GitHub →</a></div></div>',
                 '</div>',
             ].join('\n');
         }
 
-        var tabBar = '';
-        var hasTabs = isContract;
-        if (hasTabs) {
-            tabBar = [
-                '<div class="tab-bar" style="margin-bottom:1rem">',
-                '  <button class="tab-btn active" data-tab="txs">Transactions</button>',
-                '  <button class="tab-btn" data-tab="contract">Contract</button>',
-                '</div>',
-            ].join('');
-        }
+        var hasTabs = true;
+        var tabBar = [
+            '<div class="tab-nav" style="margin-bottom:1rem">',
+            '  <button class="tab-btn active" data-tab="txs">Transactions</button>',
+            '  <button class="tab-btn" data-tab="transfers">Token Transfers</button>',
+            isContract ? '  <button class="tab-btn" data-tab="contract">Contract</button>' : '',
+            '</div>',
+        ].join('');
 
         var addressTxs = [];
-        var scanBlocks = Math.min(100, state.latestBlock + 1);
-        var batchSize = 10;
-        for (var offset = 0; offset < scanBlocks && addressTxs.length < 25; offset += batchSize) {
+        var scanBlocks = Math.min(500, state.latestBlock + 1);
+        var batchSize = 20;
+        for (var offset = 0; offset < scanBlocks && addressTxs.length < 50; offset += batchSize) {
             var blockPromises = [];
             for (var i = 0; i < batchSize && state.latestBlock - offset - i >= 0; i++) {
                 var num = state.latestBlock - offset - i;
@@ -1267,31 +1552,35 @@
 
         var txRows = addressTxs.length > 0 ? addressTxs.map(function (tx) {
             var isFrom = tx.from && tx.from.toLowerCase() === addrLower;
+            var txFee = BigInt(hexToInt(txGas(tx) || '0x0')) * hexToBigInt(txGasPrice(tx) || state.gasPrice);
+            var txFeeHex = '0x' + txFee.toString(16);
             return [
                 '<tr>',
-                '  <td><a href="#/tx/' + tx.hash + '" class="td-hash">' + truncHash(tx.hash) + '</a></td>',
+                '  <td><a href="#/tx/' + escapeHtml(tx.hash) + '" class="hash-link">' + truncHash(tx.hash) + '</a></td>',
                 '  <td>' + methodBadgeHtml(tx.input) + '</td>',
-                '  <td><a href="#/block/' + tx._blockNum + '" class="td-hash">' + formatNum(tx._blockNum) + '</a></td>',
+                '  <td><a href="#/block/' + tx._blockNum + '" class="hash-link">' + formatNum(tx._blockNum) + '</a></td>',
                 '  <td class="td-time">' + timeAgo(tx._blockNum, state.latestBlock) + '</td>',
                 '  <td>' + addrDisplay(tx.from) + '</td>',
-                '  <td><span class="status ' + (isFrom ? 'status-fail' : 'status-success') + '" style="font-size:0.7rem">' + (isFrom ? 'OUT' : 'IN') + '</span></td>',
-                '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:var(--warn)">Contract Create</span>') + '</td>',
-                '  <td class="td-right td-mono">' + formatPRIMShort(tx.value || '0x0') + ' PRIM</td>',
+                '  <td><span class="status-badge ' + (isFrom ? 'status-fail' : 'status-success') + '" style="font-size:0.7rem">' + (isFrom ? 'OUT' : 'IN') + '</span></td>',
+                '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:#e5a50a">Contract Create</span>') + '</td>',
+                '  <td class="td-right mono">' + formatPRIMShort(tx.value || '0x0') + '</td>',
+                '  <td class="td-right mono text-muted" style="font-size:0.78rem">' + formatPRIMShort(txFeeHex) + '</td>',
                 '</tr>',
             ].join('');
-        }).join('') : '<tr><td colspan="8" class="table-empty">No transactions found for this address in recent blocks</td></tr>';
+        }).join('') : '<tr><td colspan="9" class="table-empty">No transactions found for this address in recent blocks</td></tr>';
 
         var txTableHtml = [
             '<div id="tab-txs">',
-            '  <div class="table-wrap">',
-            '    <div class="overflow-x">',
+            '  <div class="card">',
+            '    <div class="table-responsive">',
             '      <table class="data-table">',
             '        <thead><tr>',
-            '          <th>Tx Hash</th><th>Method</th><th>Block</th><th>Age</th><th>From</th><th></th><th>To</th><th class="td-right">Value</th>',
+            '          <th>Tx Hash</th><th>Method</th><th>Block</th><th>Age</th><th>From</th><th></th><th>To</th><th class="td-right">Value</th><th class="td-right">Txn Fee</th>',
             '        </tr></thead>',
             '        <tbody>' + txRows + '</tbody>',
             '      </table>',
             '    </div>',
+            addressTxs.length >= 50 ? '    <div style="padding:0.75rem 1.25rem;text-align:center;color:#8c98a4;font-size:0.82rem">Showing latest 50 transactions. Scan depth: 500 blocks.</div>' : '',
             '  </div>',
             '</div>',
         ].join('\n');
@@ -1313,21 +1602,80 @@
             ].join('\n');
         }
 
+        var receiptPromises = addressTxs.slice(0, 25).map(function(tx) {
+            return rpc('eth_getTransactionReceipt', [tx.hash]).catch(function() { return null; });
+        });
+        var receipts = await Promise.all(receiptPromises);
+        var transferItems = [];
+        receipts.forEach(function(receipt, idx) {
+            if (!receipt || !receipt.logs) return;
+            receipt.logs.forEach(function(log) {
+                if (log.topics && log.topics[0] === TOPIC_TRANSFER && log.topics.length >= 3) {
+                    var tokenMeta = KNOWN_CONTRACTS[log.address.toLowerCase()];
+                    var fromAddr = '0x' + (log.topics[1] || '').slice(26);
+                    var toAddr = '0x' + (log.topics[2] || '').slice(26);
+                    transferItems.push({
+                        txHash: addressTxs[idx].hash,
+                        blockNum: addressTxs[idx]._blockNum,
+                        from: fromAddr,
+                        to: toAddr,
+                        amount: log.data || '0x0',
+                        token: tokenMeta ? tokenMeta.symbol : truncHash(log.address, 8, 4),
+                        decimals: tokenMeta ? tokenMeta.decimals : 18,
+                        tokenAddr: log.address,
+                    });
+                }
+            });
+        });
+
+        var transferTableRows = transferItems.length > 0 ? transferItems.map(function(item) {
+            var isFrom = item.from.toLowerCase() === addrLower;
+            return [
+                '<tr>',
+                '  <td><a href="#/tx/' + escapeHtml(item.txHash) + '" class="hash-link">' + truncHash(item.txHash) + '</a></td>',
+                '  <td><a href="#/block/' + item.blockNum + '" class="hash-link">' + formatNum(item.blockNum) + '</a></td>',
+                '  <td>' + addrDisplay(item.from) + '</td>',
+                '  <td><span class="status-badge ' + (isFrom ? 'status-fail' : 'status-success') + '" style="font-size:0.7rem">' + (isFrom ? 'OUT' : 'IN') + '</span></td>',
+                '  <td>' + addrDisplay(item.to) + '</td>',
+                '  <td class="td-right td-mono">' + formatTokenAmount(item.amount, item.decimals) + '</td>',
+                '  <td><a href="#/address/' + escapeHtml(item.tokenAddr) + '" class="addr-link">' + escapeHtml(item.token) + '</a></td>',
+                '</tr>',
+            ].join('');
+        }).join('') : '<tr><td colspan="7" class="table-empty">No token transfers found in recent transactions</td></tr>';
+
+        var transfersTabHtml = [
+            '<div id="tab-transfers" style="display:none">',
+            '  <div class="card">',
+            '    <div class="table-responsive">',
+            '      <table class="data-table">',
+            '        <thead><tr>',
+            '          <th>Tx Hash</th><th>Block</th><th>From</th><th></th><th>To</th><th class="td-right">Amount</th><th>Token</th>',
+            '        </tr></thead>',
+            '        <tbody>' + transferTableRows + '</tbody>',
+            '      </table>',
+            '    </div>',
+            '  </div>',
+            '</div>',
+        ].join('\n');
+
         el.innerHTML = [
-            '<div class="main"><div class="container">',
+            '<div class="main-content"><div class="container">',
             '  <a href="#/" class="back-link">' + ICONS.back + ' Back to Home</a>',
             '  <div class="detail-header">',
             '    <div class="detail-icon">' + (isValidator ? ICONS.shield : isContract ? ICONS.code : ICONS.user) + '</div>',
             '    <div class="detail-title-group">',
             '      <div class="detail-title">Address ' + badges + '</div>',
-            '      <div class="detail-hash">' + addr + ' ' + copyBtnHtml(addr) + '</div>',
+            '      <div class="detail-hash">' + escapeHtml(addr) + ' ' + copyBtnHtml(addr) + '</div>',
             '    </div>',
             '  </div>',
             '',
-            overviewCards,
+            overviewHtml,
+            moreInfoHtml,
+            tokenHoldingsHtml,
             contractInfoSection,
             tabBar,
             txTableHtml,
+            transfersTabHtml,
             contractTabHtml,
             '</div></div>',
         ].join('\n');
@@ -1340,14 +1688,11 @@
                 $$('.tab-btn', el).forEach(function (t) { t.classList.remove('active'); });
                 tabBtn.classList.add('active');
                 var tabTxs = $('#tab-txs', el);
+                var tabTransfers = $('#tab-transfers', el);
                 var tabContract = $('#tab-contract', el);
-                if (tabName === 'txs') {
-                    if (tabTxs) tabTxs.style.display = '';
-                    if (tabContract) tabContract.style.display = 'none';
-                } else {
-                    if (tabTxs) tabTxs.style.display = 'none';
-                    if (tabContract) tabContract.style.display = '';
-                }
+                if (tabTxs) tabTxs.style.display = tabName === 'txs' ? '' : 'none';
+                if (tabTransfers) tabTransfers.style.display = tabName === 'transfers' ? '' : 'none';
+                if (tabContract) tabContract.style.display = tabName === 'contract' ? '' : 'none';
             });
 
             var expandBtn = $('#expandBytecode', el);
@@ -1387,7 +1732,7 @@
             return [
                 '<tr>',
                 '  <td class="td-mono" style="font-weight:600;color:var(--text-muted)">' + (i + 1) + '</td>',
-                '  <td><a href="#/address/' + v.address + '" class="td-hash">' + v.address + '</a> ' + copyBtnHtml(v.address) + '</td>',
+                '  <td><a href="#/address/' + escapeHtml(v.address) + '" class="hash-link">' + escapeHtml(v.address) + '</a> ' + copyBtnHtml(v.address) + '</td>',
                 '  <td class="td-mono">' + formatPRIM(v.stake) + '</td>',
                 '  <td>',
                 '    <div style="display:flex;align-items:center;gap:0.5rem">',
@@ -1395,38 +1740,39 @@
                 '      <span class="td-mono" style="font-size:0.8rem">' + pct.toFixed(1) + '%</span>',
                 '    </div>',
                 '  </td>',
-                '  <td><span class="status status-success"><span class="status-dot"></span>Active</span></td>',
+                '  <td><span class="status-badge status-success"><span class="status-dot"></span>Active</span></td>',
                 '</tr>',
             ].join('');
         }).join('') : '<tr><td colspan="5" class="table-empty">No validators found</td></tr>';
 
         el.innerHTML = [
-            '<div class="main"><div class="container">',
-            '  <div class="page-head">',
+            '<div class="main-content"><div class="container">',
+            '  <div class="page-header">',
             '    <div>',
             '      <h1 class="page-title">Validators</h1>',
-            '      <div class="page-sub">' + validators.length + ' active validator' + (validators.length !== 1 ? 's' : '') + ' securing the network</div>',
+            '      <div class="page-subtitle">' + validators.length + ' active validator' + (validators.length !== 1 ? 's' : '') + ' securing the network</div>',
             '    </div>',
             '  </div>',
             '',
-            '  <div class="validator-summary">',
-            '    <div class="validator-card">',
-            '      <div class="validator-card-label">Active Validators</div>',
-            '      <div class="validator-card-value">' + validators.length + '</div>',
+            '  <div class="overview-grid">',
+            '    <div class="stat-card">',
+            '      <div class="stat-card-label">Active Validators</div>',
+            '      <div class="stat-card-value">' + validators.length + '</div>',
             '    </div>',
-            '    <div class="validator-card">',
-            '      <div class="validator-card-label">Total Staked</div>',
-            '      <div class="validator-card-value">' + formatPRIM('0x' + totalStake.toString(16)) + '</div>',
+            '    <div class="stat-card">',
+            '      <div class="stat-card-label">Total Staked</div>',
+            '      <div class="stat-card-value">' + formatPRIM('0x' + totalStake.toString(16)) + '</div>',
             '    </div>',
-            '    <div class="validator-card">',
-            '      <div class="validator-card-label">Block Height</div>',
-            '      <div class="validator-card-value" style="color:var(--text)">' + formatNum(state.latestBlock) + '</div>',
+            '    <div class="stat-card">',
+            '      <div class="stat-card-label">Block Height</div>',
+            '      <div class="stat-card-value" style="color:var(--text)">' + formatNum(state.latestBlock) + '</div>',
             '    </div>',
             '  </div>',
             '',
-            '  <div class="table-wrap">',
-            '    <div class="overflow-x">',
-            '      <table class="data-table">',
+            '  <div class="card">',
+            '    <div class="card-header"><h2 class="card-title">Validators</h2>' + csvExportBtnHtml('validatorsTable', 'validators.csv') + '</div>',
+            '    <div class="table-responsive">',
+            '      <table class="data-table" id="validatorsTable">',
             '        <thead><tr>',
             '          <th>#</th><th>Address</th><th>Stake</th><th>Share</th><th>Status</th>',
             '        </tr></thead>',
@@ -1445,69 +1791,65 @@
     async function pageNetworkInfo(el) {
         await refreshGlobal();
 
-        var contracts = [
-            { name: 'Multicall3',       addr: '0x973ee1bf0907287d1eb8a144d88b34f515c83f29', desc: 'Batch RPC calls',              type: 'utility' },
-            { name: 'WPRIM',            addr: '0x079bf1207b51acda83e2e8178344f62a883f8479', desc: 'Wrapped PRIM (ERC-20)',         type: 'token' },
-            { name: 'MockUSDC',         addr: '0xb22f77d89122e9e3784bfd3eee9616273f38238d', desc: 'Testnet USDC (6 decimals)',     type: 'token' },
-            { name: 'MockUSDT',         addr: '0x877feca38919acd7aaf7cb81f100e0454aa95c17', desc: 'Testnet USDT (6 decimals)',     type: 'token' },
-            { name: 'MockDAI',          addr: '0xb88d63a65691effbf4b6808325b1588912c15cf4', desc: 'Testnet DAI (18 decimals)',     type: 'token' },
-            { name: 'PrimeSwapFactory', addr: '0x63f7a64db6d2b965189b8b48b7435668021f6b17', desc: 'DEX pair factory',             type: 'dex' },
-            { name: 'PrimeSwapRouter',  addr: '0x9f337f433e71ce969b991511f1dcd3d0622116bb', desc: 'DEX swap router',              type: 'dex' },
-        ];
+        var contracts = Object.entries(KNOWN_CONTRACTS).map(function(entry) {
+            var addr = entry[0];
+            var meta = entry[1];
+            return { name: meta.name, addr: addr, desc: meta.symbol ? meta.symbol + ' (' + meta.decimals + ' decimals)' : meta.type, type: meta.type };
+        });
 
         var contractRows = contracts.map(function (c) {
-            var typeBadge = c.type === 'token' ? 'badge-value' : c.type === 'dex' ? 'badge-txcount' : 'badge-success';
+            var typeBadge = c.type === 'token' ? 'badge badge-sm badge-secondary' : c.type === 'dex' ? 'badge badge-sm badge-info' : 'badge badge-sm badge-success';
             return [
                 '<tr>',
                 '  <td style="font-weight:600">' + c.name + '</td>',
-                '  <td><a href="#/address/' + c.addr + '" class="td-hash">' + c.addr + '</a> ' + copyBtnHtml(c.addr) + '</td>',
+                '  <td><a href="#/address/' + escapeHtml(c.addr) + '" class="hash-link">' + escapeHtml(c.addr) + '</a> ' + copyBtnHtml(c.addr) + '</td>',
                 '  <td style="color:var(--text-secondary)">' + c.desc + '</td>',
-                '  <td><span class="panel-item-badge ' + typeBadge + '">' + c.type + '</span></td>',
+                '  <td><span class="' + typeBadge + '">' + c.type + '</span></td>',
                 '</tr>',
             ].join('');
         }).join('');
 
         el.innerHTML = [
-            '<div class="main"><div class="container">',
-            '  <div class="page-head">',
+            '<div class="main-content"><div class="container">',
+            '  <div class="page-header">',
             '    <div>',
             '      <h1 class="page-title">Network Information</h1>',
-            '      <div class="page-sub">Prime Chain Testnet configuration and endpoints</div>',
+            '      <div class="page-subtitle">Prime Chain Testnet configuration and endpoints</div>',
             '    </div>',
             '  </div>',
             '',
-            '  <div class="dashboard-grid" style="margin-bottom:1.5rem">',
+            '  <div class="latest-grid" style="margin-bottom:1.5rem">',
             '    <div class="detail-card">',
             '      <div class="detail-card-title">Testnet Configuration</div>',
-            '      <div class="detail-row"><div class="detail-label">Network Name</div><div class="detail-val">Prime Chain Testnet</div></div>',
-            '      <div class="detail-row"><div class="detail-label">Chain ID</div><div class="detail-val mono">' + CHAIN_ID + ' (0x' + CHAIN_ID.toString(16) + ')</div></div>',
-            '      <div class="detail-row"><div class="detail-label">Currency Symbol</div><div class="detail-val">PRIM</div></div>',
-            '      <div class="detail-row"><div class="detail-label">Decimals</div><div class="detail-val mono">18</div></div>',
-            '      <div class="detail-row"><div class="detail-label">Block Time</div><div class="detail-val">~' + BLOCK_TIME_SECS + ' seconds</div></div>',
-            '      <div class="detail-row"><div class="detail-label">Consensus</div><div class="detail-val">Delegated Proof-of-Stake</div></div>',
-            '      <div class="detail-row"><div class="detail-label">Current Block</div><div class="detail-val mono">' + formatNum(state.latestBlock) + '</div></div>',
-            '      <div class="detail-row"><div class="detail-label">Gas Price</div><div class="detail-val mono">' + formatGwei(state.gasPrice) + '</div></div>',
+            '      <div class="detail-row"><div class="detail-label">Network Name</div><div class="detail-value">Prime Chain Testnet</div></div>',
+            '      <div class="detail-row"><div class="detail-label">Chain ID</div><div class="detail-value mono">' + CHAIN_ID + ' (0x' + CHAIN_ID.toString(16) + ')</div></div>',
+            '      <div class="detail-row"><div class="detail-label">Currency Symbol</div><div class="detail-value">PRIM</div></div>',
+            '      <div class="detail-row"><div class="detail-label">Decimals</div><div class="detail-value mono">18</div></div>',
+            '      <div class="detail-row"><div class="detail-label">Block Time</div><div class="detail-value">~' + BLOCK_TIME_SECS + ' seconds</div></div>',
+            '      <div class="detail-row"><div class="detail-label">Consensus</div><div class="detail-value">Delegated Proof-of-Stake</div></div>',
+            '      <div class="detail-row"><div class="detail-label">Current Block</div><div class="detail-value mono">' + formatNum(state.latestBlock) + '</div></div>',
+            '      <div class="detail-row"><div class="detail-label">Gas Price</div><div class="detail-value mono">' + formatGwei(state.gasPrice) + '</div></div>',
             '    </div>',
             '    <div class="detail-card">',
             '      <div class="detail-card-title">Endpoints</div>',
-            '      <div class="detail-row"><div class="detail-label">JSON-RPC</div><div class="detail-val mono">http://46.225.30.187:8545 ' + copyBtnHtml('http://46.225.30.187:8545') + '</div></div>',
-            '      <div class="detail-row"><div class="detail-label">WebSocket</div><div class="detail-val mono">ws://46.225.30.187:8546 ' + copyBtnHtml('ws://46.225.30.187:8546') + '</div></div>',
-            '      <div class="detail-row"><div class="detail-label">Explorer</div><div class="detail-val"><a href="http://46.225.30.187" target="_blank">http://46.225.30.187</a></div></div>',
-            '      <div class="detail-row"><div class="detail-label">Faucet</div><div class="detail-val"><a href="http://46.225.30.187:8080" target="_blank">http://46.225.30.187:8080</a></div></div>',
-            '      <div class="detail-row"><div class="detail-label">PrimeSwap DEX</div><div class="detail-val"><a href="http://46.225.30.187:4000" target="_blank">http://46.225.30.187:4000</a></div></div>',
-            '      <div class="detail-row"><div class="detail-label">Validator Dashboard</div><div class="detail-val"><a href="http://46.225.30.187:4001" target="_blank">http://46.225.30.187:4001</a></div></div>',
-            '      <div class="detail-row"><div class="detail-label">Grafana</div><div class="detail-val"><a href="http://46.225.30.187:3000" target="_blank">http://46.225.30.187:3000</a></div></div>',
-            '      <div class="detail-row"><div class="detail-label">Docs</div><div class="detail-val"><a href="http://46.225.30.187:3001" target="_blank">http://46.225.30.187:3001</a></div></div>',
-            '      <div class="detail-row"><div class="detail-label">Status Page</div><div class="detail-val"><a href="http://46.225.30.187:3002" target="_blank">http://46.225.30.187:3002</a></div></div>',
+            '      <div class="detail-row"><div class="detail-label">JSON-RPC</div><div class="detail-value mono">http://46.225.30.187:8545 ' + copyBtnHtml('http://46.225.30.187:8545') + '</div></div>',
+            '      <div class="detail-row"><div class="detail-label">WebSocket</div><div class="detail-value mono">ws://46.225.30.187:8546 ' + copyBtnHtml('ws://46.225.30.187:8546') + '</div></div>',
+            '      <div class="detail-row"><div class="detail-label">Explorer</div><div class="detail-value"><a href="http://46.225.30.187" target="_blank">http://46.225.30.187</a></div></div>',
+            '      <div class="detail-row"><div class="detail-label">Faucet</div><div class="detail-value"><a href="http://46.225.30.187:4003" target="_blank">http://46.225.30.187:4003</a></div></div>',
+            '      <div class="detail-row"><div class="detail-label">PrimeSwap DEX</div><div class="detail-value"><a href="http://46.225.30.187:4000" target="_blank">http://46.225.30.187:4000</a></div></div>',
+            '      <div class="detail-row"><div class="detail-label">Validator Dashboard</div><div class="detail-value"><a href="http://46.225.30.187:4001" target="_blank">http://46.225.30.187:4001</a></div></div>',
+            '      <div class="detail-row"><div class="detail-label">Grafana</div><div class="detail-value"><a href="http://46.225.30.187:3000" target="_blank">http://46.225.30.187:3000</a></div></div>',
+            '      <div class="detail-row"><div class="detail-label">Docs</div><div class="detail-value"><a href="http://46.225.30.187:3001" target="_blank">http://46.225.30.187:3001</a></div></div>',
+            '      <div class="detail-row"><div class="detail-label">Status Page</div><div class="detail-value"><a href="http://46.225.30.187:3002" target="_blank">http://46.225.30.187:3002</a></div></div>',
             '      <div style="padding:0.85rem 1.5rem">',
-            '        <button id="addMetaMask" style="padding:0.55rem 1.25rem;background:var(--accent);color:var(--bg-deep);border:none;border-radius:var(--radius-sm);font-family:var(--font-ui);font-weight:600;font-size:0.85rem;cursor:pointer;transition:all 200ms ease">🦊 Add to MetaMask</button>',
+            '        <button id="addMetaMask" class="btn btn-primary" style="padding:0.55rem 1.25rem;font-size:0.85rem;cursor:pointer">🦊 Add to MetaMask</button>',
             '      </div>',
             '    </div>',
             '  </div>',
             '',
-            '  <div class="detail-card" style="margin-bottom:1.5rem">',
-            '    <div class="detail-card-title">Deployed Contracts</div>',
-            '    <div class="overflow-x">',
+            '  <div class="card" style="margin-bottom:1.5rem">',
+            '    <div class="card-header"><h2 class="card-title">Deployed Contracts</h2></div>',
+            '    <div class="table-responsive">',
             '      <table class="data-table">',
             '        <thead><tr><th>Contract</th><th>Address</th><th>Description</th><th>Type</th></tr></thead>',
             '        <tbody>' + contractRows + '</tbody>',
@@ -1517,14 +1859,14 @@
             '',
             '  <div class="detail-card">',
             '    <div class="detail-card-title">Token Economics</div>',
-            '    <div class="detail-row"><div class="detail-label">Max Supply</div><div class="detail-val mono">1,000,000,000 PRIM</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Initial Block Reward</div><div class="detail-val mono">10 PRIM</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Halving Interval</div><div class="detail-val mono">35,000,000 blocks (~2.22 years)</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Block Rewards</div><div class="detail-val">70%</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Ecosystem &amp; Grants</div><div class="detail-val">10%</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Foundation Reserve</div><div class="detail-val">10%</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Team &amp; Contributors</div><div class="detail-val">5%</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Sales</div><div class="detail-val">5%</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Max Supply</div><div class="detail-value mono">1,000,000,000 PRIM</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Initial Block Reward</div><div class="detail-value mono">10 PRIM</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Halving Interval</div><div class="detail-value mono">35,000,000 blocks (~2.22 years)</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Block Rewards</div><div class="detail-value">70%</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Ecosystem &amp; Grants</div><div class="detail-value">10%</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Foundation Reserve</div><div class="detail-value">10%</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Team &amp; Contributors</div><div class="detail-value">5%</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Sales</div><div class="detail-value">5%</div></div>',
             '  </div>',
             '</div></div>',
         ].join('\n');
@@ -1557,6 +1899,727 @@
     pageNetworkInfo._page = 'network';
 
     /* ===========================================
+       PAGE: GAS TRACKER
+       =========================================== */
+    async function pageGasTracker(el) {
+        await refreshGlobal();
+
+        var scanCount = Math.min(50, state.latestBlock + 1);
+        var blocks = await fetchBlocks(state.latestBlock, scanCount, true);
+
+        var baseFees = [];
+        var totalGasUsed = 0;
+        var totalGasLimit = 0;
+        var gasConsumers = {};
+
+        for (var i = 0; i < blocks.length; i++) {
+            var b = blocks[i];
+            var bf = b.baseFeePerGas || b.base_fee_per_gas || '0x0';
+            baseFees.push({ block: hexToInt(b.number), fee: Number(hexToBigInt(bf)) / 1e9 });
+
+            var gu = hexToInt(b.gasUsed || b.gas_used || '0x0');
+            var gl = hexToInt(b.gasLimit || b.gas_limit || '0x0');
+            totalGasUsed += gu;
+            totalGasLimit += gl;
+
+            if (b.transactions && Array.isArray(b.transactions)) {
+                for (var t = 0; t < b.transactions.length; t++) {
+                    var tx = b.transactions[t];
+                    if (typeof tx !== 'object') continue;
+                    var to = (tx.to || '').toLowerCase();
+                    if (!to) continue;
+                    var tgu = hexToInt(txGas(tx) || '0x0');
+                    if (!gasConsumers[to]) gasConsumers[to] = { addr: tx.to, gas: 0, txCount: 0 };
+                    gasConsumers[to].gas += tgu;
+                    gasConsumers[to].txCount++;
+                }
+            }
+        }
+
+        var gasPriceGwei = Number(hexToBigInt(state.gasPrice)) / 1e9;
+        var transferCostWei = Number(hexToBigInt(state.gasPrice)) * 21000;
+        var transferCostPRIM = transferCostWei / 1e18;
+
+        var avgGasPercent = totalGasLimit > 0 ? ((totalGasUsed / totalGasLimit) * 100).toFixed(2) : '0.00';
+
+        var topConsumers = Object.values(gasConsumers).sort(function (a, b) { return b.gas - a.gas; }).slice(0, 10);
+
+        var maxFee = 0;
+        for (var f = 0; f < baseFees.length; f++) {
+            if (baseFees[f].fee > maxFee) maxFee = baseFees[f].fee;
+        }
+        if (maxFee === 0) maxFee = 1;
+
+        var barChartHtml = '<div style="display:flex;align-items:flex-end;gap:2px;height:120px;padding:8px 0">';
+        var orderedFees = baseFees.slice().reverse();
+        for (var c = 0; c < orderedFees.length; c++) {
+            var pct = (orderedFees[c].fee / maxFee) * 100;
+            if (pct < 2) pct = 2;
+            barChartHtml += '<div title="Block ' + orderedFees[c].block + ': ' + orderedFees[c].fee.toFixed(4) + ' Gwei" style="flex:1;min-width:3px;background:var(--primary,#4901FF);border-radius:2px 2px 0 0;height:' + pct.toFixed(1) + '%;opacity:0.85;transition:opacity 0.15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85"></div>';
+        }
+        barChartHtml += '</div>';
+
+        var guzzlerRows = '';
+        for (var g = 0; g < topConsumers.length; g++) {
+            var tc = topConsumers[g];
+            var info = contractLabel(tc.addr);
+            var nameTag = info ? escapeHtml(info.name) : '<span class="text-muted">Unknown</span>';
+            guzzlerRows += '<tr>' +
+                '<td>' + (g + 1) + '</td>' +
+                '<td><a href="#/address/' + escapeHtml(tc.addr) + '" class="addr-link mono">' + truncAddr(tc.addr) + '</a></td>' +
+                '<td>' + nameTag + '</td>' +
+                '<td class="mono">' + formatNum(tc.gas) + '</td>' +
+                '<td class="mono">' + formatNum(tc.txCount) + '</td>' +
+                '</tr>';
+        }
+
+        el.innerHTML = [
+            '<div class="main-content"><div class="container">',
+            '<div class="page-header">',
+            '  <div>',
+            '    <h1 class="page-title">Gas Tracker</h1>',
+            '    <div class="page-subtitle">Current network gas prices and usage statistics</div>',
+            '  </div>',
+            '</div>',
+
+            '<div class="overview-grid" style="grid-template-columns:repeat(3,1fr)">',
+            '  <div class="stat-card" style="background:#00a186;color:#fff;border:none">',
+            '    <div style="font-size:0.85rem;opacity:0.9;margin-bottom:8px">🟢 Low</div>',
+            '    <div style="font-size:1.5rem;font-weight:700">' + gasPriceGwei.toFixed(2) + ' Gwei</div>',
+            '    <div style="font-size:0.8rem;opacity:0.8;margin-top:6px">Transfer: ' + transferCostPRIM.toFixed(8) + ' PRIM</div>',
+            '  </div>',
+            '  <div class="stat-card" style="background:#0784c3;color:#fff;border:none">',
+            '    <div style="font-size:0.85rem;opacity:0.9;margin-bottom:8px">🔵 Average</div>',
+            '    <div style="font-size:1.5rem;font-weight:700">' + gasPriceGwei.toFixed(2) + ' Gwei</div>',
+            '    <div style="font-size:0.8rem;opacity:0.8;margin-top:6px">Transfer: ' + transferCostPRIM.toFixed(8) + ' PRIM</div>',
+            '  </div>',
+            '  <div class="stat-card" style="background:#e5a50a;color:#fff;border:none">',
+            '    <div style="font-size:0.85rem;opacity:0.9;margin-bottom:8px">🟠 High</div>',
+            '    <div style="font-size:1.5rem;font-weight:700">' + gasPriceGwei.toFixed(2) + ' Gwei</div>',
+            '    <div style="font-size:0.8rem;opacity:0.8;margin-top:6px">Transfer: ' + transferCostPRIM.toFixed(8) + ' PRIM</div>',
+            '  </div>',
+            '</div>',
+
+            '<div class="overview-grid" style="grid-template-columns:1fr 1fr;margin-top:24px">',
+            '  <div class="stat-card">',
+            '    <div class="stat-card-label">Avg Gas Usage (Last ' + scanCount + ' Blocks)</div>',
+            '    <div class="stat-card-value">' + avgGasPercent + '%</div>',
+            '  </div>',
+            '  <div class="stat-card">',
+            '    <div class="stat-card-label">Blocks Scanned</div>',
+            '    <div class="stat-card-value">' + formatNum(scanCount) + '</div>',
+            '  </div>',
+            '</div>',
+
+            '<div class="card" style="margin-top:24px">',
+            '  <div class="detail-card-title">Base Fee History (Last ' + orderedFees.length + ' Blocks)</div>',
+            '  <div style="padding:0 16px 8px">' + barChartHtml + '</div>',
+            '  <div style="display:flex;justify-content:space-between;padding:0 16px 16px;font-size:0.75rem;color:#8c98a4">',
+            '    <span>Block ' + (orderedFees.length > 0 ? orderedFees[0].block : '—') + '</span>',
+            '    <span>Block ' + (orderedFees.length > 0 ? orderedFees[orderedFees.length - 1].block : '—') + '</span>',
+            '  </div>',
+            '</div>',
+
+            '<div class="card" style="margin-top:24px">',
+            '  <div class="detail-card-title">Gas Guzzlers (Top Contracts by Gas Used)</div>',
+            topConsumers.length === 0 ?
+                '  <div class="table-empty">No contract interactions in recent blocks</div>' :
+                [
+                    '  <div class="table-responsive"><table class="data-table"><thead><tr>',
+                    '    <th>#</th><th>Address</th><th>Name</th><th>Gas Used</th><th>Txns</th>',
+                    '  </tr></thead><tbody>',
+                    guzzlerRows,
+                    '  </tbody></table></div>',
+                ].join('\n'),
+            '</div>',
+
+            '</div></div>',
+        ].join('\n');
+    }
+    pageGasTracker._page = 'blockchain';
+
+    /* ===========================================
+       PAGE: TOKEN TRACKER
+       =========================================== */
+    async function pageTokenTracker(el) {
+        var tokens = [];
+        var addrs = Object.keys(KNOWN_CONTRACTS);
+        for (var i = 0; i < addrs.length; i++) {
+            var info = KNOWN_CONTRACTS[addrs[i]];
+            if (info.type === 'token') {
+                tokens.push({ addr: addrs[i], name: info.name, symbol: info.symbol || '???', decimals: info.decimals !== undefined ? info.decimals : 18 });
+            }
+        }
+
+        var supplyPromises = tokens.map(function (tk) {
+            return rpc('eth_call', [{ to: tk.addr, data: '0x18160ddd' }, 'latest']).catch(function () { return '0x0'; });
+        });
+        var supplies = await Promise.all(supplyPromises);
+
+        for (var s = 0; s < tokens.length; s++) {
+            var raw = supplies[s] && supplies[s] !== '0x' ? supplies[s] : '0x0';
+            var val = hexToBigInt(raw);
+            var divisor = 10n ** BigInt(tokens[s].decimals);
+            var whole = val / divisor;
+            var frac = val % divisor;
+            if (frac === 0n) {
+                tokens[s].supply = whole.toLocaleString('en-US');
+            } else {
+                var fracStr = frac.toString().padStart(tokens[s].decimals, '0').replace(/0+$/, '').slice(0, 6);
+                tokens[s].supply = whole.toLocaleString('en-US') + '.' + fracStr;
+            }
+        }
+
+        var rows = '';
+        for (var r = 0; r < tokens.length; r++) {
+            var tk = tokens[r];
+            rows += '<tr data-nav="#/token/' + escapeHtml(tk.addr) + '" style="cursor:pointer">' +
+                '<td>' + (r + 1) + '</td>' +
+                '<td><a href="#/token/' + escapeHtml(tk.addr) + '" class="hash-link" style="font-weight:600">' + escapeHtml(tk.name) + '</a></td>' +
+                '<td><span class="method-tag badge-info">' + escapeHtml(tk.symbol) + '</span></td>' +
+                '<td class="mono">' + tk.decimals + '</td>' +
+                '<td><a href="#/address/' + escapeHtml(tk.addr) + '" class="addr-link mono">' + truncAddr(tk.addr) + '</a> ' + copyBtnHtml(tk.addr) + '</td>' +
+                '<td class="mono">' + escapeHtml(tk.supply) + '</td>' +
+                '</tr>';
+        }
+
+        el.innerHTML = [
+            '<div class="main-content"><div class="container">',
+            '<div class="page-header">',
+            '  <h1 class="page-title">Token Tracker</h1>',
+            '  <p class="page-subtitle">ERC-20 tokens deployed on Prime Chain</p>',
+            '</div>',
+            '<div class="card">',
+            '  <div style="padding:16px;border-bottom:1px solid var(--border,#e9ecef)">',
+            '    <input type="text" id="tokenFilter" class="search-input" placeholder="Filter tokens by name or symbol..." style="max-width:400px">',
+            '  </div>',
+            '  <div class="table-responsive"><table class="data-table" id="tokenTable"><thead><tr>',
+            '    <th>#</th><th>Token</th><th>Symbol</th><th>Decimals</th><th>Contract</th><th>Total Supply</th>',
+            '  </tr></thead><tbody>',
+            rows,
+            '  </tbody></table></div>',
+            tokens.length === 0 ? '  <div class="table-empty">No tokens found</div>' : '',
+            '</div>',
+            '</div></div>',
+        ].join('\n');
+
+        var filterInput = $('#tokenFilter', el);
+        if (filterInput) {
+            filterInput.addEventListener('input', function () {
+                var query = filterInput.value.toLowerCase();
+                var trs = $$('#tokenTable tbody tr', el);
+                for (var ti = 0; ti < trs.length; ti++) {
+                    var text = trs[ti].textContent.toLowerCase();
+                    trs[ti].style.display = text.indexOf(query) !== -1 ? '' : 'none';
+                }
+            });
+        }
+    }
+    pageTokenTracker._page = 'tokens';
+
+    /* ===========================================
+       PAGE: TOKEN DETAIL
+       =========================================== */
+    async function pageTokenDetail(el, tokenAddr) {
+        await refreshGlobal();
+        var addrLower = tokenAddr.toLowerCase();
+        var meta = KNOWN_CONTRACTS[addrLower];
+
+        var name = '???', symbol = '???', decimals = 18;
+        if (meta && meta.type === 'token') {
+            name = meta.name; symbol = meta.symbol || '???'; decimals = meta.decimals !== undefined ? meta.decimals : 18;
+        }
+
+        var totalSupply = '0';
+        try {
+            var supplyHex = await rpc('eth_call', [{ to: tokenAddr, data: '0x18160ddd' }, 'latest']);
+            if (supplyHex && supplyHex !== '0x') totalSupply = formatTokenAmount(supplyHex, decimals);
+        } catch (e) { /* ignore */ }
+
+        var code = '0x';
+        try { code = await rpc('eth_getCode', [tokenAddr, 'latest']); } catch (e) { /* ignore */ }
+        var isContract = code && code !== '0x' && code !== '0x0' && code.length > 2;
+
+        var holderAddrs = [];
+        var allAddrs = Object.keys(KNOWN_CONTRACTS).concat(
+            state.validators.map(function(v) { return v.address; }),
+            ['0x1a09b94d7dd32cf1903d1745effffae23ce76bca',
+             '0x7F5Ce38FB2553E95dd8Ef9182A80Bc219C9a0D45',
+             '0x8B86E5bFD9E2c0e6F1F01DEc50A1F3C25c2e2E3c',
+             '0xC5feC93d03C6A39ae1c8f18f7FA72bEfA36f1354']
+        );
+        var seen = {};
+        for (var ai = 0; ai < allAddrs.length; ai++) {
+            var a = allAddrs[ai];
+            if (a && !seen[a.toLowerCase()]) {
+                seen[a.toLowerCase()] = true;
+                holderAddrs.push(a);
+            }
+        }
+
+        var balPromises = holderAddrs.map(function(addr) {
+            return fetchTokenBalance(tokenAddr, addr).then(function(r) {
+                return { addr: addr, balance: r.balance };
+            });
+        });
+        var balResults = await Promise.all(balPromises);
+        var holders = [];
+        for (var hi = 0; hi < balResults.length; hi++) {
+            var bal = hexToBigInt(balResults[hi].balance);
+            if (bal > 0n) {
+                holders.push({ addr: balResults[hi].addr, balance: balResults[hi].balance, balanceBig: bal });
+            }
+        }
+        holders.sort(function(a, b) { return a.balanceBig > b.balanceBig ? -1 : a.balanceBig < b.balanceBig ? 1 : 0; });
+
+        var totalSupplyBig = 0n;
+        try {
+            var tsHex = await rpc('eth_call', [{ to: tokenAddr, data: '0x18160ddd' }, 'latest']);
+            if (tsHex && tsHex !== '0x') totalSupplyBig = hexToBigInt(tsHex);
+        } catch (e) { /* ignore */ }
+
+        var holderRows = holders.length > 0 ? holders.map(function(h, idx) {
+            var pct = totalSupplyBig > 0n ? (Number((h.balanceBig * 10000n) / totalSupplyBig) / 100).toFixed(2) : '—';
+            var info = contractLabel(h.addr) || {};
+            var nameTag = info.name || validatorName(h.addr) || '';
+            return '<tr>' +
+                '<td>' + (idx + 1) + '</td>' +
+                '<td><a href="#/address/' + escapeHtml(h.addr) + '" class="addr-link mono">' + truncAddr(h.addr) + '</a> ' + copyBtnHtml(h.addr) + '</td>' +
+                '<td>' + (nameTag ? escapeHtml(nameTag) : '<span class="text-muted">—</span>') + '</td>' +
+                '<td class="mono">' + formatTokenAmount(h.balance, decimals) + '</td>' +
+                '<td class="mono">' + pct + '%</td>' +
+                '</tr>';
+        }).join('') : '<tr><td colspan="5" class="table-empty">No holders found among known addresses</td></tr>';
+
+        var transferItems = [];
+        var scanDepth = Math.min(200, state.latestBlock + 1);
+        var batchSz = 20;
+        for (var offset = 0; offset < scanDepth && transferItems.length < 50; offset += batchSz) {
+            var blkPromises = [];
+            for (var bi = 0; bi < batchSz && state.latestBlock - offset - bi >= 0; bi++) {
+                var bnum = state.latestBlock - offset - bi;
+                blkPromises.push(rpc('prime_getBlockByNumber', ['0x' + bnum.toString(16), true]).catch(function() { return null; }));
+            }
+            var blks = (await Promise.all(blkPromises)).filter(Boolean);
+            for (var bk = 0; bk < blks.length; bk++) {
+                var blk = blks[bk];
+                if (!blk.transactions) continue;
+                for (var ti = 0; ti < blk.transactions.length; ti++) {
+                    var tx = blk.transactions[ti];
+                    if (typeof tx !== 'object' || !tx.hash) continue;
+                    if (tx.to && tx.to.toLowerCase() === addrLower) {
+                        try {
+                            var receipt = await rpc('eth_getTransactionReceipt', [tx.hash]);
+                            if (receipt && receipt.logs) {
+                                for (var li = 0; li < receipt.logs.length; li++) {
+                                    var log = receipt.logs[li];
+                                    if (log.address && log.address.toLowerCase() === addrLower &&
+                                        log.topics && log.topics[0] && log.topics[0].toLowerCase() === TOPIC_TRANSFER.toLowerCase() && log.topics.length >= 3) {
+                                        transferItems.push({
+                                            txHash: tx.hash,
+                                            blockNum: hexToInt(blk.number),
+                                            from: '0x' + log.topics[1].slice(26),
+                                            to: '0x' + log.topics[2].slice(26),
+                                            amount: log.data || '0x0',
+                                        });
+                                    }
+                                }
+                            }
+                        } catch (e) { /* ignore */ }
+                    }
+                }
+            }
+        }
+
+        var transferRows = transferItems.length > 0 ? transferItems.map(function(t) {
+            return '<tr>' +
+                '<td><a href="#/tx/' + escapeHtml(t.txHash) + '" class="hash-link">' + truncHash(t.txHash) + '</a></td>' +
+                '<td><a href="#/block/' + t.blockNum + '" class="hash-link">' + formatNum(t.blockNum) + '</a></td>' +
+                '<td class="td-time">' + timeAgo(t.blockNum, state.latestBlock) + '</td>' +
+                '<td><a href="#/address/' + escapeHtml(t.from) + '" class="addr-link">' + truncAddr(t.from) + '</a></td>' +
+                '<td style="color:#8c98a4;font-size:0.75rem">→</td>' +
+                '<td><a href="#/address/' + escapeHtml(t.to) + '" class="addr-link">' + truncAddr(t.to) + '</a></td>' +
+                '<td class="td-right mono">' + formatTokenAmount(t.amount, decimals) + '</td>' +
+                '</tr>';
+        }).join('') : '<tr><td colspan="7" class="table-empty">No transfers found in recent blocks</td></tr>';
+
+        el.innerHTML = [
+            '<div class="main-content"><div class="container">',
+            '  <a href="#/tokens" class="back-link">' + ICONS.back + ' Back to Token Tracker</a>',
+            '  <div class="detail-header">',
+            '    <div class="detail-icon" style="background:#e8f0fe;color:#066a9c">' + ICONS.coin + '</div>',
+            '    <div class="detail-title-group">',
+            '      <div class="detail-title">' + escapeHtml(name) + ' <span class="method-tag badge-info" style="margin-left:8px">' + escapeHtml(symbol) + '</span></div>',
+            '      <div class="detail-hash">' + escapeHtml(tokenAddr) + ' ' + copyBtnHtml(tokenAddr) + '</div>',
+            '    </div>',
+            '  </div>',
+            '',
+            '  <div class="overview-grid" style="grid-template-columns:repeat(4,1fr)">',
+            '    <div class="stat-card"><div class="stat-card-label">Total Supply</div><div class="stat-card-value">' + escapeHtml(totalSupply) + '</div><div class="stat-card-sub">' + escapeHtml(symbol) + '</div></div>',
+            '    <div class="stat-card"><div class="stat-card-label">Holders</div><div class="stat-card-value">' + holders.length + '</div><div class="stat-card-sub">Known addresses</div></div>',
+            '    <div class="stat-card"><div class="stat-card-label">Decimals</div><div class="stat-card-value">' + decimals + '</div></div>',
+            '    <div class="stat-card"><div class="stat-card-label">Transfers</div><div class="stat-card-value">' + transferItems.length + '</div><div class="stat-card-sub">Recent</div></div>',
+            '  </div>',
+            '',
+            meta ? [
+                '  <div class="detail-card" style="margin-bottom:1.5rem">',
+                '    <div class="detail-card-title">Contract Info</div>',
+                '    <div class="detail-row"><div class="detail-label">Contract Name</div><div class="detail-value" style="font-weight:600">' + escapeHtml(meta.name) + '</div></div>',
+                '    <div class="detail-row"><div class="detail-label">Compiler</div><div class="detail-value mono">' + escapeHtml(meta.compiler) + '</div></div>',
+                '    <div class="detail-row"><div class="detail-label">Source</div><div class="detail-value mono">' + escapeHtml(meta.source) + '</div></div>',
+                '    <div class="detail-row"><div class="detail-label">License</div><div class="detail-value">' + escapeHtml(meta.license) + '</div></div>',
+                '    <div class="detail-row"><div class="detail-label">Contract Address</div><div class="detail-value"><a href="#/address/' + escapeHtml(tokenAddr) + '" class="addr-link mono">' + escapeHtml(tokenAddr) + '</a></div></div>',
+                '  </div>',
+            ].join('\n') : '',
+            '',
+            '  <div class="tab-nav" style="margin-bottom:1rem">',
+            '    <button class="tab-btn active" data-tab="holders">Holders (' + holders.length + ')</button>',
+            '    <button class="tab-btn" data-tab="transfers">Transfers (' + transferItems.length + ')</button>',
+            '  </div>',
+            '',
+            '  <div id="tab-holders">',
+            '    <div class="card">',
+            '      <div class="table-responsive"><table class="data-table"><thead><tr>',
+            '        <th>#</th><th>Address</th><th>Name</th><th>Balance</th><th>Share</th>',
+            '      </tr></thead><tbody>' + holderRows + '</tbody></table></div>',
+            '    </div>',
+            '  </div>',
+            '',
+            '  <div id="tab-transfers" style="display:none">',
+            '    <div class="card">',
+            '      <div class="table-responsive"><table class="data-table"><thead><tr>',
+            '        <th>Tx Hash</th><th>Block</th><th>Age</th><th>From</th><th></th><th>To</th><th class="td-right">Amount</th>',
+            '      </tr></thead><tbody>' + transferRows + '</tbody></table></div>',
+            '    </div>',
+            '  </div>',
+            '</div></div>',
+        ].join('\n');
+
+        el.addEventListener('click', function(e) {
+            var tabBtn = e.target.closest('.tab-btn');
+            if (!tabBtn) return;
+            var tabName = tabBtn.dataset.tab;
+            $$('.tab-btn', el).forEach(function(t) { t.classList.remove('active'); });
+            tabBtn.classList.add('active');
+            var tabHolders = $('#tab-holders', el);
+            var tabTransfers = $('#tab-transfers', el);
+            if (tabHolders) tabHolders.style.display = tabName === 'holders' ? '' : 'none';
+            if (tabTransfers) tabTransfers.style.display = tabName === 'transfers' ? '' : 'none';
+        });
+    }
+    pageTokenDetail._page = 'tokens';
+
+    /* ===========================================
+       PAGE: TOP ACCOUNTS
+       =========================================== */
+    async function pageTopAccounts(el) {
+        await refreshGlobal();
+        await fetchValidators();
+
+        var addrSet = {};
+        var genesisAddrs = [
+            '0x1a09b94d7dd32cf1903d1745effffae23ce76bca',
+            '0x7F5Ce38FB2553E95dd8Ef9182A80Bc219C9a0D45',
+            '0x8B86E5bFD9E2c0e6F1F01DEc50A1F3C25c2e2E3c',
+            '0xC5feC93d03C6A39ae1c8f18f7FA72bEfA36f1354',
+        ];
+
+        var contractAddrs = Object.keys(KNOWN_CONTRACTS);
+        for (var ci = 0; ci < contractAddrs.length; ci++) {
+            var ca = contractAddrs[ci].toLowerCase();
+            addrSet[ca] = { addr: contractAddrs[ci], type: 'Contract', name: KNOWN_CONTRACTS[contractAddrs[ci]].name };
+        }
+
+        for (var vi = 0; vi < state.validators.length; vi++) {
+            var va = (state.validators[vi].address || '').toLowerCase();
+            if (va) {
+                addrSet[va] = { addr: state.validators[vi].address, type: 'Validator', name: state.validators[vi].name || 'Validator ' + (vi + 1) };
+            }
+        }
+
+        for (var gi = 0; gi < genesisAddrs.length; gi++) {
+            var ga = genesisAddrs[gi].toLowerCase();
+            if (!addrSet[ga]) {
+                addrSet[ga] = { addr: genesisAddrs[gi], type: 'EOA', name: 'Genesis Account' };
+            }
+        }
+
+        var entries = Object.values(addrSet);
+        var balancePromises = entries.map(function (e) {
+            return rpc('eth_getBalance', [e.addr, 'latest']).catch(function () { return '0x0'; });
+        });
+        var balances = await Promise.all(balancePromises);
+
+        var maxSupplyWei = 1000000000n * 1000000000000000000n;
+        for (var bi = 0; bi < entries.length; bi++) {
+            entries[bi].balanceHex = balances[bi] || '0x0';
+            entries[bi].balanceWei = hexToBigInt(balances[bi] || '0x0');
+            var pctBig = (entries[bi].balanceWei * 10000n) / maxSupplyWei;
+            entries[bi].percentage = (Number(pctBig) / 100).toFixed(2);
+        }
+
+        entries.sort(function (a, b) {
+            if (a.balanceWei > b.balanceWei) return -1;
+            if (a.balanceWei < b.balanceWei) return 1;
+            return 0;
+        });
+
+        var rows = '';
+        for (var ri = 0; ri < entries.length; ri++) {
+            var e = entries[ri];
+            var typeBadge = e.type === 'Validator' ? 'badge-success' : (e.type === 'Contract' ? 'badge-info' : 'badge-secondary');
+            rows += '<tr>' +
+                '<td>' + (ri + 1) + '</td>' +
+                '<td><a href="#/address/' + escapeHtml(e.addr) + '" class="addr-link mono">' + truncAddr(e.addr) + '</a> ' + copyBtnHtml(e.addr) + '</td>' +
+                '<td>' + escapeHtml(e.name) + '</td>' +
+                '<td class="mono">' + formatPRIM(e.balanceHex) + '</td>' +
+                '<td class="mono">' + e.percentage + '%</td>' +
+                '<td><span class="method-tag ' + typeBadge + '">' + escapeHtml(e.type) + '</span></td>' +
+                '</tr>';
+        }
+
+        el.innerHTML = [
+            '<div class="main-content"><div class="container">',
+            '<div class="page-header">',
+            '  <h1 class="page-title">Top Accounts</h1>',
+            '  <p class="page-subtitle">Accounts ranked by PRIM balance</p>',
+            '</div>',
+            '<div class="overview-grid" style="grid-template-columns:repeat(3,1fr)">',
+            '  <div class="stat-card"><div class="stat-card-label">Total Accounts Tracked</div><div class="stat-card-value">' + formatNum(entries.length) + '</div></div>',
+            '  <div class="stat-card"><div class="stat-card-label">Known Contracts</div><div class="stat-card-value">' + formatNum(contractAddrs.length) + '</div></div>',
+            '  <div class="stat-card"><div class="stat-card-label">Active Validators</div><div class="stat-card-value">' + formatNum(state.validators.length) + '</div></div>',
+            '</div>',
+            '<div class="card" style="margin-top:24px">',
+            '  <div class="table-responsive"><table class="data-table"><thead><tr>',
+            '    <th>Rank</th><th>Address</th><th>Name Tag</th><th>Balance</th><th>% of Max Supply</th><th>Type</th>',
+            '  </tr></thead><tbody>',
+            rows,
+            '  </tbody></table></div>',
+            entries.length === 0 ? '  <div class="table-empty">No accounts found</div>' : '',
+            '</div>',
+            '</div></div>',
+        ].join('\n');
+    }
+    pageTopAccounts._page = 'blockchain';
+
+    /* ===========================================
+       PAGE: CHARTS & STATS
+       =========================================== */
+    async function pageCharts(el) {
+        await refreshGlobal();
+        await fetchValidators();
+
+        var scanCount = Math.min(100, state.latestBlock + 1);
+        var blocks = await fetchBlocks(state.latestBlock, scanCount, true);
+        blocks.reverse();
+
+        var gasData = [];
+        var timeData = [];
+        var feeData = [];
+        var txCountData = [];
+        var blockSizeData = [];
+        var prevTimestamp = 0;
+
+        for (var i = 0; i < blocks.length; i++) {
+            var b = blocks[i];
+            var bNum = hexToInt(b.number);
+            var gu = hexToInt(b.gasUsed || b.gas_used || '0x0');
+            var gl = hexToInt(b.gasLimit || b.gas_limit || '0x0');
+            var pct = gl > 0 ? (gu / gl) * 100 : 0;
+            gasData.push({ block: bNum, pct: pct });
+
+            var ts = hexToInt(b.timestamp || '0x0');
+            if (prevTimestamp > 0 && ts > 0) {
+                timeData.push({ block: bNum, seconds: ts - prevTimestamp });
+            }
+            prevTimestamp = ts;
+
+            var bf = b.baseFeePerGas || b.base_fee_per_gas || '0x0';
+            feeData.push({ block: bNum, fee: Number(hexToBigInt(bf)) / 1e9 });
+
+            var txCount = Array.isArray(b.transactions) ? b.transactions.length : 0;
+            txCountData.push({ block: bNum, count: txCount });
+
+            var bSize = hexToInt(b.size || '0x0');
+            blockSizeData.push({ block: bNum, size: bSize });
+        }
+
+        var totalStake = 0n;
+        var validatorStakes = [];
+        for (var vi = 0; vi < state.validators.length; vi++) {
+            var v = state.validators[vi];
+            var s = hexToBigInt(v.stake);
+            totalStake += s;
+            validatorStakes.push({ name: v.name || truncAddr(v.address), stake: Number(s / 1000000000000000000n) });
+        }
+
+        var chartW = 700;
+        var chartH = 200;
+        var pad = 40;
+
+        function buildBarChart(data, valKey, yLabel, color) {
+            if (data.length === 0) return '<div class="table-empty">No data available</div>';
+            var maxVal = 0;
+            for (var i = 0; i < data.length; i++) { if (data[i][valKey] > maxVal) maxVal = data[i][valKey]; }
+            if (maxVal === 0) maxVal = 1;
+
+            var barW = Math.max(2, (chartW - pad * 2) / data.length - 1);
+            var bars = '';
+            for (var j = 0; j < data.length; j++) {
+                var h = (data[j][valKey] / maxVal) * (chartH - pad);
+                var x = pad + j * ((chartW - pad * 2) / data.length);
+                var y = chartH - pad - h;
+                bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + Math.max(1, h).toFixed(1) + '" fill="' + color + '" opacity="0.8" rx="1"><title>Block ' + data[j].block + ': ' + data[j][valKey].toFixed(2) + '</title></rect>';
+            }
+
+            var yTicks = '';
+            for (var t = 0; t <= 4; t++) {
+                var yPos = chartH - pad - (t / 4) * (chartH - pad);
+                var val = ((t / 4) * maxVal).toFixed(1);
+                yTicks += '<text x="' + (pad - 5) + '" y="' + (yPos + 4) + '" text-anchor="end" font-size="10" fill="#8c98a4">' + val + '</text>';
+                yTicks += '<line x1="' + pad + '" y1="' + yPos + '" x2="' + (chartW - pad) + '" y2="' + yPos + '" stroke="#e9ecef" stroke-dasharray="3"/>';
+            }
+
+            return '<svg viewBox="0 0 ' + chartW + ' ' + (chartH + 20) + '" style="width:100%;height:auto">' +
+                yTicks + bars +
+                '<text x="' + (chartW / 2) + '" y="' + (chartH + 12) + '" text-anchor="middle" font-size="11" fill="#8c98a4">Block Number</text>' +
+                '<text x="12" y="' + (chartH / 2) + '" text-anchor="middle" font-size="11" fill="#8c98a4" transform="rotate(-90,12,' + (chartH / 2) + ')">' + yLabel + '</text>' +
+                '</svg>';
+        }
+
+        function buildLineChart(data, keyX, keyY, yLabel, color) {
+            if (data.length < 2) return '<div class="table-empty">Not enough data</div>';
+            var maxVal = 0;
+            var minVal = Infinity;
+            for (var i = 0; i < data.length; i++) {
+                if (data[i][keyY] > maxVal) maxVal = data[i][keyY];
+                if (data[i][keyY] < minVal) minVal = data[i][keyY];
+            }
+            if (maxVal === minVal) { maxVal = minVal + 1; }
+
+            var points = '';
+            var areaPoints = '';
+            var dots = '';
+            for (var j = 0; j < data.length; j++) {
+                var x = pad + (j / (data.length - 1)) * (chartW - pad * 2);
+                var y = (chartH - pad) - ((data[j][keyY] - minVal) / (maxVal - minVal)) * (chartH - pad - 10);
+                points += x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+                areaPoints += x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+                dots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2" fill="' + color + '"><title>Block ' + data[j][keyX] + ': ' + data[j][keyY].toFixed(4) + '</title></circle>';
+            }
+            var lastX = pad + ((data.length - 1) / (data.length - 1)) * (chartW - pad * 2);
+            var firstX = pad;
+            areaPoints += lastX.toFixed(1) + ',' + (chartH - pad) + ' ' + firstX.toFixed(1) + ',' + (chartH - pad);
+
+            var yTicks = '';
+            for (var t = 0; t <= 4; t++) {
+                var yPos = (chartH - pad) - (t / 4) * (chartH - pad - 10);
+                var val = (minVal + (t / 4) * (maxVal - minVal)).toFixed(2);
+                yTicks += '<text x="' + (pad - 5) + '" y="' + (yPos + 4) + '" text-anchor="end" font-size="10" fill="#8c98a4">' + val + '</text>';
+                yTicks += '<line x1="' + pad + '" y1="' + yPos + '" x2="' + (chartW - pad) + '" y2="' + yPos + '" stroke="#e9ecef" stroke-dasharray="3"/>';
+            }
+
+            return '<svg viewBox="0 0 ' + chartW + ' ' + (chartH + 20) + '" style="width:100%;height:auto">' +
+                yTicks +
+                '<polygon fill="' + color + '" fill-opacity="0.1" points="' + areaPoints.trim() + '"/>' +
+                '<polyline fill="none" stroke="' + color + '" stroke-width="2" points="' + points.trim() + '"/>' +
+                dots +
+                '<text x="' + (chartW / 2) + '" y="' + (chartH + 12) + '" text-anchor="middle" font-size="11" fill="#8c98a4">Block Number</text>' +
+                '<text x="12" y="' + (chartH / 2) + '" text-anchor="middle" font-size="11" fill="#8c98a4" transform="rotate(-90,12,' + (chartH / 2) + ')">' + yLabel + '</text>' +
+                '</svg>';
+        }
+
+        function buildDonutChart(items, size) {
+            if (items.length === 0) return '<div class="table-empty">No data</div>';
+            var total = 0;
+            for (var i = 0; i < items.length; i++) total += items[i].stake;
+            if (total === 0) return '<div class="table-empty">No stake data</div>';
+
+            var colors = ['#4901FF', '#00a186', '#e5a50a', '#0784c3', '#dc3545', '#6c757d', '#8B5CF6', '#EC4899'];
+            var r = size / 2 - 10;
+            var cx = size / 2;
+            var cy = size / 2;
+            var startAngle = 0;
+            var paths = '';
+            var legendHtml = '';
+
+            for (var j = 0; j < items.length; j++) {
+                var pct = items[j].stake / total;
+                var angle = pct * Math.PI * 2;
+                var endAngle = startAngle + angle;
+                var largeArc = angle > Math.PI ? 1 : 0;
+                var x1 = cx + r * Math.cos(startAngle);
+                var y1 = cy + r * Math.sin(startAngle);
+                var x2 = cx + r * Math.cos(endAngle);
+                var y2 = cy + r * Math.sin(endAngle);
+                var color = colors[j % colors.length];
+                paths += '<path d="M' + cx + ',' + cy + ' L' + x1.toFixed(2) + ',' + y1.toFixed(2) + ' A' + r + ',' + r + ' 0 ' + largeArc + ',1 ' + x2.toFixed(2) + ',' + y2.toFixed(2) + ' Z" fill="' + color + '" opacity="0.85"><title>' + escapeHtml(items[j].name) + ': ' + (pct * 100).toFixed(1) + '%</title></path>';
+                legendHtml += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0"><span style="width:12px;height:12px;border-radius:3px;background:' + color + ';flex-shrink:0"></span><span style="font-size:0.82rem">' + escapeHtml(items[j].name) + '</span><span class="mono text-muted" style="margin-left:auto;font-size:0.8rem">' + (pct * 100).toFixed(1) + '%</span></div>';
+                startAngle = endAngle;
+            }
+            paths += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r * 0.55) + '" fill="var(--bg-card,#fff)"/>';
+
+            return '<div style="display:flex;align-items:center;gap:32px;flex-wrap:wrap">' +
+                '<svg viewBox="0 0 ' + size + ' ' + size + '" style="width:' + size + 'px;height:' + size + 'px;flex-shrink:0">' + paths + '</svg>' +
+                '<div style="flex:1;min-width:200px">' + legendHtml + '</div></div>';
+        }
+
+        var totalTxInScan = 0;
+        for (var tc = 0; tc < txCountData.length; tc++) totalTxInScan += txCountData[tc].count;
+
+        el.innerHTML = [
+            '<div class="main-content"><div class="container">',
+            '<div class="page-header">',
+            '  <h1 class="page-title">Charts &amp; Stats</h1>',
+            '  <p class="page-subtitle">Network statistics over the last ' + scanCount + ' blocks</p>',
+            '</div>',
+
+            '<div class="overview-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px">',
+            '  <div class="stat-card"><div class="stat-card-label">Blocks Scanned</div><div class="stat-card-value">' + formatNum(scanCount) + '</div></div>',
+            '  <div class="stat-card"><div class="stat-card-label">Transactions</div><div class="stat-card-value">' + formatNum(totalTxInScan) + '</div></div>',
+            '  <div class="stat-card"><div class="stat-card-label">Avg Block Time</div><div class="stat-card-value">' + (timeData.length > 0 ? (timeData.reduce(function(a,b){return a+b.seconds},0)/timeData.length).toFixed(2) : '—') + 's</div></div>',
+            '  <div class="stat-card"><div class="stat-card-label">Validators</div><div class="stat-card-value">' + state.validators.length + '</div></div>',
+            '</div>',
+
+            '<div class="latest-grid" style="margin-bottom:24px">',
+            '  <div class="card">',
+            '    <div class="detail-card-title">Transactions Per Block</div>',
+            '    <div style="padding:16px">' + buildBarChart(txCountData, 'count', 'Tx Count', '#0784c3') + '</div>',
+            '  </div>',
+            '  <div class="card">',
+            '    <div class="detail-card-title">Block Gas Usage (%)</div>',
+            '    <div style="padding:16px">' + buildBarChart(gasData, 'pct', 'Gas Used %', 'var(--primary,#4901FF)') + '</div>',
+            '  </div>',
+            '</div>',
+
+            '<div class="latest-grid" style="margin-bottom:24px">',
+            '  <div class="card">',
+            '    <div class="detail-card-title">Block Time (seconds)</div>',
+            '    <div style="padding:16px">' + buildLineChart(timeData, 'block', 'seconds', 'Seconds', '#00a186') + '</div>',
+            '  </div>',
+            '  <div class="card">',
+            '    <div class="detail-card-title">Base Fee History (Gwei)</div>',
+            '    <div style="padding:16px">' + buildLineChart(feeData, 'block', 'fee', 'Gwei', '#e5a50a') + '</div>',
+            '  </div>',
+            '</div>',
+
+            '<div class="latest-grid" style="margin-bottom:24px">',
+            '  <div class="card">',
+            '    <div class="detail-card-title">Block Size (bytes)</div>',
+            '    <div style="padding:16px">' + buildBarChart(blockSizeData, 'size', 'Bytes', '#dc3545') + '</div>',
+            '  </div>',
+            '  <div class="card">',
+            '    <div class="detail-card-title">Validator Stake Distribution</div>',
+            '    <div style="padding:24px">' + buildDonutChart(validatorStakes, 200) + '</div>',
+            '  </div>',
+            '</div>',
+
+            '</div></div>',
+        ].join('\n');
+    }
+    pageCharts._page = 'blockchain';
+
+    /* ===========================================
        REGISTER ROUTES
        =========================================== */
     route('/',               pageHome);
@@ -1567,11 +2630,57 @@
     route('/address/:addr',  pageAddress);
     route('/validators',     pageValidators);
     route('/network',        pageNetworkInfo);
+    route('/gastracker',     pageGasTracker);
+    route('/gas-tracker',    pageGasTracker);
+    route('/tokens',         pageTokenTracker);
+    route('/token/:addr',    pageTokenDetail);
+    route('/accounts',       pageTopAccounts);
+    route('/charts',         pageCharts);
 
     /* ===========================================
        INIT
        =========================================== */
+    window.toggleTheme = toggleTheme;
+
     document.addEventListener('DOMContentLoaded', function () {
+        initTheme();
+
+        var themeBtn = document.getElementById('themeToggle');
+        if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
+
+        var mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        var mobileMenu = document.getElementById('mobileMenu');
+        var mobileMenuClose = document.getElementById('mobileMenuClose');
+        var mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+
+        function openMobileMenu() {
+            if (mobileMenu) mobileMenu.classList.add('open');
+            if (mobileMenuOverlay) mobileMenuOverlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeMobileMenu() {
+            if (mobileMenu) mobileMenu.classList.remove('open');
+            if (mobileMenuOverlay) mobileMenuOverlay.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', openMobileMenu);
+        if (mobileMenuClose) mobileMenuClose.addEventListener('click', closeMobileMenu);
+        if (mobileMenuOverlay) mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+        if (mobileMenu) {
+            mobileMenu.addEventListener('click', function(e) {
+                if (e.target.closest('.mobile-menu-link')) closeMobileMenu();
+            });
+        }
+        window.addEventListener('hashchange', closeMobileMenu);
+
+        if (CUSTOM_RPC) {
+            var banner = document.createElement('div');
+            banner.style.cssText = 'background:var(--warn,#e6a700);color:#000;padding:8px 16px;text-align:center;font-size:0.85rem;font-weight:500';
+            banner.textContent = '\u26A0 Using custom RPC endpoint: ' + RPC_URL;
+            var pageContent = document.getElementById('pageContent');
+            if (pageContent) pageContent.parentNode.insertBefore(banner, pageContent);
+        }
+
         window.addEventListener('hashchange', dispatch);
 
         if (!location.hash || location.hash === '#') {
