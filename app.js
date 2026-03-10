@@ -140,13 +140,13 @@
         }
         btn.addEventListener('click', async function() {
             if (_wallet) { _wallet = null; updateUI(); return; }
-            if (!window.ethereum) { showToast('No wallet detected. Install MetaMask.'); return; }
+            if (!window.ethereum) { toast('No wallet detected. Install MetaMask.', true); return; }
             try {
                 var accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 if (accounts.length > 0) { _wallet = accounts[0]; updateUI(); }
                 try { await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x' + CHAIN_ID.toString(16) }] }); }
                 catch(e) { if (e.code === 4902) await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x' + CHAIN_ID.toString(16), chainName: 'Prime Chain Testnet', rpcUrls: [RPC_URL], nativeCurrency: { name: 'PRIM', symbol: 'PRIM', decimals: 18 } }] }); }
-            } catch(e) { showToast('Connection rejected'); }
+            } catch(e) { toast('Connection rejected', true); }
         });
         if (window.ethereum) window.ethereum.on('accountsChanged', function(a) { _wallet = a[0] || null; updateUI(); });
     }
@@ -163,10 +163,225 @@
         else if (hash.startsWith('/accounts') || hash.startsWith('/address/')) page = 'accounts';
         else if (hash.startsWith('/charts')) page = 'charts';
         else if (hash.startsWith('/network')) page = 'network';
+        else if (hash.startsWith('/approvals')) page = 'approvals';
+        else if (hash.startsWith('/watchlist')) page = 'watchlist';
+        else if (hash.startsWith('/dapps')) page = 'dapps';
         document.querySelectorAll('.sidebar-item[data-page], .bottombar-item[data-page]').forEach(function(el) {
             el.classList.toggle('active', el.dataset.page === page);
         });
+        var titleMap = { home:'PrimeScan', blocks:'Blocks', txs:'Transactions', validators:'Validators', gastracker:'Gas Tracker', tokens:'Tokens', accounts:'Top Accounts', charts:'Charts & Stats', network:'Network Info', approvals:'Token Approvals', watchlist:'Watchlist', dapps:'DApps' };
+        var titleEl = document.getElementById('pageTitle');
+        if (titleEl) titleEl.textContent = titleMap[page] || 'PrimeScan';
     }
+
+    /* ===========================================
+       WATCHLIST (localStorage)
+       =========================================== */
+    function getWatchlist() {
+        try { return JSON.parse(localStorage.getItem('primescan-watchlist') || '[]'); } catch { return []; }
+    }
+    function addToWatchlist(addr, label) {
+        var list = getWatchlist();
+        addr = (addr || '').toLowerCase();
+        if (list.some(function(w) { return w.address === addr; })) return false;
+        list.push({ address: addr, label: label || '', added: Date.now() });
+        localStorage.setItem('primescan-watchlist', JSON.stringify(list));
+        return true;
+    }
+    function removeFromWatchlist(addr) {
+        var list = getWatchlist().filter(function(w) { return w.address !== (addr || '').toLowerCase(); });
+        localStorage.setItem('primescan-watchlist', JSON.stringify(list));
+    }
+    function isWatched(addr) {
+        return getWatchlist().some(function(w) { return w.address === (addr || '').toLowerCase(); });
+    }
+    window._watchlistAdd = function(addr) { if (addToWatchlist(addr)) toast('Added to watchlist'); else toast('Already in watchlist', true); };
+    window._watchlistRemove = function(addr) { removeFromWatchlist(addr); toast('Removed from watchlist'); if (location.hash.startsWith('#/watchlist')) dispatch(); };
+
+    /* ===========================================
+       SHARE URL
+       =========================================== */
+    function shareUrlBtnHtml() {
+        return '<button class="btn btn-outline" style="font-size:0.78rem;padding:4px 12px" onclick="navigator.clipboard.writeText(location.href).then(function(){document.querySelector(\'#toast\').textContent=\'URL copied\';document.querySelector(\'#toast\').classList.add(\'visible\',\'success\');setTimeout(function(){document.querySelector(\'#toast\').classList.remove(\'visible\',\'success\')},2000)})">🔗 Share</button>';
+    }
+
+    /* ===========================================
+       BREADCRUMBS
+       =========================================== */
+    function breadcrumbHtml(items) {
+        return '<nav class="breadcrumbs" aria-label="Breadcrumb">' + items.map(function(item, i) {
+            if (i === items.length - 1) return '<span class="breadcrumb-current">' + escapeHtml(item.label) + '</span>';
+            return '<a href="' + item.href + '" class="breadcrumb-link">' + escapeHtml(item.label) + '</a>';
+        }).join('<span class="breadcrumb-sep">›</span>') + '</nav>';
+    }
+
+    /* ===========================================
+       SKELETON LOADER
+       =========================================== */
+    function skeletonRows(count, cols) {
+        cols = cols || 5;
+        var rows = '';
+        for (var i = 0; i < count; i++) {
+            rows += '<tr>';
+            for (var j = 0; j < cols; j++) rows += '<td><div class="skeleton" style="height:14px;width:' + (40 + Math.random() * 60) + '%;border-radius:4px"></div></td>';
+            rows += '</tr>';
+        }
+        return rows;
+    }
+    function skeletonCards(count) {
+        var html = '';
+        for (var i = 0; i < count; i++) html += '<div class="stat-card"><div class="skeleton" style="height:12px;width:60%;border-radius:4px;margin-bottom:8px"></div><div class="skeleton" style="height:24px;width:40%;border-radius:4px"></div></div>';
+        return html;
+    }
+
+    /* ===========================================
+       SORTABLE COLUMNS
+       =========================================== */
+    function makeSortable(tableId) {
+        var table = document.getElementById(tableId);
+        if (!table) return;
+        table.querySelectorAll('th[data-sort]').forEach(function(th) {
+            th.style.cursor = 'pointer';
+            th.style.userSelect = 'none';
+            th.addEventListener('click', function() {
+                var col = parseInt(th.dataset.sort);
+                var tbody = table.querySelector('tbody');
+                if (!tbody) return;
+                var rows = Array.from(tbody.querySelectorAll('tr'));
+                var asc = th.dataset.dir !== 'asc';
+                th.dataset.dir = asc ? 'asc' : 'desc';
+                table.querySelectorAll('th[data-sort]').forEach(function(h) { h.classList.remove('sort-asc', 'sort-desc'); });
+                th.classList.add(asc ? 'sort-asc' : 'sort-desc');
+                rows.sort(function(a, b) {
+                    var aVal = (a.children[col] || {}).textContent || '';
+                    var bVal = (b.children[col] || {}).textContent || '';
+                    var aNum = parseFloat(aVal.replace(/[^0-9.\-]/g, ''));
+                    var bNum = parseFloat(bVal.replace(/[^0-9.\-]/g, ''));
+                    if (!isNaN(aNum) && !isNaN(bNum)) return asc ? aNum - bNum : bNum - aNum;
+                    return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                });
+                rows.forEach(function(r) { tbody.appendChild(r); });
+            });
+        });
+    }
+
+    /* ===========================================
+       SEARCH AUTOCOMPLETE
+       =========================================== */
+    function initSearchAutocomplete(inputId) {
+        var input = document.getElementById(inputId);
+        if (!input) return;
+        var wrap = input.parentElement;
+        var dropdown = document.createElement('div');
+        dropdown.className = 'search-autocomplete';
+        dropdown.style.display = 'none';
+        wrap.style.position = 'relative';
+        wrap.appendChild(dropdown);
+        var debounceTimer;
+        input.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            var q = input.value.trim().toLowerCase();
+            if (q.length < 2) { dropdown.style.display = 'none'; return; }
+            debounceTimer = setTimeout(function() {
+                var results = [];
+                if (/^\d+$/.test(q)) results.push({ type: 'Block', label: 'Block #' + q, href: '#/block/' + q });
+                if (/^0x[0-9a-f]{64}$/i.test(q)) results.push({ type: 'Transaction', label: truncHash(q), href: '#/tx/' + q });
+                if (/^0x[0-9a-f]{40}$/i.test(q)) results.push({ type: 'Address', label: truncAddr(q), href: '#/address/' + q.toLowerCase() });
+                Object.keys(KNOWN_CONTRACTS).forEach(function(addr) {
+                    var c = KNOWN_CONTRACTS[addr];
+                    if (c.name.toLowerCase().indexOf(q) !== -1 || (c.symbol && c.symbol.toLowerCase().indexOf(q) !== -1)) {
+                        results.push({ type: c.type === 'token' ? 'Token' : 'Contract', label: c.name + (c.symbol ? ' (' + c.symbol + ')' : ''), href: c.type === 'token' ? '#/token/' + addr : '#/address/' + addr });
+                    }
+                });
+                var watchlist = getWatchlist();
+                watchlist.forEach(function(w) { if (w.address.indexOf(q) !== -1 || (w.label && w.label.toLowerCase().indexOf(q) !== -1)) results.push({ type: 'Watchlist', label: w.label || truncAddr(w.address), href: '#/address/' + w.address }); });
+                if (results.length === 0) { dropdown.style.display = 'none'; return; }
+                dropdown.innerHTML = results.slice(0, 8).map(function(r) {
+                    return '<a href="' + r.href + '" class="search-ac-item"><span class="search-ac-type">' + r.type + '</span><span class="search-ac-label">' + escapeHtml(r.label) + '</span></a>';
+                }).join('');
+                dropdown.style.display = 'block';
+            }, 150);
+        });
+        input.addEventListener('blur', function() { setTimeout(function() { dropdown.style.display = 'none'; }, 200); });
+        input.addEventListener('focus', function() { if (dropdown.innerHTML && input.value.trim().length >= 2) dropdown.style.display = 'block'; });
+        dropdown.addEventListener('click', function(e) {
+            var item = e.target.closest('.search-ac-item');
+            if (item) { dropdown.style.display = 'none'; input.value = ''; }
+        });
+    }
+
+    /* ===========================================
+       KNOWN ABIs for Read/Write
+       =========================================== */
+    var ERC20_READ_ABI = [
+        { name: 'name', selector: '0x06fdde03', outputs: ['string'] },
+        { name: 'symbol', selector: '0x95d89b41', outputs: ['string'] },
+        { name: 'decimals', selector: '0x313ce567', outputs: ['uint8'] },
+        { name: 'totalSupply', selector: '0x18160ddd', outputs: ['uint256'] },
+        { name: 'balanceOf', selector: '0x70a08231', inputs: [{ name: 'account', type: 'address' }], outputs: ['uint256'] },
+        { name: 'allowance', selector: '0xdd62ed3e', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: ['uint256'] },
+    ];
+
+    /* ===========================================
+       CONTRACT READ HELPER
+       =========================================== */
+    async function readContract(contractAddr, selector, encodedArgs) {
+        var data = selector + (encodedArgs || '');
+        try {
+            var result = await rpc('eth_call', [{ to: contractAddr, data: data }, 'latest']);
+            return result;
+        } catch (e) { return null; }
+    }
+
+    /* ===========================================
+       INTERNAL TRANSACTIONS (trace)
+       =========================================== */
+    async function fetchInternalTxs(txHash) {
+        try {
+            var result = await rpc('debug_traceTransaction', [txHash, { tracer: 'callTracer' }]);
+            if (!result || !result.calls) return [];
+            var internals = [];
+            function walk(call, depth) {
+                if (call.type === 'CALL' || call.type === 'DELEGATECALL' || call.type === 'STATICCALL' || call.type === 'CREATE' || call.type === 'CREATE2') {
+                    internals.push({ type: call.type, from: call.from, to: call.to, value: call.value || '0x0', gas: call.gas, depth: depth });
+                }
+                if (call.calls) call.calls.forEach(function(c) { walk(c, depth + 1); });
+            }
+            if (result.calls) result.calls.forEach(function(c) { walk(c, 1); });
+            return internals;
+        } catch { return []; }
+    }
+
+    /* ===========================================
+       TOKEN APPROVAL CHECKER
+       =========================================== */
+    async function checkApprovals(userAddr) {
+        var approvals = [];
+        var tokenAddrs = Object.keys(KNOWN_CONTRACTS).filter(function(a) { return KNOWN_CONTRACTS[a].type === 'token'; });
+        var spenders = Object.keys(KNOWN_CONTRACTS).filter(function(a) { return KNOWN_CONTRACTS[a].type === 'dex'; });
+        for (var i = 0; i < tokenAddrs.length; i++) {
+            var token = tokenAddrs[i];
+            var tInfo = KNOWN_CONTRACTS[token];
+            for (var j = 0; j < spenders.length; j++) {
+                var spender = spenders[j];
+                var sInfo = KNOWN_CONTRACTS[spender];
+                var paddedOwner = userAddr.toLowerCase().replace('0x', '').padStart(64, '0');
+                var paddedSpender = spender.replace('0x', '').padStart(64, '0');
+                try {
+                    var result = await rpc('eth_call', [{ to: token, data: '0xdd62ed3e' + paddedOwner + paddedSpender }, 'latest']);
+                    var allowance = hexToBigInt(result);
+                    if (allowance > 0n) {
+                        approvals.push({ token: token, tokenName: tInfo.name, tokenSymbol: tInfo.symbol, spender: spender, spenderName: sInfo.name, allowance: allowance, decimals: tInfo.decimals || 18 });
+                    }
+                } catch {}
+            }
+        }
+        return approvals;
+    }
+
+    /* ===========================================
+       VALIDATOR NAME HELPER
+       =========================================== */
 
     initTheme();
 
@@ -399,8 +614,12 @@
         }
 
         content.innerHTML = '<div class="main-content"><div class="container" style="padding-top:40px;padding-bottom:40px">' +
-            '<div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:60px 0;color:var(--text-secondary)"><div class="spinner"></div><span>Loading...</span></div>' +
-            '</div></div>';
+            '<div class="skeleton-page">' +
+            '<div class="skeleton" style="height:24px;width:200px;border-radius:6px;margin-bottom:12px"></div>' +
+            '<div class="skeleton" style="height:14px;width:320px;border-radius:4px;margin-bottom:24px"></div>' +
+            '<div class="overview-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px">' + skeletonCards(3) + '</div>' +
+            '<div class="card"><div style="padding:1rem">' + skeletonRows(8, 5) + '</div></div>' +
+            '</div></div></div>';
 
         $$('.nav-link').forEach(function (l) { l.classList.remove('active'); });
         const page = match.handler._page;
@@ -778,6 +997,7 @@
             '  <div class="hero-content">',
             '    <h1 class="hero-title">The Prime Chain Blockchain Explorer</h1>',
             '    ' + searchBarHtml('hero'),
+            '    <div class="hero-shortcuts">Press <kbd>/</kbd> to search &middot; <a href="#/dapps">Explore DApps</a> &middot; <a href="#/approvals">Token Approvals</a> &middot; <a href="#/watchlist">Watchlist</a></div>',
             '  </div>',
             '</div>',
             '<div class="stats-section">',
@@ -858,6 +1078,8 @@
             '  </div>',
             '</div>',
         ].join('\n');
+
+        initSearchAutocomplete('heroSearchInput');
 
         var prevBlock = state.latestBlock;
         var timer = setInterval(async function () {
@@ -999,6 +1221,7 @@
 
         el.innerHTML = [
             '<div class="main-content"><div class="container">',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Blocks' }]),
             '  <div class="page-header">',
             '    <div>',
             '      <h1 class="page-title">Blocks</h1>',
@@ -1010,7 +1233,7 @@
             '    <div class="table-responsive">',
             '      <table class="data-table" id="blocksTable">',
             '        <thead><tr>',
-            '          <th>Block</th><th>Age</th><th>Fee Recipient</th><th>Txn</th><th>Gas Used</th><th>Gas Limit</th><th>Base Fee</th><th class="td-right">Burnt Fees (PRIM)</th>',
+            '          <th data-sort="0">Block</th><th>Age</th><th>Fee Recipient</th><th data-sort="3">Txn</th><th>Gas Used</th><th>Gas Limit</th><th>Base Fee</th><th class="td-right">Burnt Fees (PRIM)</th>',
             '        </tr></thead>',
             '        <tbody>' + (rows || '<tr><td colspan="8" class="table-empty">No blocks</td></tr>') + '</tbody>',
             '      </table>',
@@ -1019,6 +1242,7 @@
             '  </div>',
             '</div></div>',
         ].join('\n');
+        makeSortable('blocksTable');
     }
     pageBlocks._page = 'blockchain';
 
@@ -1080,7 +1304,7 @@
 
         el.innerHTML = [
             '<div class="main-content"><div class="container">',
-            '  <a href="#/blocks" class="back-link">' + ICONS.back + ' Back to Blocks</a>',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Blocks', href: '#/blocks' }, { label: 'Block #' + formatNum(num) }]),
             '  <div class="detail-header">',
             '    <div class="detail-icon" style="background:#f0f1f3">' + ICONS.cube + '</div>',
             '    <div class="detail-title-group">',
@@ -1206,6 +1430,7 @@
 
         el.innerHTML = [
             '<div class="main-content"><div class="container">',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Transactions' }]),
             '  <div class="page-header">',
             '    <div>',
             '      <h1 class="page-title">Transactions</h1>',
@@ -1217,7 +1442,7 @@
             '    <div class="table-responsive">',
             '      <table class="data-table" id="txsTable">',
             '        <thead><tr>',
-            '          <th>Tx Hash</th><th>Method</th><th>Block</th><th>Age</th><th>From</th><th></th><th>To</th><th class="td-right">Value</th><th class="td-right">Txn Fee</th>',
+            '          <th>Tx Hash</th><th>Method</th><th data-sort="2">Block</th><th>Age</th><th>From</th><th></th><th>To</th><th class="td-right" data-sort="7">Value</th><th class="td-right" data-sort="8">Txn Fee</th>',
             '        </tr></thead>',
             '        <tbody>',
                        rows || '<tr><td colspan="9" class="table-empty">No transactions found in recent blocks</td></tr>',
@@ -1228,6 +1453,7 @@
             '  </div>',
             '</div></div>',
         ].join('\n');
+        makeSortable('txsTable');
     }
     pageTxs._page = 'blockchain';
 
@@ -1402,13 +1628,31 @@
             ].join('\n');
         }
 
+        var internalTxs = await fetchInternalTxs(txHash);
+        var internalsSection = '';
+        if (internalTxs.length > 0) {
+            var intRows = internalTxs.map(function(it, idx) {
+                return '<tr>' +
+                    '<td>' + idx + '</td>' +
+                    '<td><span class="method-tag badge-info">' + escapeHtml(it.type) + '</span></td>' +
+                    '<td>' + (it.from ? '<a href="#/address/' + escapeHtml(it.from) + '" class="addr-link">' + truncAddr(it.from) + '</a>' : '—') + '</td>' +
+                    '<td style="color:var(--text-secondary)">→</td>' +
+                    '<td>' + (it.to ? '<a href="#/address/' + escapeHtml(it.to) + '" class="addr-link">' + truncAddr(it.to) + '</a>' : '<span style="color:var(--warn)">CREATE</span>') + '</td>' +
+                    '<td class="mono td-right">' + formatPRIMShort(it.value) + '</td>' +
+                    '</tr>';
+            }).join('');
+            internalsSection = '<div class="detail-card"><div class="detail-card-title">Internal Transactions (' + internalTxs.length + ')</div>' +
+                '<div class="table-responsive"><table class="data-table"><thead><tr><th>#</th><th>Type</th><th>From</th><th></th><th>To</th><th class="td-right">Value</th></tr></thead>' +
+                '<tbody>' + intRows + '</tbody></table></div></div>';
+        }
+
         el.innerHTML = [
             '<div class="main-content"><div class="container">',
-            '  <a href="#/txs" class="back-link">' + ICONS.back + ' Back to Transactions</a>',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Transactions', href: '#/txs' }, { label: truncHash(txHash) }]),
             '  <div class="detail-header">',
             '    <div class="detail-icon">' + ICONS.tx + '</div>',
             '    <div class="detail-title-group">',
-            '      <div class="detail-title">Transaction Details</div>',
+            '      <div class="detail-title">Transaction Details ' + shareUrlBtnHtml() + '</div>',
             '      <div class="detail-hash">' + tx.hash + ' ' + copyBtnHtml(tx.hash) + '</div>',
             '    </div>',
             '  </div>',
@@ -1444,6 +1688,7 @@
             '    ' + inputSection,
             '  </div>',
             '',
+            '  ' + internalsSection,
             '  ' + transferSection,
             '  ' + logsSection,
             '</div></div>',
@@ -1510,6 +1755,7 @@
         var validatorInfo = state.validators.find(function (v) { return v.address && v.address.toLowerCase() === addrLower; });
         var verified = KNOWN_CONTRACTS[addrLower];
 
+        var watched = isWatched(addr);
         var badges = '';
         if (isValidator) badges += '<span class="status-badge status-success" style="margin-left:0.5rem"><span class="status-dot"></span>Validator</span>';
         if (verified) badges += '<span class="status-badge status-success" style="margin-left:0.5rem"><span class="status-dot"></span>Verified: ' + escapeHtml(verified.name) + '</span>';
@@ -1571,14 +1817,16 @@
             '<div class="tab-nav" style="margin-bottom:1rem">',
             '  <button class="tab-btn active" data-tab="txs">Transactions</button>',
             '  <button class="tab-btn" data-tab="transfers">Token Transfers</button>',
+            '  <button class="tab-btn" data-tab="analytics">Analytics</button>',
             isContract ? '  <button class="tab-btn" data-tab="contract">Contract</button>' : '',
+            isContract ? '  <button class="tab-btn" data-tab="readwrite">Read/Write</button>' : '',
             '</div>',
         ].join('');
 
         var addressTxs = [];
-        var scanBlocks = Math.min(500, state.latestBlock + 1);
+        var scanBlocks = Math.min(1000, state.latestBlock + 1);
         var batchSize = 20;
-        for (var offset = 0; offset < scanBlocks && addressTxs.length < 50; offset += batchSize) {
+        for (var offset = 0; offset < scanBlocks && addressTxs.length < 100; offset += batchSize) {
             var blockPromises = [];
             for (var i = 0; i < batchSize && state.latestBlock - offset - i >= 0; i++) {
                 var num = state.latestBlock - offset - i;
@@ -1629,7 +1877,7 @@
             '        <tbody>' + txRows + '</tbody>',
             '      </table>',
             '    </div>',
-            addressTxs.length >= 50 ? '    <div style="padding:0.75rem 1.25rem;text-align:center;color:var(--text-secondary);font-size:0.82rem">Showing latest 50 transactions. Scan depth: 500 blocks.</div>' : '',
+            addressTxs.length >= 100 ? '    <div style="padding:0.75rem 1.25rem;text-align:center;color:var(--text-secondary);font-size:0.82rem">Showing latest 100 transactions. Scan depth: 1,000 blocks.</div>' : '',
             '  </div>',
             '</div>',
         ].join('\n');
@@ -1647,9 +1895,86 @@
                 '      <div style="margin-top:0.5rem">' + copyBtnHtml(code) + '</div>',
                 '    </div>',
                 '  </div>',
+                verified ? [
+                    '  <div class="detail-card" style="margin-top:1rem">',
+                    '    <div class="detail-card-title">Source Code</div>',
+                    '    <div style="padding:1rem 1.25rem">',
+                    '      <a href="https://github.com/PrimeNumbersLabs/prime-chain/tree/main/' + escapeHtml(verified.source) + '" target="_blank" class="btn btn-primary" style="font-size:0.85rem">View Source on GitHub →</a>',
+                    '    </div>',
+                    '  </div>',
+                ].join('\n') : '',
                 '</div>',
             ].join('\n');
         }
+
+        var readWriteTabHtml = '';
+        if (isContract) {
+            var readFns = ERC20_READ_ABI.filter(function(fn) { return !fn.inputs || fn.inputs.length === 0; });
+            var readWithInputFns = ERC20_READ_ABI.filter(function(fn) { return fn.inputs && fn.inputs.length > 0; });
+            var readCards = readFns.map(function(fn) {
+                return '<div class="rw-card" id="read-' + fn.name + '">' +
+                    '<div class="rw-card-header"><span class="rw-fn-name">' + fn.name + '</span><button class="btn btn-outline rw-query-btn" data-selector="' + fn.selector + '" data-target="' + addrLower + '" data-output="read-result-' + fn.name + '" style="font-size:0.75rem;padding:2px 10px">Query</button></div>' +
+                    '<div class="rw-result" id="read-result-' + fn.name + '">—</div>' +
+                    '</div>';
+            }).join('');
+            var readInputCards = readWithInputFns.map(function(fn) {
+                var inputs = fn.inputs.map(function(inp) {
+                    return '<input type="text" class="search-input rw-input" placeholder="' + escapeHtml(inp.name) + ' (' + escapeHtml(inp.type) + ')" data-param="' + escapeHtml(inp.name) + '" style="font-size:0.82rem;padding:6px 10px;margin-bottom:4px">';
+                }).join('');
+                return '<div class="rw-card" id="read-' + fn.name + '">' +
+                    '<div class="rw-card-header"><span class="rw-fn-name">' + fn.name + '</span></div>' +
+                    '<div style="padding:8px 12px">' + inputs +
+                    '<button class="btn btn-outline rw-query-input-btn" data-selector="' + fn.selector + '" data-target="' + addrLower + '" data-output="read-result-' + fn.name + '" style="font-size:0.75rem;padding:4px 12px;margin-top:4px">Query</button></div>' +
+                    '<div class="rw-result" id="read-result-' + fn.name + '">—</div>' +
+                    '</div>';
+            }).join('');
+
+            readWriteTabHtml = [
+                '<div id="tab-readwrite" style="display:none">',
+                '  <div class="detail-card">',
+                '    <div class="detail-card-title">Read Contract (ERC-20)</div>',
+                '    <div style="padding:0.75rem 1.25rem">' + readCards + readInputCards + '</div>',
+                '  </div>',
+                '</div>',
+            ].join('\n');
+        }
+
+        var analyticsTabHtml = (function() {
+            if (addressTxs.length < 2) return '<div id="tab-analytics" style="display:none"><div class="detail-card"><div class="table-empty" style="padding:2rem">Not enough transaction data for analytics (need at least 2 transactions)</div></div></div>';
+            var txsByBlock = {};
+            addressTxs.forEach(function(tx) { var bn = tx._blockNum; txsByBlock[bn] = (txsByBlock[bn] || 0) + 1; });
+            var blockNums = Object.keys(txsByBlock).map(Number).sort(function(a,b){ return a-b; });
+            var chartW = 700, chartH = 180, pad = 40;
+            var maxCount = 1;
+            blockNums.forEach(function(bn) { if (txsByBlock[bn] > maxCount) maxCount = txsByBlock[bn]; });
+            var barW = Math.max(3, (chartW - pad * 2) / blockNums.length - 1);
+            var bars = '';
+            blockNums.forEach(function(bn, j) {
+                var h = (txsByBlock[bn] / maxCount) * (chartH - pad);
+                var x = pad + j * ((chartW - pad * 2) / blockNums.length);
+                var y = chartH - pad - h;
+                bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + Math.max(1, h).toFixed(1) + '" fill="#9461FF" opacity="0.8" rx="1"><title>Block ' + bn + ': ' + txsByBlock[bn] + ' tx</title></rect>';
+            });
+            var inCount = 0, outCount = 0, totalValue = 0n;
+            addressTxs.forEach(function(tx) {
+                if (tx.from && tx.from.toLowerCase() === addrLower) outCount++; else inCount++;
+                totalValue += hexToBigInt(tx.value || '0x0');
+            });
+            return [
+                '<div id="tab-analytics" style="display:none">',
+                '  <div class="overview-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:1rem">',
+                '    <div class="stat-card"><div class="stat-card-label">Total Txs</div><div class="stat-card-value">' + addressTxs.length + '</div></div>',
+                '    <div class="stat-card"><div class="stat-card-label">Incoming</div><div class="stat-card-value" style="color:var(--success)">' + inCount + '</div></div>',
+                '    <div class="stat-card"><div class="stat-card-label">Outgoing</div><div class="stat-card-value" style="color:var(--danger)">' + outCount + '</div></div>',
+                '    <div class="stat-card"><div class="stat-card-label">Total Value</div><div class="stat-card-value">' + formatPRIMShort('0x' + totalValue.toString(16)) + '</div></div>',
+                '  </div>',
+                '  <div class="card">',
+                '    <div class="detail-card-title">Transaction Activity by Block</div>',
+                '    <div style="padding:16px"><svg viewBox="0 0 ' + chartW + ' ' + (chartH + 20) + '" style="width:100%;height:auto">' + bars + '</svg></div>',
+                '  </div>',
+                '</div>',
+            ].join('\n');
+        })();
 
         var receiptPromises = addressTxs.slice(0, 25).map(function(tx) {
             return rpc('eth_getTransactionReceipt', [tx.hash]).catch(function() { return null; });
@@ -1707,14 +2032,18 @@
             '</div>',
         ].join('\n');
 
+        var watchlistBtnHtml = watched
+            ? '<button class="btn btn-outline" style="font-size:0.78rem;padding:4px 12px;color:var(--danger)" onclick="_watchlistRemove(\'' + escapeHtml(addr) + '\');this.outerHTML=\'<button class=\\\'btn btn-outline\\\' style=\\\'font-size:0.78rem;padding:4px 12px\\\' onclick=\\\'_watchlistAdd(&quot;' + escapeHtml(addr) + '&quot;)\\\'>☆ Watch</button>\'">★ Unwatch</button>'
+            : '<button class="btn btn-outline" style="font-size:0.78rem;padding:4px 12px" onclick="_watchlistAdd(\'' + escapeHtml(addr) + '\');this.outerHTML=\'<button class=\\\'btn btn-outline\\\' style=\\\'font-size:0.78rem;padding:4px 12px;color:var(--danger)\\\' onclick=\\\'_watchlistRemove(&quot;' + escapeHtml(addr) + '&quot;)\\\'>★ Unwatch</button>\'">☆ Watch</button>';
+
         el.innerHTML = [
             '<div class="main-content"><div class="container">',
-            '  <a href="#/" class="back-link">' + ICONS.back + ' Back to Home</a>',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: isContract ? 'Contract' : 'Address' }, { label: truncAddr(addr) }]),
             '  <div class="detail-header">',
             '    <div class="detail-icon">' + (isValidator ? ICONS.shield : isContract ? ICONS.code : ICONS.user) + '</div>',
             '    <div class="detail-title-group">',
             '      <div class="detail-title">Address ' + badges + '</div>',
-            '      <div class="detail-hash">' + escapeHtml(addr) + ' ' + copyBtnHtml(addr) + '</div>',
+            '      <div class="detail-hash">' + escapeHtml(addr) + ' ' + copyBtnHtml(addr) + ' ' + watchlistBtnHtml + ' ' + shareUrlBtnHtml() + '</div>',
             '    </div>',
             '  </div>',
             '',
@@ -1725,7 +2054,9 @@
             tabBar,
             txTableHtml,
             transfersTabHtml,
+            analyticsTabHtml,
             contractTabHtml,
+            readWriteTabHtml,
             '</div></div>',
         ].join('\n');
 
@@ -1736,12 +2067,10 @@
                 var tabName = tabBtn.dataset.tab;
                 $$('.tab-btn', el).forEach(function (t) { t.classList.remove('active'); });
                 tabBtn.classList.add('active');
-                var tabTxs = $('#tab-txs', el);
-                var tabTransfers = $('#tab-transfers', el);
-                var tabContract = $('#tab-contract', el);
-                if (tabTxs) tabTxs.style.display = tabName === 'txs' ? '' : 'none';
-                if (tabTransfers) tabTransfers.style.display = tabName === 'transfers' ? '' : 'none';
-                if (tabContract) tabContract.style.display = tabName === 'contract' ? '' : 'none';
+                ['txs', 'transfers', 'analytics', 'contract', 'readwrite'].forEach(function(name) {
+                    var tab = $('#tab-' + name, el);
+                    if (tab) tab.style.display = tabName === name ? '' : 'none';
+                });
             });
 
             var expandBtn = $('#expandBytecode', el);
@@ -1755,6 +2084,39 @@
                     expandBtn.remove();
                 });
             }
+
+            el.addEventListener('click', function(e) {
+                var queryBtn = e.target.closest('.rw-query-btn');
+                if (queryBtn) {
+                    var sel = queryBtn.dataset.selector;
+                    var target = queryBtn.dataset.target;
+                    var outputId = queryBtn.dataset.output;
+                    var outputEl = document.getElementById(outputId);
+                    if (outputEl) outputEl.textContent = 'Loading...';
+                    readContract(target, sel).then(function(result) {
+                        if (outputEl) outputEl.textContent = result || '(empty)';
+                    });
+                }
+                var queryInputBtn = e.target.closest('.rw-query-input-btn');
+                if (queryInputBtn) {
+                    var card = queryInputBtn.closest('.rw-card');
+                    var inputs = card ? card.querySelectorAll('.rw-input') : [];
+                    var args = '';
+                    inputs.forEach(function(inp) {
+                        var val = inp.value.trim();
+                        if (val.startsWith('0x')) val = val.slice(2);
+                        args += val.padStart(64, '0');
+                    });
+                    var sel2 = queryInputBtn.dataset.selector;
+                    var target2 = queryInputBtn.dataset.target;
+                    var outputId2 = queryInputBtn.dataset.output;
+                    var outputEl2 = document.getElementById(outputId2);
+                    if (outputEl2) outputEl2.textContent = 'Loading...';
+                    readContract(target2, sel2, args).then(function(result) {
+                        if (outputEl2) outputEl2.textContent = result || '(empty)';
+                    });
+                }
+            });
         }
     }
     pageAddress._page = '';
@@ -1796,10 +2158,11 @@
 
         el.innerHTML = [
             '<div class="main-content"><div class="container">',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Validators' }]),
             '  <div class="page-header">',
             '    <div>',
-            '      <h1 class="page-title">Validators</h1>',
-            '      <div class="page-subtitle">' + validators.length + ' active validator' + (validators.length !== 1 ? 's' : '') + ' securing the network</div>',
+            '      <h1 class="page-title">Validators & Staking</h1>',
+            '      <div class="page-subtitle">' + validators.length + ' active validator' + (validators.length !== 1 ? 's' : '') + ' securing the network via Delegated Proof-of-Stake</div>',
             '    </div>',
             '  </div>',
             '',
@@ -1823,14 +2186,26 @@
             '    <div class="table-responsive">',
             '      <table class="data-table" id="validatorsTable">',
             '        <thead><tr>',
-            '          <th>#</th><th>Address</th><th>Stake</th><th>Share</th><th>Status</th>',
+            '          <th data-sort="0">#</th><th>Address</th><th data-sort="2">Stake</th><th data-sort="3">Share</th><th>Status</th>',
             '        </tr></thead>',
             '        <tbody>' + rows + '</tbody>',
             '      </table>',
             '    </div>',
             '  </div>',
+            '',
+            '  <div class="detail-card" style="margin-top:1.5rem">',
+            '    <div class="detail-card-title">Staking Information</div>',
+            '    <div class="detail-row"><div class="detail-label">Consensus</div><div class="detail-value">Delegated Proof-of-Stake (DPoS)</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Min Stake</div><div class="detail-value mono">Contact validator operators for delegation</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Block Time</div><div class="detail-value">~' + BLOCK_TIME_SECS + ' second</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Block Reward</div><div class="detail-value mono">10 PRIM (halving every 35M blocks)</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Total Staked</div><div class="detail-value mono">' + formatPRIM('0x' + totalStake.toString(16)) + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Staking APR (est.)</div><div class="detail-value mono">' + (totalStake > 0n ? ((10n * 365n * 86400n * 100n * 1000000000000000000n) / (totalStake * BigInt(BLOCK_TIME_SECS))).toString() + '%' : '—') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Validator Dashboard</div><div class="detail-value"><a href="http://46.225.30.187:4001" target="_blank" class="hash-link">Open Dashboard →</a></div></div>',
+            '  </div>',
             '</div></div>',
         ].join('\n');
+        makeSortable('validatorsTable');
     }
     pageValidators._page = 'blockchain';
 
@@ -1989,6 +2364,11 @@
         var transferCostWei = Number(hexToBigInt(state.gasPrice)) * 21000;
         var transferCostPRIM = transferCostWei / 1e18;
 
+        var allBaseFeeValues = baseFees.map(function(f) { return f.fee; }).sort(function(a,b) { return a - b; });
+        var p10 = allBaseFeeValues[Math.floor(allBaseFeeValues.length * 0.1)] || gasPriceGwei;
+        var p50 = allBaseFeeValues[Math.floor(allBaseFeeValues.length * 0.5)] || gasPriceGwei;
+        var p90 = allBaseFeeValues[Math.floor(allBaseFeeValues.length * 0.9)] || gasPriceGwei;
+
         var avgGasPercent = totalGasLimit > 0 ? ((totalGasUsed / totalGasLimit) * 100).toFixed(2) : '0.00';
 
         var topConsumers = Object.values(gasConsumers).sort(function (a, b) { return b.gas - a.gas; }).slice(0, 10);
@@ -2031,21 +2411,22 @@
             '  </div>',
             '</div>',
 
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Gas Tracker' }]),
             '<div class="overview-grid" style="grid-template-columns:repeat(3,1fr)">',
             '  <div class="stat-card" style="background:var(--success);color:#fff;border:none">',
-            '    <div style="font-size:0.85rem;opacity:0.9;margin-bottom:8px">🟢 Low</div>',
-            '    <div style="font-size:1.5rem;font-weight:700">' + gasPriceGwei.toFixed(2) + ' Gwei</div>',
-            '    <div style="font-size:0.8rem;opacity:0.8;margin-top:6px">Transfer: ' + transferCostPRIM.toFixed(8) + ' PRIM</div>',
+            '    <div style="font-size:0.85rem;opacity:0.9;margin-bottom:8px">🟢 Low (10th pctl)</div>',
+            '    <div style="font-size:1.5rem;font-weight:700">' + p10.toFixed(4) + ' Gwei</div>',
+            '    <div style="font-size:0.8rem;opacity:0.8;margin-top:6px">Transfer: ' + (p10 * 21000 / 1e9).toFixed(8) + ' PRIM</div>',
             '  </div>',
             '  <div class="stat-card" style="background:var(--info);color:#fff;border:none">',
-            '    <div style="font-size:0.85rem;opacity:0.9;margin-bottom:8px">🔵 Average</div>',
-            '    <div style="font-size:1.5rem;font-weight:700">' + gasPriceGwei.toFixed(2) + ' Gwei</div>',
-            '    <div style="font-size:0.8rem;opacity:0.8;margin-top:6px">Transfer: ' + transferCostPRIM.toFixed(8) + ' PRIM</div>',
+            '    <div style="font-size:0.85rem;opacity:0.9;margin-bottom:8px">🔵 Average (50th pctl)</div>',
+            '    <div style="font-size:1.5rem;font-weight:700">' + p50.toFixed(4) + ' Gwei</div>',
+            '    <div style="font-size:0.8rem;opacity:0.8;margin-top:6px">Transfer: ' + (p50 * 21000 / 1e9).toFixed(8) + ' PRIM</div>',
             '  </div>',
             '  <div class="stat-card" style="background:var(--warn);color:#fff;border:none">',
-            '    <div style="font-size:0.85rem;opacity:0.9;margin-bottom:8px">🟠 High</div>',
-            '    <div style="font-size:1.5rem;font-weight:700">' + gasPriceGwei.toFixed(2) + ' Gwei</div>',
-            '    <div style="font-size:0.8rem;opacity:0.8;margin-top:6px">Transfer: ' + transferCostPRIM.toFixed(8) + ' PRIM</div>',
+            '    <div style="font-size:0.85rem;opacity:0.9;margin-bottom:8px">🟠 High (90th pctl)</div>',
+            '    <div style="font-size:1.5rem;font-weight:700">' + p90.toFixed(4) + ' Gwei</div>',
+            '    <div style="font-size:0.8rem;opacity:0.8;margin-top:6px">Transfer: ' + (p90 * 21000 / 1e9).toFixed(8) + ' PRIM</div>',
             '  </div>',
             '</div>',
 
@@ -2070,6 +2451,23 @@
             '</div>',
 
             '<div class="card" style="margin-top:24px">',
+            '  <div class="detail-card-title">Gas Cost Calculator</div>',
+            '  <div style="padding:16px">',
+            '    <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">',
+            '      <div><label style="display:block;font-size:0.78rem;color:var(--text-secondary);margin-bottom:4px">Gas Units</label><input type="number" id="gasCalcUnits" class="search-input" value="21000" style="width:140px;font-size:0.85rem;padding:6px 10px"></div>',
+            '      <div><label style="display:block;font-size:0.78rem;color:var(--text-secondary);margin-bottom:4px">Gas Price (Gwei)</label><input type="number" id="gasCalcPrice" class="search-input" value="' + gasPriceGwei.toFixed(4) + '" step="0.001" style="width:140px;font-size:0.85rem;padding:6px 10px"></div>',
+            '      <div id="gasCalcResult" style="font-size:0.95rem;font-weight:600;color:var(--accent);padding-bottom:6px">= ' + transferCostPRIM.toFixed(8) + ' PRIM</div>',
+            '    </div>',
+            '    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">',
+            '      <button class="btn btn-outline gas-preset" data-gas="21000" style="font-size:0.75rem;padding:3px 10px">Transfer (21k)</button>',
+            '      <button class="btn btn-outline gas-preset" data-gas="65000" style="font-size:0.75rem;padding:3px 10px">ERC-20 Transfer (65k)</button>',
+            '      <button class="btn btn-outline gas-preset" data-gas="150000" style="font-size:0.75rem;padding:3px 10px">Swap (150k)</button>',
+            '      <button class="btn btn-outline gas-preset" data-gas="300000" style="font-size:0.75rem;padding:3px 10px">Add Liquidity (300k)</button>',
+            '    </div>',
+            '  </div>',
+            '</div>',
+            '',
+            '<div class="card" style="margin-top:24px">',
             '  <div class="detail-card-title">Gas Guzzlers (Top Contracts by Gas Used)</div>',
             topConsumers.length === 0 ?
                 '  <div class="table-empty">No contract interactions in recent blocks</div>' :
@@ -2084,6 +2482,23 @@
 
             '</div></div>',
         ].join('\n');
+        function updateCalc() {
+            var units = parseFloat(document.getElementById('gasCalcUnits').value) || 0;
+            var price = parseFloat(document.getElementById('gasCalcPrice').value) || 0;
+            var cost = (units * price) / 1e9;
+            var resultEl = document.getElementById('gasCalcResult');
+            if (resultEl) resultEl.textContent = '= ' + cost.toFixed(8) + ' PRIM';
+        }
+        var calcUnits = document.getElementById('gasCalcUnits');
+        var calcPrice = document.getElementById('gasCalcPrice');
+        if (calcUnits) calcUnits.addEventListener('input', updateCalc);
+        if (calcPrice) calcPrice.addEventListener('input', updateCalc);
+        el.querySelectorAll('.gas-preset').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var gasUnitsInput = document.getElementById('gasCalcUnits');
+                if (gasUnitsInput) { gasUnitsInput.value = btn.dataset.gas; updateCalc(); }
+            });
+        });
     }
     pageGasTracker._page = 'blockchain';
 
@@ -2134,6 +2549,7 @@
 
         el.innerHTML = [
             '<div class="main-content"><div class="container">',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Tokens' }]),
             '<div class="page-header">',
             '  <h1 class="page-title">Token Tracker</h1>',
             '  <p class="page-subtitle">ERC-20 tokens deployed on Prime Chain</p>',
@@ -2294,7 +2710,7 @@
 
         el.innerHTML = [
             '<div class="main-content"><div class="container">',
-            '  <a href="#/tokens" class="back-link">' + ICONS.back + ' Back to Token Tracker</a>',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Tokens', href: '#/tokens' }, { label: name }]),
             '  <div class="detail-header">',
             '    <div class="detail-icon" style="background:var(--bg-200);color:var(--color-main)">' + ICONS.coin + '</div>',
             '    <div class="detail-title-group">',
@@ -2429,6 +2845,7 @@
 
         el.innerHTML = [
             '<div class="main-content"><div class="container">',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Top Accounts' }]),
             '<div class="page-header">',
             '  <h1 class="page-title">Top Accounts</h1>',
             '  <p class="page-subtitle">Accounts ranked by PRIM balance</p>',
@@ -2618,6 +3035,7 @@
 
         el.innerHTML = [
             '<div class="main-content"><div class="container">',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Charts & Stats' }]),
             '<div class="page-header">',
             '  <h1 class="page-title">Charts &amp; Stats</h1>',
             '  <p class="page-subtitle">Network statistics over the last ' + scanCount + ' blocks</p>',
@@ -2669,6 +3087,169 @@
     pageCharts._page = 'blockchain';
 
     /* ===========================================
+       PAGE: WATCHLIST
+       =========================================== */
+    async function pageWatchlist(el) {
+        await refreshGlobal();
+        var list = getWatchlist();
+
+        var balancePromises = list.map(function(w) {
+            return rpc('eth_getBalance', [w.address, 'latest']).catch(function() { return '0x0'; });
+        });
+        var balances = await Promise.all(balancePromises);
+
+        var rows = '';
+        if (list.length === 0) {
+            rows = '<tr><td colspan="6" class="table-empty"><div style="padding:2rem 0"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5" style="margin-bottom:12px"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg><div style="font-size:0.95rem;margin-bottom:4px">Your watchlist is empty</div><div style="font-size:0.82rem;color:var(--text-tertiary)">Add addresses from any address detail page to track them here</div></div></td></tr>';
+        } else {
+            for (var i = 0; i < list.length; i++) {
+                var w = list[i];
+                var info = contractLabel(w.address);
+                var nameTag = w.label || (info ? info.name : '');
+                rows += '<tr>' +
+                    '<td>' + (i + 1) + '</td>' +
+                    '<td><a href="#/address/' + escapeHtml(w.address) + '" class="addr-link mono">' + truncAddr(w.address) + '</a> ' + copyBtnHtml(w.address) + '</td>' +
+                    '<td>' + (nameTag ? escapeHtml(nameTag) : '<span class="text-muted">—</span>') + '</td>' +
+                    '<td class="mono">' + formatPRIM(balances[i] || '0x0') + '</td>' +
+                    '<td class="td-time">' + new Date(w.added).toLocaleDateString() + '</td>' +
+                    '<td><button class="btn btn-outline" style="font-size:0.75rem;padding:2px 8px;color:var(--danger)" onclick="_watchlistRemove(\'' + escapeHtml(w.address) + '\')">Remove</button></td>' +
+                    '</tr>';
+            }
+        }
+
+        el.innerHTML = [
+            '<div class="main-content"><div class="container">',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Watchlist' }]),
+            '<div class="page-header">',
+            '  <div>',
+            '    <h1 class="page-title">Watchlist</h1>',
+            '    <div class="page-subtitle">Track your favorite addresses (' + list.length + ' address' + (list.length !== 1 ? 'es' : '') + ')</div>',
+            '  </div>',
+            '</div>',
+            '<div class="card">',
+            '  <div class="card-header"><h2 class="card-title">Watched Addresses</h2>' + (list.length > 0 ? csvExportBtnHtml('watchlistTable', 'watchlist.csv') : '') + '</div>',
+            '  <div class="table-responsive"><table class="data-table" id="watchlistTable"><thead><tr>',
+            '    <th>#</th><th>Address</th><th>Label</th><th>Balance</th><th>Added</th><th>Action</th>',
+            '  </tr></thead><tbody>' + rows + '</tbody></table></div>',
+            '</div>',
+            '</div></div>',
+        ].join('\n');
+    }
+    pageWatchlist._page = 'watchlist';
+
+    /* ===========================================
+       PAGE: TOKEN APPROVALS
+       =========================================== */
+    async function pageApprovals(el) {
+        await refreshGlobal();
+
+        el.innerHTML = [
+            '<div class="main-content"><div class="container">',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Token Approvals' }]),
+            '<div class="page-header">',
+            '  <div>',
+            '    <h1 class="page-title">Token Approval Checker</h1>',
+            '    <div class="page-subtitle">Check and manage ERC-20 token allowances for any address</div>',
+            '  </div>',
+            '</div>',
+            '<div class="card" style="margin-bottom:1.5rem">',
+            '  <div style="padding:1.25rem">',
+            '    <label style="display:block;font-size:0.82rem;font-weight:600;color:var(--text-secondary);margin-bottom:6px">Enter address to check approvals</label>',
+            '    <div style="display:flex;gap:8px">',
+            '      <input type="text" id="approvalAddr" class="search-input" placeholder="0x..." style="flex:1" spellcheck="false" autocomplete="off">',
+            '      <button id="checkApprovalsBtn" class="btn btn-primary" style="padding:8px 20px">Check</button>',
+            '    </div>',
+            '  </div>',
+            '</div>',
+            '<div id="approvalResults"></div>',
+            '</div></div>',
+        ].join('\n');
+
+        var checkBtn = $('#checkApprovalsBtn', el);
+        if (checkBtn) {
+            checkBtn.addEventListener('click', async function() {
+                var addrInput = $('#approvalAddr', el);
+                var addr = (addrInput ? addrInput.value : '').trim();
+                if (!/^0x[0-9a-fA-F]{40}$/i.test(addr)) { toast('Enter a valid address', true); return; }
+                var resultsDiv = $('#approvalResults', el);
+                resultsDiv.innerHTML = '<div class="card"><div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:40px;color:var(--text-secondary)"><div class="spinner"></div><span>Checking approvals for known tokens...</span></div></div>';
+                var approvals = await checkApprovals(addr);
+                if (approvals.length === 0) {
+                    resultsDiv.innerHTML = '<div class="card"><div class="table-empty" style="padding:2rem"><div style="font-size:0.95rem;margin-bottom:4px">No active approvals found</div><div style="font-size:0.82rem;color:var(--text-tertiary)">This address has no token allowances for known contracts</div></div></div>';
+                    return;
+                }
+                var MAX_UINT = (2n ** 256n - 1n);
+                var rows = approvals.map(function(a, i) {
+                    var isUnlimited = a.allowance >= MAX_UINT / 2n;
+                    var allowanceDisplay = isUnlimited ? '<span style="color:var(--danger);font-weight:600">Unlimited</span>' : formatTokenAmount('0x' + a.allowance.toString(16), a.decimals);
+                    return '<tr>' +
+                        '<td>' + (i + 1) + '</td>' +
+                        '<td><a href="#/address/' + escapeHtml(a.token) + '" class="addr-link">' + escapeHtml(a.tokenSymbol) + '</a></td>' +
+                        '<td>' + escapeHtml(a.tokenName) + '</td>' +
+                        '<td><a href="#/address/' + escapeHtml(a.spender) + '" class="addr-link">' + escapeHtml(a.spenderName) + '</a></td>' +
+                        '<td class="mono">' + allowanceDisplay + '</td>' +
+                        '<td>' + (isUnlimited ? '<span class="status-badge status-fail"><span class="status-dot"></span>High Risk</span>' : '<span class="status-badge status-success"><span class="status-dot"></span>Limited</span>') + '</td>' +
+                        '</tr>';
+                }).join('');
+                resultsDiv.innerHTML = '<div class="card">' +
+                    '<div class="card-header"><h2 class="card-title">Active Approvals (' + approvals.length + ')</h2>' + csvExportBtnHtml('approvalsTable', 'approvals-' + addr.slice(0,8) + '.csv') + '</div>' +
+                    '<div class="table-responsive"><table class="data-table" id="approvalsTable"><thead><tr>' +
+                    '<th>#</th><th>Token</th><th>Token Name</th><th>Spender</th><th>Allowance</th><th>Risk</th>' +
+                    '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+            });
+        }
+    }
+    pageApprovals._page = 'approvals';
+
+    /* ===========================================
+       PAGE: DApp QUICK ACTIONS
+       =========================================== */
+    async function pageDApps(el) {
+        var dapps = [
+            { name: 'PrimeSwap DEX', desc: 'Swap tokens on Prime Chain\'s native DEX', url: 'http://46.225.30.187:4000', icon: '🔄', category: 'DeFi' },
+            { name: 'Validator Dashboard', desc: 'Monitor and manage validator nodes', url: 'http://46.225.30.187:4001', icon: '🛡️', category: 'Staking' },
+            { name: 'Faucet', desc: 'Get free testnet PRIM tokens', url: 'http://46.225.30.187:4003', icon: '💧', category: 'Tools' },
+            { name: 'Grafana Monitoring', desc: 'Network health and performance metrics', url: 'http://46.225.30.187:3000', icon: '📊', category: 'Analytics' },
+            { name: 'Documentation', desc: 'Prime Chain developer documentation', url: 'http://46.225.30.187:3001', icon: '📖', category: 'Docs' },
+            { name: 'Status Page', desc: 'Real-time network status and uptime', url: 'http://46.225.30.187:3002', icon: '🟢', category: 'Tools' },
+            { name: 'Token Approvals', desc: 'Check and manage token allowances', url: '#/approvals', icon: '🔐', category: 'Security', internal: true },
+            { name: 'Gas Tracker', desc: 'Monitor gas prices and trends', url: '#/gastracker', icon: '⛽', category: 'Tools', internal: true },
+        ];
+
+        var categories = {};
+        dapps.forEach(function(d) {
+            if (!categories[d.category]) categories[d.category] = [];
+            categories[d.category].push(d);
+        });
+
+        var cardsHtml = Object.keys(categories).map(function(cat) {
+            var items = categories[cat].map(function(d) {
+                var linkAttrs = d.internal ? 'href="' + d.url + '"' : 'href="' + d.url + '" target="_blank" rel="noopener"';
+                return '<a ' + linkAttrs + ' class="dapp-card">' +
+                    '<div class="dapp-icon">' + d.icon + '</div>' +
+                    '<div class="dapp-info"><div class="dapp-name">' + escapeHtml(d.name) + '</div><div class="dapp-desc">' + escapeHtml(d.desc) + '</div></div>' +
+                    (d.internal ? '' : '<span class="dapp-external">↗</span>') +
+                    '</a>';
+            }).join('');
+            return '<div style="margin-bottom:1.5rem"><h3 style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-tertiary);margin-bottom:0.75rem">' + escapeHtml(cat) + '</h3><div class="dapp-grid">' + items + '</div></div>';
+        }).join('');
+
+        el.innerHTML = [
+            '<div class="main-content"><div class="container">',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'DApps' }]),
+            '<div class="page-header">',
+            '  <div>',
+            '    <h1 class="page-title">DApps & Quick Actions</h1>',
+            '    <div class="page-subtitle">Explore applications and tools on Prime Chain</div>',
+            '  </div>',
+            '</div>',
+            cardsHtml,
+            '</div></div>',
+        ].join('\n');
+    }
+    pageDApps._page = 'dapps';
+
+    /* ===========================================
        REGISTER ROUTES
        =========================================== */
     route('/',               pageHome);
@@ -2685,6 +3266,9 @@
     route('/token/:addr',    pageTokenDetail);
     route('/accounts',       pageTopAccounts);
     route('/charts',         pageCharts);
+    route('/watchlist',      pageWatchlist);
+    route('/approvals',      pageApprovals);
+    route('/dapps',          pageDApps);
 
     /* ===========================================
        INIT
@@ -2706,6 +3290,17 @@
         }
 
         window.addEventListener('hashchange', dispatch);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === '/' && !e.target.closest('input, textarea, select')) {
+                e.preventDefault();
+                var searchInput = document.getElementById('heroSearchInput') || document.getElementById('searchInput');
+                if (searchInput) searchInput.focus();
+            }
+            if (e.key === 'Escape' && e.target.closest('input')) {
+                e.target.blur();
+            }
+        });
 
         if (!location.hash || location.hash === '#') {
             location.hash = '#/';
