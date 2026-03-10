@@ -235,7 +235,6 @@ table { border-collapse: collapse; border-spacing: 0; }
 /* ─── 8. HERO SECTION ────────────────────────────────────────────────────── */
 .hero-section { background: var(--gradient-hero); padding: 56px 0 52px; position: relative; overflow: hidden; }
 .hero-section::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(255,255,255,0.07) 0%, transparent 50%); pointer-events: none; }
-.hero-section::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 40px; background: linear-gradient(to top, var(--bg-100), transparent); pointer-events: none; }
 .hero-content { max-width: 680px; margin: 0 auto; text-align: center; position: relative; z-index: 1; padding: 0 24px; animation: fadeUp 0.5s ease-out; }
 .hero-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 24px; letter-spacing: -0.02em; text-shadow: 0 2px 12px rgba(0,0,0,0.15); }
 .search-form { display: flex; background: #fff; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08); position: relative; transition: box-shadow var(--dur) var(--ease); }

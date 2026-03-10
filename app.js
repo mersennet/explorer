@@ -481,6 +481,16 @@
         return Math.floor(secs / 86400) + 'd ago';
     }
 
+    function formatTimeAgo(unixTs) {
+        var secs = Math.floor(Date.now() / 1000) - unixTs;
+        if (secs < 5) return 'just now';
+        if (secs < 60) return secs + 's ago';
+        if (secs < 3600) return Math.floor(secs / 60) + ' min ago';
+        if (secs < 86400) return Math.floor(secs / 3600) + ' hr ago';
+        if (secs < 2592000) return Math.floor(secs / 86400) + 'd ago';
+        return new Date(unixTs * 1000).toLocaleDateString();
+    }
+
     function formatTimestamp(hexTimestamp) {
         if (!hexTimestamp || hexTimestamp === '0x0') return null;
         var ts = parseInt(hexTimestamp, 16);
@@ -540,6 +550,7 @@
         if (data.error) throw new Error(data.error.message || 'RPC error');
         return data.result;
     }
+
 
     /* ===========================================
        GLOBAL STATE
@@ -1817,47 +1828,43 @@
         ].join('');
 
         var addressTxs = [];
-        var scanBlocks = Math.min(1000, state.latestBlock + 1);
-        var batchSize = 20;
-        for (var offset = 0; offset < scanBlocks && addressTxs.length < 100; offset += batchSize) {
-            var blockPromises = [];
-            for (var i = 0; i < batchSize && state.latestBlock - offset - i >= 0; i++) {
-                var num = state.latestBlock - offset - i;
-                blockPromises.push(rpc('prime_getBlockByNumber', ['0x' + num.toString(16), true]).catch(function () { return null; }));
-            }
-            var blocks = (await Promise.all(blockPromises)).filter(Boolean);
-            for (var bi = 0; bi < blocks.length; bi++) {
-                var b = blocks[bi];
-                if (!b.transactions) continue;
-                for (var ti = 0; ti < b.transactions.length; ti++) {
-                    var tx = b.transactions[ti];
-                    if (typeof tx === 'object' && tx.hash) {
-                        if ((tx.from && tx.from.toLowerCase() === addrLower) || (tx.to && tx.to.toLowerCase() === addrLower)) {
-                            addressTxs.push(Object.assign({}, tx, { _blockNum: hexToInt(b.number) }));
-                        }
-                    }
-                }
-            }
+
+        function buildTxRow(tx) {
+            var txFrom = (tx.from_addr || tx.from || '').toLowerCase();
+            var txTo = (tx.to_addr || tx.to || '').toLowerCase();
+            var isFrom = txFrom === addrLower;
+            var gasVal = typeof tx.gas === 'number' ? BigInt(tx.gas) : BigInt(hexToInt(tx.gas || '0x0'));
+            var gasPriceVal = tx.gas_price ? hexToBigInt(tx.gas_price) : hexToBigInt(tx.gasPrice || state.gasPrice);
+            var txFee = tx.gas_used != null ? BigInt(tx.gas_used) * gasPriceVal : gasVal * gasPriceVal;
+            var txFeeHex = '0x' + txFee.toString(16);
+            var bn = parseInt(tx.block_number || tx.blockNumber || tx._blockNum || 0);
+            var inputData = tx.input || '0x';
+            return '<tr>' +
+                '<td><a href="#/tx/' + escapeHtml(tx.hash) + '" class="hash-link">' + truncHash(tx.hash) + '</a></td>' +
+                '<td>' + methodBadgeHtml(inputData) + '</td>' +
+                '<td><a href="#/block/' + bn + '" class="hash-link">' + formatNum(bn) + '</a></td>' +
+                '<td class="td-time">' + (tx.timestamp ? formatTimeAgo(parseInt(tx.timestamp)) : timeAgo(bn, state.latestBlock)) + '</td>' +
+                '<td>' + addrDisplay(txFrom) + '</td>' +
+                '<td><span class="status-badge ' + (isFrom ? 'status-fail' : 'status-success') + '" style="font-size:0.7rem">' + (isFrom ? 'OUT' : 'IN') + '</span></td>' +
+                '<td>' + (txTo ? addrDisplay(txTo) : '<span style="color:var(--warn)">Contract Create</span>') + '</td>' +
+                '<td class="td-right mono">' + formatPRIMShort(tx.value || '0x0') + '</td>' +
+                '<td class="td-right mono text-muted" style="font-size:0.78rem">' + formatPRIMShort(txFeeHex) + '</td>' +
+                '</tr>';
         }
 
-        var txRows = addressTxs.length > 0 ? addressTxs.map(function (tx) {
-            var isFrom = tx.from && tx.from.toLowerCase() === addrLower;
-            var txFee = BigInt(hexToInt(txGas(tx) || '0x0')) * hexToBigInt(txGasPrice(tx) || state.gasPrice);
-            var txFeeHex = '0x' + txFee.toString(16);
-            return [
-                '<tr>',
-                '  <td><a href="#/tx/' + escapeHtml(tx.hash) + '" class="hash-link">' + truncHash(tx.hash) + '</a></td>',
-                '  <td>' + methodBadgeHtml(tx.input) + '</td>',
-                '  <td><a href="#/block/' + tx._blockNum + '" class="hash-link">' + formatNum(tx._blockNum) + '</a></td>',
-                '  <td class="td-time">' + timeAgo(tx._blockNum, state.latestBlock) + '</td>',
-                '  <td>' + addrDisplay(tx.from) + '</td>',
-                '  <td><span class="status-badge ' + (isFrom ? 'status-fail' : 'status-success') + '" style="font-size:0.7rem">' + (isFrom ? 'OUT' : 'IN') + '</span></td>',
-                '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:var(--warn)">Contract Create</span>') + '</td>',
-                '  <td class="td-right mono">' + formatPRIMShort(tx.value || '0x0') + '</td>',
-                '  <td class="td-right mono text-muted" style="font-size:0.78rem">' + formatPRIMShort(txFeeHex) + '</td>',
-                '</tr>',
-            ].join('');
-        }).join('') : '<tr><td colspan="9" class="table-empty">No transactions found for this address in recent blocks</td></tr>';
+        var indexerData = null;
+        try {
+            var resp = await fetch('/api/address/' + addr + '/txs?limit=500');
+            if (resp.ok) indexerData = await resp.json();
+        } catch(e) { /* indexer not available */ }
+
+        if (indexerData && indexerData.txs) {
+            addressTxs = indexerData.txs;
+        }
+
+        var txRows = addressTxs.length > 0
+            ? addressTxs.map(buildTxRow).join('')
+            : '<tr><td colspan="9" class="table-empty">No transactions found for this address</td></tr>';
 
         var txTableHtml = [
             '<div id="tab-txs">',
@@ -1870,7 +1877,7 @@
             '        <tbody>' + txRows + '</tbody>',
             '      </table>',
             '    </div>',
-            addressTxs.length >= 100 ? '    <div style="padding:0.75rem 1.25rem;text-align:center;color:var(--text-secondary);font-size:0.82rem">Showing latest 100 transactions. Scan depth: 1,000 blocks.</div>' : '',
+            indexerData ? '    <div style="padding:0.75rem 1.25rem;text-align:center;color:var(--text-secondary);font-size:0.82rem">Showing all ' + formatNum(indexerData.total) + ' transaction' + (indexerData.total !== 1 ? 's' : '') + ' (full chain indexed)</div>' : '',
             '  </div>',
             '</div>',
         ].join('\n');
@@ -1933,9 +1940,9 @@
         }
 
         var analyticsTabHtml = (function() {
-            if (addressTxs.length < 2) return '<div id="tab-analytics" style="display:none"><div class="detail-card"><div class="table-empty" style="padding:2rem">Not enough transaction data for analytics (need at least 2 transactions)</div></div></div>';
+            if (addressTxs.length < 2) return '<div id="tab-analytics" style="display:none"><div class="detail-card"><div class="table-empty" style="padding:2rem">Not enough transaction data for analytics</div></div></div>';
             var txsByBlock = {};
-            addressTxs.forEach(function(tx) { var bn = tx._blockNum; txsByBlock[bn] = (txsByBlock[bn] || 0) + 1; });
+            addressTxs.forEach(function(tx) { var bn = parseInt(tx.block_number || tx.blockNumber || tx._blockNum); txsByBlock[bn] = (txsByBlock[bn] || 0) + 1; });
             var blockNums = Object.keys(txsByBlock).map(Number).sort(function(a,b){ return a-b; });
             var chartW = 700, chartH = 180, pad = 40;
             var maxCount = 1;
@@ -1950,7 +1957,8 @@
             });
             var inCount = 0, outCount = 0, totalValue = 0n;
             addressTxs.forEach(function(tx) {
-                if (tx.from && tx.from.toLowerCase() === addrLower) outCount++; else inCount++;
+                var txFrom = (tx.from_addr || tx.from || '').toLowerCase();
+                if (txFrom === addrLower) outCount++; else inCount++;
                 totalValue += hexToBigInt(tx.value || '0x0');
             });
             return [
@@ -1969,31 +1977,27 @@
             ].join('\n');
         })();
 
-        var receiptPromises = addressTxs.slice(0, 25).map(function(tx) {
-            return rpc('eth_getTransactionReceipt', [tx.hash]).catch(function() { return null; });
-        });
-        var receipts = await Promise.all(receiptPromises);
         var transferItems = [];
-        receipts.forEach(function(receipt, idx) {
-            if (!receipt || !receipt.logs) return;
-            receipt.logs.forEach(function(log) {
-                if (log.topics && log.topics[0] === TOPIC_TRANSFER && log.topics.length >= 3) {
-                    var tokenMeta = KNOWN_CONTRACTS[log.address.toLowerCase()];
-                    var fromAddr = '0x' + (log.topics[1] || '').slice(26);
-                    var toAddr = '0x' + (log.topics[2] || '').slice(26);
-                    transferItems.push({
-                        txHash: addressTxs[idx].hash,
-                        blockNum: addressTxs[idx]._blockNum,
-                        from: fromAddr,
-                        to: toAddr,
-                        amount: log.data || '0x0',
-                        token: tokenMeta ? tokenMeta.symbol : truncHash(log.address, 8, 4),
+        try {
+            var tokenResp = await fetch('/api/address/' + addr + '/token-txs?limit=500');
+            if (tokenResp.ok) {
+                var tokenData = await tokenResp.json();
+                transferItems = (tokenData.transfers || []).map(function(t) {
+                    var tokenAddr = (t.token_address || t.tokenAddress || '').toLowerCase();
+                    var tokenMeta = KNOWN_CONTRACTS[tokenAddr];
+                    return {
+                        txHash: t.tx_hash || t.txHash,
+                        blockNum: parseInt(t.block_number || t.blockNumber || 0),
+                        from: (t.from_addr || t.from || '').toLowerCase(),
+                        to: (t.to_addr || t.to || '').toLowerCase(),
+                        amount: t.amount || '0x0',
+                        token: tokenMeta ? tokenMeta.symbol : truncHash(tokenAddr, 8, 4),
                         decimals: tokenMeta ? tokenMeta.decimals : 18,
-                        tokenAddr: log.address,
-                    });
-                }
-            });
-        });
+                        tokenAddr: tokenAddr,
+                    };
+                });
+            }
+        } catch(e) { /* indexer not available */ }
 
         var transferTableRows = transferItems.length > 0 ? transferItems.map(function(item) {
             var isFrom = item.from.toLowerCase() === addrLower;
@@ -2111,6 +2115,8 @@
                 }
             });
         }
+
+    
     }
     pageAddress._page = '';
 
