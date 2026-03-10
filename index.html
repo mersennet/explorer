@@ -6,17 +6,23 @@
     <title>PrimeScan — Prime Chain Explorer</title>
     <meta name="description" content="Explore blocks, transactions, addresses, contracts and validators on Prime Chain (Chain ID 7919)">
     <meta name="theme-color" content="#9461FF">
+    <meta property="og:title" content="PrimeScan — Prime Chain Explorer">
+    <meta property="og:description" content="Explore blocks, transactions, addresses, contracts and validators on Prime Chain (Chain ID 7919)">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="PrimeScan — Prime Chain Explorer">
+    <meta name="twitter:description" content="Explore blocks, transactions, addresses, contracts and validators on Prime Chain (Chain ID 7919)">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=4">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg%20viewBox='0%200%20125%2086'%20fill='none'%20xmlns='http%3A//www.w3.org/2000/svg'><path%20d='M0%200C4.65%204.23%205.79%209.68%207.09%2015.62%208.41%2021.18%2010.06%2025.1%2014.72%2028.56%2020.1%2031.38%2024.77%2032.16%2030.72%2030.56%2034.86%2028.52%2036.66%2026.54%2038.84%2022.5%2040.67%2019.13%2041.47%2017.73%2044.72%2015.56%2047.3%2020.77%2046.34%2024%2044.84%2029.43%2040.78%2040.81%2033.12%2049.57%2022.72%2055.56%2013.28%2059.91%203.47%2061.59-6.47%2057.94-20.15%2051.68-27.12%2043.07-32.59%2029.25-34.19%2020.71-34.33%2012.37-30.28%204.56-22.13-5.1-10.58-7.39%200%200Z'%20fill='%239461FF'%20transform='translate(33.28%2C24.44)'/><path%20d='M0%200C10.09%206.6%2017.64%2015.51%2020.59%2027.38%2021.87%2035.58%2021.85%2043.56%2018%2051%2014.35%2055.33%2010.62%2058.67%204.88%2059.4-3.03%2059.34-8.26%2058.88-14.12%2053.25-17.87%2048.7-18.8%2043.14-20.04%2037.52-21.41%2032.48-22.87%2029.81-27.12%2026.75-31.96%2024.27-36.79%2023.27-42.14%2024.49-47.72%2026.74-49.97%2030.54-52.68%2035.76-54%2038-54%2038-57%2040-58.58%2038.42-58.28%2036.88-58.38%2034.69-58.22%2023.85-52.44%2014.54-45%207-32.28-4.18-15.38-8.02%200%200Z'%20fill='%239461FF'%20transform='translate(104%2C6)'/></svg>">
 </head>
 <body>
     <a class="skip-link" href="#pageContent">Skip to content</a>
 
     <!-- ─── Sidebar ──────────────────────────────────── -->
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
         <div class="sidebar-top">
             <a href="#/" class="sidebar-logo">
                 <svg class="sidebar-logo-icon" width="28" height="19" viewBox="0 0 125 86" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -82,23 +88,23 @@
             </nav>
         </div>
         <div class="sidebar-bottom">
-            <a href="http://46.225.30.187:3001" target="_blank" class="sidebar-item sidebar-item-secondary" title="Docs">
+            <a href="http://46.225.30.187:3001" target="_blank" rel="noopener noreferrer" class="sidebar-item sidebar-item-secondary" title="Docs">
                 <span class="sidebar-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2.27V6.4c0 .56 0 .84.11 1.05.1.19.25.34.44.44.21.11.49.11 1.05.11h4.13M20 9.99V17.2c0 1.68 0 2.52-.33 3.16a3 3 0 01-1.31 1.31C17.72 22 16.88 22 15.2 22H8.8c-1.68 0-2.52 0-3.16-.33a3 3 0 01-1.31-1.31C4 19.72 4 18.88 4 17.2V6.8c0-1.68 0-2.52.33-3.16a3 3 0 011.31-1.31C6.28 2 7.12 2 8.8 2h3.21c.73 0 1.1 0 1.45.08.31.07.6.2.87.36.3.19.56.44 1.08.97l3.19 3.19c.52.52.78.78.97 1.08.16.27.28.56.36.87.08.35.08.72.08 1.45Z"/></svg></span>
                 <span class="sidebar-label">Docs</span>
                 <svg class="sidebar-external" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.67 11.33L11.33 4.67M11.33 4.67H4.67M11.33 4.67V11.33"/></svg>
             </a>
-            <a href="https://github.com/PrimeNumbersLabs/prime-chain" target="_blank" class="sidebar-item sidebar-item-secondary" title="GitHub">
+            <a href="https://github.com/PrimeNumbersLabs/prime-chain" target="_blank" rel="noopener noreferrer" class="sidebar-item sidebar-item-secondary" title="GitHub">
                 <span class="sidebar-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg></span>
                 <span class="sidebar-label">GitHub</span>
                 <svg class="sidebar-external" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.67 11.33L11.33 4.67M11.33 4.67H4.67M11.33 4.67V11.33"/></svg>
             </a>
             <div class="theme-toggle" id="themeToggle">
                 <div class="theme-toggle-indicator" id="themeIndicator"></div>
-                <button class="theme-toggle-btn" data-theme="light" title="Light Mode">
+                <button class="theme-toggle-btn" data-theme="light" title="Light Mode" aria-label="Switch to light mode">
                     <svg width="18" height="18" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 1V3M11 19V21M3 11H1M5.31 5.31L3.9 3.9M16.69 5.31L18.1 3.9M5.31 16.69L3.9 18.1M16.69 16.69L18.1 18.1M21 11H19M16 11a5 5 0 11-10 0 5 5 0 0110 0Z"/></svg>
                     <span class="theme-toggle-label">Light</span>
                 </button>
-                <button class="theme-toggle-btn" data-theme="dark" title="Dark Mode">
+                <button class="theme-toggle-btn" data-theme="dark" title="Dark Mode" aria-label="Switch to dark mode">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
                     <span class="theme-toggle-label">Dark</span>
                 </button>
@@ -107,7 +113,7 @@
     </aside>
 
     <!-- ─── Mobile Bottom Bar ────────────────────────── -->
-    <nav class="bottombar" id="bottombar">
+    <nav class="bottombar" id="bottombar" aria-label="Mobile navigation">
         <a href="#/" class="bottombar-item" data-page="home">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             <span>Home</span>
@@ -134,7 +140,7 @@
     <div class="app-wrapper">
         <header class="header">
             <div class="header-left">
-                <h2 class="header-title" id="pageTitle">PrimeScan</h2>
+                <h1 class="header-title" id="pageTitle">PrimeScan</h1>
             </div>
             <div class="header-right">
                 <div class="header-stats">
@@ -153,7 +159,7 @@
                         <span class="header-stat-value mono">7919</span>
                     </div>
                 </div>
-                <button class="wallet-btn" id="walletBtn">
+                <button class="wallet-btn" id="walletBtn" aria-label="Connect wallet">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 100 4 2 2 0 000-4z"/></svg>
                     <span id="walletBtnText">Connect Wallet</span>
                 </button>
@@ -206,6 +212,6 @@
     </div>
 
     <div class="toast" id="toast" aria-live="polite"></div>
-    <script src="app.js"></script>
+    <script src="app.js?v=4"></script>
 </body>
 </html>

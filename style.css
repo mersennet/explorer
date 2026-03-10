@@ -7,7 +7,6 @@
 :root {
     --color-main: #9461FF;
     --color-secondary: #6A2FFF;
-    --color-deep: #4901FF;
     --color-white: #FFFFFF;
     --accent: #9461FF;
 
@@ -87,6 +86,8 @@
     --border: #2D1670;
     --border-subtle: #231060;
     --color-overlay: #0E003099;
+
+    --gradient-primary: linear-gradient(90deg, #C5AFF1 35%, #6A2FFF 100%);
 
     --success: #1AD598;
     --success-bg: rgba(26,213,152,0.12);
@@ -204,12 +205,12 @@ table { border-collapse: collapse; border-spacing: 0; }
 }
 
 /* ─── 6. WALLET BUTTON ───────────────────────────────────────────────────── */
-.wallet-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 600; color: #fff; background: var(--gradient-primary); position: relative; overflow: hidden; transition: all var(--dur) var(--ease); border: none; cursor: pointer; font-family: var(--font-ui); }
-.wallet-btn::before { content: ''; position: absolute; inset: 1px; border-radius: calc(var(--radius) - 1px); background: #9461FF; transition: background var(--dur) var(--ease); }
+.wallet-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 600; color: var(--color-white); background: var(--gradient-primary); position: relative; overflow: hidden; transition: all var(--dur) var(--ease); border: none; cursor: pointer; font-family: var(--font-ui); }
+.wallet-btn::before { content: ''; position: absolute; inset: 1px; border-radius: calc(var(--radius) - 1px); background: var(--accent); transition: background var(--dur) var(--ease); }
 .wallet-btn:hover::before { background: transparent; }
 .wallet-btn:hover { box-shadow: 0 4px 12px rgba(148,97,255,0.3); transform: translateY(-1px); }
 .wallet-btn svg, .wallet-btn span { position: relative; z-index: 1; }
-.wallet-btn svg { stroke: #fff; }
+.wallet-btn svg { stroke: currentColor; }
 .wallet-btn.connected { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--color-border); }
 .wallet-btn.connected::before { display: none; }
 .wallet-btn.connected svg { stroke: var(--accent); }
@@ -220,7 +221,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 .theme-toggle-indicator { position: absolute; width: 36px; height: 36px; border-radius: 50%; background: var(--accent); z-index: 1; transition: all 0.35s var(--ease-bounce); top: 4px; left: 50%; transform: translateX(-50%); }
 .dark-mode .theme-toggle-indicator, .theme-toggle-indicator.dark { top: calc(100% - 40px); }
 .theme-toggle-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 36px; height: 36px; border-radius: 50%; position: relative; z-index: 2; color: var(--text-tertiary); transition: color var(--dur) var(--ease); background: none; border: none; cursor: pointer; }
-.theme-toggle-btn.active { color: #fff; }
+.theme-toggle-btn.active { color: var(--color-white); }
 .theme-toggle-btn svg { stroke: currentColor; }
 .theme-toggle-label { display: none; font-size: 12px; font-weight: 500; }
 
@@ -239,10 +240,10 @@ table { border-collapse: collapse; border-spacing: 0; }
 .hero-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 24px; letter-spacing: -0.02em; text-shadow: 0 2px 12px rgba(0,0,0,0.15); }
 .search-form { display: flex; background: #fff; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08); position: relative; transition: box-shadow var(--dur) var(--ease); }
 .search-form:focus-within { box-shadow: 0 8px 32px rgba(148,97,255,0.25), 0 2px 8px rgba(0,0,0,0.08); }
-.search-input { flex: 1; border: none; padding: 15px 20px; font-size: 0.875rem; outline: none; background: transparent; font-family: inherit; color: var(--text-primary); min-width: 0; }
-.search-input::placeholder { color: #B4C1CF; }
-.search-btn { background: #9461FF; color: #fff; border: none; padding: 15px 26px; font-weight: 600; cursor: pointer; transition: background 0.2s; font-family: inherit; font-size: 0.875rem; white-space: nowrap; }
-.search-btn:hover { background: #6A2FFF; }
+.search-input { flex: 1; border: none; padding: 15px 20px; font-size: 0.875rem; outline: none; background: transparent; font-family: inherit; color: #1a1a2e; min-width: 0; }
+.search-input::placeholder { color: #9ca3af; }
+.search-btn { background: var(--color-main); color: #fff; border: none; padding: 15px 26px; font-weight: 600; cursor: pointer; transition: background 0.2s; font-family: inherit; font-size: 0.875rem; white-space: nowrap; }
+.search-btn:hover { background: var(--color-secondary); }
 
 /* ─── 9. STATS SECTION ───────────────────────────────────────────────────── */
 .stats-section { background: var(--bg-card); border-bottom: 1px solid var(--color-border); padding: 20px 0; transition: background var(--dur-slow) var(--ease), border-color var(--dur-slow) var(--ease); }
@@ -251,7 +252,6 @@ table { border-collapse: collapse; border-spacing: 0; }
 .stat-item:last-child { border-right: none; }
 .stat-label { font-size: 0.68rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; font-weight: 600; }
 .stat-value { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
-.stat-sep { display: none; flex-shrink: 0; }
 
 /* ─── 10. CONTAINER / LAYOUT ─────────────────────────────────────────────── */
 .container { max-width: 1320px; margin: 0 auto; padding: 0 24px; }
@@ -290,7 +290,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 .data-table tbody tr:nth-child(even):hover { background: var(--bg-200); }
 .data-table tbody tr:last-child td { border-bottom: none; }
 .hash-link { color: var(--accent); font-family: var(--font-mono); font-size: 0.8rem; text-decoration: none; transition: color var(--dur) var(--ease); }
-.hash-link:hover { color: #6A2FFF; text-decoration: underline; text-underline-offset: 2px; }
+.hash-link:hover { color: var(--color-secondary); text-decoration: underline; text-underline-offset: 2px; }
 .dark-mode .hash-link { color: var(--bg-400); }
 .dark-mode .hash-link:hover { color: var(--color-main); }
 .addr-link { color: var(--text-primary); font-family: var(--font-mono); font-size: 0.8rem; text-decoration: none; transition: color var(--dur) var(--ease); }
@@ -343,7 +343,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 .page-btn { padding: 7px 14px; background: var(--bg-card); border: 1px solid var(--color-border); border-radius: var(--radius); color: var(--text-primary); font-size: 0.8rem; cursor: pointer; transition: all 0.15s var(--ease); min-width: 36px; text-align: center; font-family: inherit; }
 .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); background: var(--bg-200); }
 .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-.page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.page-btn.active { background: var(--accent); color: var(--color-white); border-color: var(--accent); }
 .page-info { font-size: 0.8rem; color: var(--text-secondary); padding: 0 8px; }
 
 /* ─── 19. TABS ───────────────────────────────────────────────────────────── */
@@ -362,12 +362,12 @@ table { border-collapse: collapse; border-spacing: 0; }
 
 /* ─── 21. BUTTONS ────────────────────────────────────────────────────────── */
 .btn { padding: 8px 16px; border-radius: var(--radius); font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.2s var(--ease); border: none; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
-.btn-primary { background: var(--accent); color: #fff; }
-.btn-primary:hover { background: #6A2FFF; box-shadow: 0 4px 12px rgba(148,97,255,0.3); transform: translateY(-1px); }
+.btn-primary { background: var(--accent); color: var(--color-white); }
+.btn-primary:hover { background: var(--color-secondary); box-shadow: 0 4px 12px rgba(148,97,255,0.3); transform: translateY(-1px); }
 .btn-outline { background: transparent; border: 1px solid var(--color-border); color: var(--text-primary); }
 .btn-outline:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-200); }
 .btn-link { background: none; border: none; color: var(--accent); padding: 4px; cursor: pointer; }
-.btn-link:hover { color: #6A2FFF; }
+.btn-link:hover { color: var(--color-secondary); }
 
 /* ─── 22. COPY BUTTON ────────────────────────────────────────────────────── */
 .copy-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: var(--bg-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xs); cursor: pointer; color: var(--text-tertiary); transition: all 0.15s var(--ease); flex-shrink: 0; }
@@ -423,13 +423,8 @@ table { border-collapse: collapse; border-spacing: 0; }
 .new-item { animation: highlightNew 0.8s ease; }
 @keyframes highlightNew { from { background: rgba(148,97,255,0.12); } to { background: transparent; } }
 
-/* ─── 31. MOBILE MENU (legacy compat) ────────────────────────────────────── */
-.mobile-menu-btn { display: none; }
-.mobile-menu { display: none; }
-.mobile-menu-overlay { display: none; }
-
-/* ─── 32. SKIP LINK ──────────────────────────────────────────────────────── */
-.skip-link { position: absolute; top: -100%; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 8px 16px; border-radius: 0 0 8px 8px; font-size: 0.85rem; font-weight: 600; z-index: 999; transition: top 0.2s; }
+/* ─── 31. SKIP LINK ──────────────────────────────────────────────────────── */
+.skip-link { position: absolute; top: -100%; left: 50%; transform: translateX(-50%); background: var(--accent); color: var(--color-white); padding: 8px 16px; border-radius: 0 0 8px 8px; font-size: 0.85rem; font-weight: 600; z-index: 999; transition: top 0.2s; }
 .skip-link:focus { top: 0; }
 
 /* ─── 33. RESPONSIVE ─────────────────────────────────────────────────────── */
@@ -445,7 +440,7 @@ table { border-collapse: collapse; border-spacing: 0; }
     .hero-section { padding: 36px 0 32px; }
     .hero-title { font-size: 1.2rem; }
     .search-form { flex-direction: column; }
-    .search-btn { border-radius: 0; }
+    .search-btn { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
     .footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
 }
 @media (max-width: 480px) {
@@ -482,7 +477,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 /* ─── 37. BREADCRUMBS ────────────────────────────────────────────────────── */
 .breadcrumbs { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 20px; flex-wrap: wrap; }
 .breadcrumb-link { color: var(--accent); text-decoration: none; transition: color 0.15s; }
-.breadcrumb-link:hover { color: #6A2FFF; text-decoration: underline; text-underline-offset: 2px; }
+.breadcrumb-link:hover { color: var(--color-secondary); text-decoration: underline; text-underline-offset: 2px; }
 .breadcrumb-sep { color: var(--text-tertiary); font-size: 0.75rem; }
 .breadcrumb-current { color: var(--text-secondary); font-weight: 500; }
 

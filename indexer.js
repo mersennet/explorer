@@ -9,9 +9,13 @@ const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL) || 3000;
 const CONCURRENCY = parseInt(process.env.CONCURRENCY) || 10;
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
+if (!process.env.DB_PASS) {
+    console.error('[indexer] DB_PASS environment variable is required');
+    process.exit(1);
+}
 const pool = new Pool({
     user: process.env.DB_USER || 'primescan',
-    password: process.env.DB_PASS || 'primescan_db_2026',
+    password: process.env.DB_PASS,
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT) || 5432,
     database: process.env.DB_NAME || 'primescan',
@@ -29,10 +33,17 @@ let startTime = Date.now();
 // ─── RPC helpers ─────────────────────────────────────────────────────────────
 async function rpc(method, params) {
     const body = JSON.stringify({ jsonrpc: '2.0', id: rpcId++, method, params: params || [] });
-    const res = await fetch(RPC_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
-    const data = await res.json();
-    if (data.error) throw new Error(`RPC ${method}: ${data.error.message}`);
-    return data.result;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    try {
+        const res = await fetch(RPC_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal });
+        if (!res.ok) throw new Error(`RPC HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.error) throw new Error(`RPC ${method}: ${data.error.message}`);
+        return data.result;
+    } finally {
+        clearTimeout(timeout);
+    }
 }
 
 async function rpcParallel(calls, concurrency = CONCURRENCY) {
@@ -40,7 +51,10 @@ async function rpcParallel(calls, concurrency = CONCURRENCY) {
     for (let i = 0; i < calls.length; i += concurrency) {
         const chunk = calls.slice(i, i + concurrency);
         const chunkResults = await Promise.all(
-            chunk.map(([method, params]) => rpc(method, params).catch(() => null))
+            chunk.map(([method, params]) => rpc(method, params).catch(err => {
+                console.error(`[rpc] ${method} failed:`, err.message);
+                return null;
+            }))
         );
         for (let j = 0; j < chunkResults.length; j++) results[i + j] = chunkResults[j];
     }
@@ -195,13 +209,15 @@ function extractTokenTransfers(logs) {
     if (!Array.isArray(logs)) return transfers;
     for (const log of logs) {
         if (!log.topics || log.topics.length < 3 || log.topics[0] !== TRANSFER_TOPIC) continue;
+        const fromTopic = log.topics[1], toTopic = log.topics[2];
+        if (!fromTopic || fromTopic.length < 66 || !toTopic || toTopic.length < 66) continue;
         transfers.push({
             txHash: log.transactionHash,
             logIndex: hexToInt(log.logIndex || '0x0'),
             blockNumber: hexToInt(log.blockNumber),
             tokenAddress: (log.address || '').toLowerCase(),
-            from: ('0x' + (log.topics[1] || '').slice(26)).toLowerCase(),
-            to: ('0x' + (log.topics[2] || '').slice(26)).toLowerCase(),
+            from: ('0x' + fromTopic.slice(26)).toLowerCase(),
+            to: ('0x' + toTopic.slice(26)).toLowerCase(),
             amount: log.data || '0x0',
         });
     }
@@ -264,6 +280,12 @@ async function indexChain() {
                 topics: [TRANSFER_TOPIC]
             }]).catch(() => []);
             const tokenTransfers = extractTokenTransfers(logResult);
+
+            // Skip batch if all block fetches failed
+            if (validBlocks.length === 0 && count > 0) {
+                console.error(`[indexer] All ${count} block fetches failed for ${start}-${end}, not advancing`);
+                break;
+            }
 
             // Persist to DB in a single transaction
             const client = await pool.connect();
@@ -360,12 +382,27 @@ async function insertTxsWithClient(client, txs) {
 }
 
 async function updateReceiptsWithClient(client, receipts) {
-    for (const r of receipts) {
-        if (!r || !r.transactionHash) continue;
-        await client.query(
-            `UPDATE transactions SET gas_used = $1, status = $2, contract_address = COALESCE($3, contract_address) WHERE hash = $4`,
-            [hexToInt(r.gasUsed), hexToInt(r.status), r.contractAddress ? r.contractAddress.toLowerCase() : null, r.transactionHash]
-        );
+    const valid = receipts.filter(r => r && r.transactionHash);
+    if (!valid.length) return;
+    const CHUNK = 100;
+    for (let i = 0; i < valid.length; i += CHUNK) {
+        const batch = valid.slice(i, i + CHUNK);
+        const hashes = [], gasUsed = [], statuses = [], contracts = [];
+        for (const r of batch) {
+            hashes.push(r.transactionHash);
+            gasUsed.push(hexToInt(r.gasUsed));
+            statuses.push(hexToInt(r.status));
+            contracts.push(r.contractAddress ? r.contractAddress.toLowerCase() : null);
+        }
+        await client.query(`
+            UPDATE transactions AS t SET
+                gas_used = u.gas_used,
+                status = u.status,
+                contract_address = COALESCE(u.contract_address, t.contract_address)
+            FROM (SELECT unnest($1::text[]) AS hash, unnest($2::bigint[]) AS gas_used,
+                         unnest($3::bigint[]) AS status, unnest($4::text[]) AS contract_address) AS u
+            WHERE t.hash = u.hash
+        `, [hashes, gasUsed, statuses, contracts]);
     }
 }
 
@@ -412,7 +449,6 @@ const server = http.createServer(async (req, res) => {
 
     const url = new URL(req.url, `http://localhost:${PORT}`);
     const path = url.pathname;
-
     try {
         // ── Status ────────────────────────────────────
         if (path === '/api/status') {
@@ -480,10 +516,12 @@ const server = http.createServer(async (req, res) => {
             const { page, limit, offset } = parsePagination(url);
             const block = url.searchParams.get('block');
             let data, total;
-            if (block) {
+            if (block !== null && block !== undefined && block !== '') {
+                const blockNum = parseInt(block, 10);
+                if (isNaN(blockNum) || blockNum < 0) { sendJSON(res, 400, { error: 'Invalid block number' }); return; }
                 [data, total] = await Promise.all([
-                    pool.query('SELECT * FROM transactions WHERE block_number = $1 ORDER BY tx_index LIMIT $2 OFFSET $3', [parseInt(block), limit, offset]),
-                    pool.query('SELECT count(*)::int as c FROM transactions WHERE block_number = $1', [parseInt(block)]),
+                    pool.query('SELECT * FROM transactions WHERE block_number = $1 ORDER BY tx_index LIMIT $2 OFFSET $3', [blockNum, limit, offset]),
+                    pool.query('SELECT count(*)::int as c FROM transactions WHERE block_number = $1', [blockNum]),
                 ]);
             } else {
                 [data, total] = await Promise.all([
@@ -561,21 +599,25 @@ const server = http.createServer(async (req, res) => {
         const addrSummaryMatch = path.match(/^\/api\/address\/(0x[a-fA-F0-9]{40})$/);
         if (addrSummaryMatch) {
             const addr = addrSummaryMatch[1].toLowerCase();
-            const [txCount, inCount, outCount, firstTx, lastTx, tokenCount] = await Promise.all([
-                pool.query('SELECT count(*)::int as c FROM transactions WHERE from_addr = $1 OR to_addr = $1', [addr]),
-                pool.query('SELECT count(*)::int as c FROM transactions WHERE to_addr = $1', [addr]),
-                pool.query('SELECT count(*)::int as c FROM transactions WHERE from_addr = $1', [addr]),
-                pool.query('SELECT min(block_number) as bn FROM transactions WHERE from_addr = $1 OR to_addr = $1', [addr]),
-                pool.query('SELECT max(block_number) as bn FROM transactions WHERE from_addr = $1 OR to_addr = $1', [addr]),
+            const [txSummary, tokenCount] = await Promise.all([
+                pool.query(`
+                    SELECT count(*)::int AS total,
+                           count(*) FILTER (WHERE to_addr = $1)::int AS in_count,
+                           count(*) FILTER (WHERE from_addr = $1)::int AS out_count,
+                           min(block_number) AS first_block,
+                           max(block_number) AS last_block
+                    FROM transactions WHERE from_addr = $1 OR to_addr = $1
+                `, [addr]),
                 pool.query('SELECT count(DISTINCT token_address)::int as c FROM token_transfers WHERE from_addr = $1 OR to_addr = $1', [addr]),
             ]);
+            const s = txSummary.rows[0];
             return sendJSON(res, 200, {
                 address: addr,
-                txCount: txCount.rows[0].c,
-                inTxCount: inCount.rows[0].c,
-                outTxCount: outCount.rows[0].c,
-                firstBlock: firstTx.rows[0].bn,
-                lastBlock: lastTx.rows[0].bn,
+                txCount: s.total,
+                inTxCount: s.in_count,
+                outTxCount: s.out_count,
+                firstBlock: s.first_block,
+                lastBlock: s.last_block,
                 tokenInteractions: tokenCount.rows[0].c,
             });
         }
@@ -630,16 +672,16 @@ const server = http.createServer(async (req, res) => {
 
         // ── Daily stats for charts ────────────────────
         if (path === '/api/daily-stats') {
-            const days = Math.min(parseInt(url.searchParams.get('days')) || 30, 365);
+            const days = Math.max(1, Math.min(parseInt(url.searchParams.get('days')) || 30, 365));
             const data = await pool.query(`
                 SELECT
                     date_trunc('day', to_timestamp(timestamp))::date as day,
                     count(*)::int as tx_count,
                     count(DISTINCT from_addr)::int as unique_senders
                 FROM transactions
-                WHERE timestamp >= extract(epoch from now() - interval '${days} days')::bigint
+                WHERE timestamp >= extract(epoch from now() - make_interval(days => $1))::bigint
                 GROUP BY day ORDER BY day
-            `);
+            `, [days]);
             return sendJSON(res, 200, { stats: data.rows });
         }
 
@@ -682,18 +724,13 @@ async function start() {
     });
 }
 
-process.on('SIGTERM', async () => {
-    console.log('[indexer] Shutting down...');
+async function shutdown(signal) {
+    console.log(`[indexer] ${signal} received, shutting down...`);
     server.close();
-    await pool.end();
+    try { await pool.end(); } catch (e) { console.error('[indexer] Pool close error:', e.message); }
     process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-    console.log('[indexer] Interrupted');
-    server.close();
-    await pool.end();
-    process.exit(0);
-});
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 start();

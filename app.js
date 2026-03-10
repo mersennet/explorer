@@ -373,7 +373,7 @@
                     if (allowance > 0n) {
                         approvals.push({ token: token, tokenName: tInfo.name, tokenSymbol: tInfo.symbol, spender: spender, spenderName: sInfo.name, allowance: allowance, decimals: tInfo.decimals || 18 });
                     }
-                } catch {}
+                } catch (e) { console.warn('Approval check failed:', e.message); }
             }
         }
         return approvals;
@@ -383,7 +383,7 @@
        VALIDATOR NAME HELPER
        =========================================== */
 
-    initTheme();
+    applyTheme(_currentTheme);
 
     /* ===========================================
        UTILITIES
@@ -449,6 +449,7 @@
     }
 
     function formatTokenAmount(hexValue, decimals) {
+        decimals = Math.max(0, parseInt(decimals, 10) || 18);
         const raw = hexToBigInt(hexValue);
         if (raw === 0n) return '0';
         const divisor = 10n ** BigInt(decimals);
@@ -546,6 +547,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         });
+        if (!res.ok) throw new Error('RPC request failed: HTTP ' + res.status);
         const data = await res.json();
         if (data.error) throw new Error(data.error.message || 'RPC error');
         return data.result;
@@ -969,32 +971,56 @@
     /* ===========================================
        PAGE: HOME (DASHBOARD)
        =========================================== */
+    function apiTxToLegacy(tx) {
+        return {
+            hash: tx.hash,
+            from: tx.from_addr || tx.from || '',
+            to: tx.to_addr || tx.to || null,
+            value: tx.value || '0x0',
+            input: tx.input || '0x',
+            gas: tx.gas ? '0x' + (typeof tx.gas === 'number' ? tx.gas : parseInt(tx.gas)).toString(16) : '0x0',
+            gasPrice: tx.gas_price || tx.gasPrice || '0x0',
+            _blockNum: parseInt(tx.block_number || tx.blockNumber || 0),
+            _timestamp: parseInt(tx.timestamp || 0),
+        };
+    }
+
     async function pageHome(el) {
         await refreshGlobal();
 
         var validators = await fetchValidators();
         var blocks = await fetchBlocks(state.latestBlock, HOME_ITEMS, true);
 
-        var totalTxCount = 0;
-        var allTxs = [];
-        for (var bi = 0; bi < blocks.length; bi++) {
-            var b = blocks[bi];
-            if (!b.transactions) continue;
-            totalTxCount += b.transactions.length;
-            for (var ti = 0; ti < b.transactions.length; ti++) {
-                var tx = b.transactions[ti];
-                if (typeof tx === 'object' && tx.hash) {
-                    allTxs.push(Object.assign({}, tx, { _blockNum: hexToInt(b.number) }));
+        var apiStats = null;
+        var apiTxs = [];
+        try {
+            var [statsResp, txsResp] = await Promise.all([
+                fetch('/api/stats'),
+                fetch('/api/txs?limit=' + HOME_ITEMS)
+            ]);
+            if (statsResp.ok) apiStats = await statsResp.json();
+            if (txsResp.ok) {
+                var txData = await txsResp.json();
+                apiTxs = (txData.transactions || []).map(apiTxToLegacy);
+            }
+        } catch(e) { /* indexer not available, fall back to RPC */ }
+
+        var txs = apiTxs;
+        var totalTxCount = apiStats ? apiStats.totalTransactions : 0;
+
+        if (txs.length === 0) {
+            for (var bi = 0; bi < blocks.length; bi++) {
+                var b = blocks[bi];
+                if (!b.transactions) continue;
+                totalTxCount += b.transactions.length;
+                for (var ti = 0; ti < b.transactions.length; ti++) {
+                    var tx = b.transactions[ti];
+                    if (typeof tx === 'object' && tx.hash) {
+                        txs.push(Object.assign({}, tx, { _blockNum: hexToInt(b.number) }));
+                    }
                 }
             }
         }
-
-        var seen = {};
-        var uniqueTxs = [];
-        for (var i = 0; i < allTxs.length; i++) {
-            if (!seen[allTxs[i].hash]) { seen[allTxs[i].hash] = true; uniqueTxs.push(allTxs[i]); }
-        }
-        var txs = uniqueTxs.slice(0, HOME_ITEMS);
 
         var totalStake = 0n;
         for (var vi = 0; vi < validators.length; vi++) totalStake += hexToBigInt(validators[vi].stake);
@@ -1086,7 +1112,9 @@
         initSearchAutocomplete('heroSearchInput');
 
         var prevBlock = state.latestBlock;
+        var lastSeenTxHash = txs.length > 0 ? txs[0].hash : null;
         var timer = setInterval(async function () {
+            if (document.hidden) return;
             try {
                 await refreshGlobal();
                 if (state.latestBlock <= prevBlock) return;
@@ -1098,32 +1126,34 @@
                 for (var nb = newBlocks.length - 1; nb >= 0; nb--) {
                     var newBlock = newBlocks[nb];
                     if (!newBlock) continue;
-
                     var container = $('#homeBlocks');
                     if (container) {
                         var items = container.querySelectorAll('.block-item');
                         if (items.length >= HOME_ITEMS) items[items.length - 1].remove();
                         container.insertAdjacentHTML('afterbegin', blockPanelItem(newBlock, true));
                     }
+                }
 
-                    if (newBlock.transactions && newBlock.transactions.length > 0) {
+                try {
+                    var pollResp = await fetch('/api/txs?limit=3');
+                    if (pollResp.ok) {
+                        var pollData = await pollResp.json();
+                        var newApiTxs = (pollData.transactions || []).map(apiTxToLegacy);
                         var txContainer = $('#homeTxs');
-                        if (txContainer) {
-                            var empty = txContainer.querySelector('.table-empty');
-                            if (empty) empty.remove();
-                            var added = 0;
-                            for (var nt = 0; nt < newBlock.transactions.length && added < 3; nt++) {
-                                var ntx = newBlock.transactions[nt];
-                                if (typeof ntx === 'object' && ntx.hash) {
-                                    var txItems = txContainer.querySelectorAll('.tx-item');
-                                    if (txItems.length >= HOME_ITEMS) txItems[txItems.length - 1].remove();
-                                    txContainer.insertAdjacentHTML('afterbegin', txPanelItem(Object.assign({}, ntx, { _blockNum: hexToInt(newBlock.number) }), true));
-                                    added++;
-                                }
+                        if (txContainer && newApiTxs.length > 0) {
+                            for (var nt = newApiTxs.length - 1; nt >= 0; nt--) {
+                                if (newApiTxs[nt].hash === lastSeenTxHash) continue;
+                                var empty = txContainer.querySelector('.table-empty');
+                                if (empty) empty.remove();
+                                var txItems = txContainer.querySelectorAll('.tx-item');
+                                if (txItems.length >= HOME_ITEMS) txItems[txItems.length - 1].remove();
+                                txContainer.insertAdjacentHTML('afterbegin', txPanelItem(newApiTxs[nt], true));
                             }
+                            lastSeenTxHash = newApiTxs[0].hash;
                         }
                     }
-                }
+                } catch(e2) { /* indexer poll failed */ }
+
                 prevBlock = state.latestBlock;
             } catch (e) { /* ignore poll errors */ }
         }, POLL_MS);
@@ -1158,17 +1188,22 @@
 
     function txPanelItem(tx, isNew) {
         var value = formatPRIMShort(tx.value || '0x0');
+        var txFrom = tx.from_addr || tx.from || '';
+        var txTo = tx.to_addr || tx.to || '';
+        var bn = parseInt(tx.block_number || tx.blockNumber || tx._blockNum || 0);
+        var ts = parseInt(tx.timestamp || tx._timestamp || 0);
+        var ageStr = ts ? formatTimeAgo(ts) : (bn ? timeAgo(bn, state.latestBlock) : '');
         return [
             '<div class="tx-item' + (isNew ? ' new-item' : '') + '" data-nav="#/tx/' + escapeHtml(tx.hash) + '" style="cursor:pointer">',
             '  <div class="item-icon item-icon-tx">Tx</div>',
             '  <div class="item-main">',
             '    <div class="item-row-primary">',
             '      <a href="#/tx/' + escapeHtml(tx.hash) + '" class="hash-link mono">' + truncHash(tx.hash) + '</a>',
-            '      <span class="time-text">' + (tx._blockNum !== undefined ? timeAgo(tx._blockNum, state.latestBlock) : '') + '</span>',
+            '      <span class="time-text">' + ageStr + '</span>',
             '    </div>',
             '    <div class="item-row-secondary">',
-            '      From ' + addrDisplay(tx.from) + ' ' + ICONS.arrow + ' ',
-            '      ' + (tx.to ? addrDisplay(tx.to) : '<span style="color:var(--warn)">Contract Create</span>'),
+            '      From ' + addrDisplay(txFrom) + ' ' + ICONS.arrow + ' ',
+            '      ' + (txTo ? addrDisplay(txTo) : '<span style="color:var(--warn)">Contract Create</span>'),
             '    </div>',
             '  </div>',
             '  <div class="item-right">',
@@ -1200,7 +1235,7 @@
             var gasPercent = gasLimit > 0 ? ((gasUsed / gasLimit) * 100).toFixed(1) : '0.0';
             var feeRecipient = b.miner || b.proposer || '';
             var feeRecipientLabel = validatorName(feeRecipient) || truncAddr(feeRecipient);
-            var baseFee = b.baseFeePerGas || b.base_fee || '0x0';
+            var baseFee = b.baseFeePerGas || b.base_fee_per_gas || b.base_fee || '0x0';
             var burntWei = hexToBigInt(baseFee) * BigInt(gasUsed);
             var burntHex = '0x' + burntWei.toString(16);
             return [
@@ -1271,7 +1306,7 @@
         var proposerLabel = validatorName(proposer);
         var confirmations = Math.max(0, state.latestBlock - num);
         var blockSize = hexToInt(block.size || '0x0');
-        var baseFeeRaw = block.baseFeePerGas || block.base_fee || '0x0';
+        var baseFeeRaw = block.baseFeePerGas || block.base_fee_per_gas || block.base_fee || '0x0';
         var baseFeeWei = hexToBigInt(baseFeeRaw);
         var burntFees = baseFeeWei * BigInt(gasUsed);
         var burntFeesHex = '0x' + burntFees.toString(16);
@@ -1280,7 +1315,7 @@
         try {
             var hexStr = extraData.startsWith('0x') ? extraData.slice(2) : extraData;
             for (var ci = 0; ci < hexStr.length; ci += 2) {
-                var charCode = parseInt(hexStr.substr(ci, 2), 16);
+                var charCode = parseInt(hexStr.slice(ci, ci + 2), 16);
                 if (charCode >= 32 && charCode < 127) extraDataDecoded += String.fromCharCode(charCode);
                 else extraDataDecoded += '.';
             }
@@ -1508,7 +1543,7 @@
         if (blockNum !== null) {
             try { blockForTimestamp = await rpc('prime_getBlockByNumber', ['0x' + blockNum.toString(16), false]); } catch (e) {}
         }
-        var baseFeeFromBlock = blockForTimestamp ? (blockForTimestamp.baseFeePerGas || blockForTimestamp.base_fee || '0x0') : '0x0';
+        var baseFeeFromBlock = blockForTimestamp ? (blockForTimestamp.baseFeePerGas || blockForTimestamp.base_fee_per_gas || blockForTimestamp.base_fee || '0x0') : '0x0';
         var burntFeesWei = hexToBigInt(baseFeeFromBlock) * BigInt(rcptGasUsed);
         var burntFeesHex = '0x' + burntFeesWei.toString(16);
         var savingsWei = feeWei - burntFeesWei;
@@ -1704,7 +1739,7 @@
        PAGE: ADDRESS
        =========================================== */
     async function pageAddress(el, addr) {
-        if (!/^0x[0-9a-fA-F]{1,40}$/i.test(addr)) {
+        if (!/^0x[0-9a-fA-F]{40}$/i.test(addr)) {
             el.innerHTML = '<div class="main-content"><div class="container"><div class="detail-card"><div class="detail-card-title" style="color:var(--fail)">Invalid Address</div><div style="padding:1rem 1.25rem">The address format is invalid.</div></div></div></div>';
             return;
         }
@@ -1754,7 +1789,7 @@
             }
         });
 
-        var isContract = code && code !== '0x' && code !== '0x0' && code.length > 2;
+        var isContract = code && code !== '0x' && code !== '0x0' && code !== '0x00' && code.length > 4 && !/^0x0+$/.test(code);
         var isValidator = state.validators.some(function (v) { return v.address && v.address.toLowerCase() === addrLower; });
         var validatorInfo = state.validators.find(function (v) { return v.address && v.address.toLowerCase() === addrLower; });
         var verified = KNOWN_CONTRACTS[addrLower];
@@ -2000,7 +2035,7 @@
         } catch(e) { /* indexer not available */ }
 
         var transferTableRows = transferItems.length > 0 ? transferItems.map(function(item) {
-            var isFrom = item.from.toLowerCase() === addrLower;
+            var isFrom = (item.from || '').toLowerCase() === addrLower;
             return [
                 '<tr>',
                 '  <td><a href="#/tx/' + escapeHtml(item.txHash) + '" class="hash-link">' + truncHash(item.txHash) + '</a></td>',
@@ -2030,8 +2065,8 @@
         ].join('\n');
 
         var watchlistBtnHtml = watched
-            ? '<button class="btn btn-outline" style="font-size:0.78rem;padding:4px 12px;color:var(--danger)" onclick="_watchlistRemove(\'' + escapeHtml(addr) + '\');this.outerHTML=\'<button class=\\\'btn btn-outline\\\' style=\\\'font-size:0.78rem;padding:4px 12px\\\' onclick=\\\'_watchlistAdd(&quot;' + escapeHtml(addr) + '&quot;)\\\'>☆ Watch</button>\'">★ Unwatch</button>'
-            : '<button class="btn btn-outline" style="font-size:0.78rem;padding:4px 12px" onclick="_watchlistAdd(\'' + escapeHtml(addr) + '\');this.outerHTML=\'<button class=\\\'btn btn-outline\\\' style=\\\'font-size:0.78rem;padding:4px 12px;color:var(--danger)\\\' onclick=\\\'_watchlistRemove(&quot;' + escapeHtml(addr) + '&quot;)\\\'>★ Unwatch</button>\'">☆ Watch</button>';
+            ? '<button class="btn btn-outline watchlist-toggle" data-addr="' + escapeHtml(addr) + '" data-watched="true" style="font-size:0.78rem;padding:4px 12px;color:var(--danger)">★ Unwatch</button>'
+            : '<button class="btn btn-outline watchlist-toggle" data-addr="' + escapeHtml(addr) + '" data-watched="false" style="font-size:0.78rem;padding:4px 12px">☆ Watch</button>';
 
         el.innerHTML = [
             '<div class="main-content"><div class="container">',
@@ -2056,6 +2091,23 @@
             readWriteTabHtml,
             '</div></div>',
         ].join('\n');
+
+        el.addEventListener('click', function (e) {
+            var wBtn = e.target.closest('.watchlist-toggle');
+            if (!wBtn) return;
+            var a = wBtn.dataset.addr;
+            if (wBtn.dataset.watched === 'true') {
+                _watchlistRemove(a);
+                wBtn.dataset.watched = 'false';
+                wBtn.textContent = '☆ Watch';
+                wBtn.style.color = '';
+            } else {
+                _watchlistAdd(a);
+                wBtn.dataset.watched = 'true';
+                wBtn.textContent = '★ Unwatch';
+                wBtn.style.color = 'var(--danger)';
+            }
+        });
 
         if (hasTabs) {
             el.addEventListener('click', function (e) {
@@ -2092,6 +2144,8 @@
                     if (outputEl) outputEl.textContent = 'Loading...';
                     readContract(target, sel).then(function(result) {
                         if (outputEl) outputEl.textContent = result || '(empty)';
+                    }).catch(function() {
+                        if (outputEl) outputEl.textContent = 'Error: call failed';
                     });
                 }
                 var queryInputBtn = e.target.closest('.rw-query-input-btn');
@@ -2111,6 +2165,8 @@
                     if (outputEl2) outputEl2.textContent = 'Loading...';
                     readContract(target2, sel2, args).then(function(result) {
                         if (outputEl2) outputEl2.textContent = result || '(empty)';
+                    }).catch(function() {
+                        if (outputEl2) outputEl2.textContent = 'Error: call failed';
                     });
                 }
             });
@@ -2199,7 +2255,7 @@
             '    <div class="detail-row"><div class="detail-label">Block Time</div><div class="detail-value">~' + BLOCK_TIME_SECS + ' second</div></div>',
             '    <div class="detail-row"><div class="detail-label">Block Reward</div><div class="detail-value mono">10 PRIM (halving every 35M blocks)</div></div>',
             '    <div class="detail-row"><div class="detail-label">Total Staked</div><div class="detail-value mono">' + formatPRIM('0x' + totalStake.toString(16)) + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Staking APR (est.)</div><div class="detail-value mono">' + (totalStake > 0n ? ((10n * 365n * 86400n * 100n * 1000000000000000000n) / (totalStake * BigInt(BLOCK_TIME_SECS))).toString() + '%' : '—') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Staking APR (est.)</div><div class="detail-value mono">' + (totalStake > 0n ? (Number(10n * 365n * 86400n * 10000n * 1000000000000000000n / (totalStake * BigInt(BLOCK_TIME_SECS))) / 100).toFixed(2) + '%' : '—') + '</div></div>',
             '    <div class="detail-row"><div class="detail-label">Validator Dashboard</div><div class="detail-value"><a href="http://46.225.30.187:4001" target="_blank" class="hash-link">Open Dashboard →</a></div></div>',
             '  </div>',
             '</div></div>',
@@ -2351,7 +2407,7 @@
                     if (typeof tx !== 'object') continue;
                     var to = (tx.to || '').toLowerCase();
                     if (!to) continue;
-                    var tgu = hexToInt(txGas(tx) || '0x0');
+                    var tgu = hexToInt(txField(tx, 'gasUsed', 'gas_used') || txGas(tx) || '0x0');
                     if (!gasConsumers[to]) gasConsumers[to] = { addr: tx.to, gas: 0, txCount: 0 };
                     gasConsumers[to].gas += tgu;
                     gasConsumers[to].txCount++;
@@ -2608,7 +2664,7 @@
 
         var code = '0x';
         try { code = await rpc('eth_getCode', [tokenAddr, 'latest']); } catch (e) { /* ignore */ }
-        var isContract = code && code !== '0x' && code !== '0x0' && code.length > 2;
+        var isContract = code && code !== '0x' && code !== '0x0' && code !== '0x00' && code.length > 4 && !/^0x0+$/.test(code);
 
         var holderAddrs = [];
         var allAddrs = Object.keys(KNOWN_CONTRACTS).concat(
@@ -3117,7 +3173,7 @@
                     '<td>' + (nameTag ? escapeHtml(nameTag) : '<span class="text-muted">—</span>') + '</td>' +
                     '<td class="mono">' + formatPRIM(balances[i] || '0x0') + '</td>' +
                     '<td class="td-time">' + new Date(w.added).toLocaleDateString() + '</td>' +
-                    '<td><button class="btn btn-outline" style="font-size:0.75rem;padding:2px 8px;color:var(--danger)" onclick="_watchlistRemove(\'' + escapeHtml(w.address) + '\')">Remove</button></td>' +
+                    '<td><button class="btn btn-outline watchlist-remove" data-addr="' + escapeHtml(w.address) + '" style="font-size:0.75rem;padding:2px 8px;color:var(--danger)">Remove</button></td>' +
                     '</tr>';
             }
         }
@@ -3139,6 +3195,14 @@
             '</div>',
             '</div></div>',
         ].join('\n');
+
+        el.addEventListener('click', function (e) {
+            var rmBtn = e.target.closest('.watchlist-remove');
+            if (!rmBtn) return;
+            _watchlistRemove(rmBtn.dataset.addr);
+            var row = rmBtn.closest('tr');
+            if (row) row.remove();
+        });
     }
     pageWatchlist._page = 'watchlist';
 
