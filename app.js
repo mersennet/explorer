@@ -105,20 +105,69 @@
         moon:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>',
     };
 
+    var _currentTheme = localStorage.getItem('primescan-theme') || 'light';
+
+    function applyTheme(theme) {
+        _currentTheme = theme;
+        localStorage.setItem('primescan-theme', theme);
+        document.body.classList.toggle('dark-mode', theme === 'dark');
+        var indicator = document.getElementById('themeIndicator');
+        if (indicator) indicator.classList.toggle('dark', theme === 'dark');
+        document.querySelectorAll('.theme-toggle-btn').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.theme === theme);
+        });
+    }
+
     function initTheme() {
-        var saved = localStorage.getItem('primescan-theme') || 'light';
-        document.documentElement.setAttribute('data-theme', saved);
-        var btn = document.getElementById('themeToggle');
-        if (btn) btn.innerHTML = saved === 'dark' ? ICONS.sun : ICONS.moon;
+        applyTheme(_currentTheme);
+        document.querySelectorAll('.theme-toggle-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() { applyTheme(btn.dataset.theme); });
+        });
     }
+
     function toggleTheme() {
-        var current = document.documentElement.getAttribute('data-theme') || 'light';
-        var next = current === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('primescan-theme', next);
-        var btn = document.getElementById('themeToggle');
-        if (btn) btn.innerHTML = next === 'dark' ? ICONS.sun : ICONS.moon;
+        applyTheme(_currentTheme === 'dark' ? 'light' : 'dark');
     }
+
+    function initWallet() {
+        var btn = document.getElementById('walletBtn');
+        if (!btn) return;
+        var _wallet = null;
+        function updateUI() {
+            var text = document.getElementById('walletBtnText');
+            if (_wallet) { btn.classList.add('connected'); text.textContent = _wallet.slice(0,6) + '...' + _wallet.slice(-4); }
+            else { btn.classList.remove('connected'); text.textContent = 'Connect Wallet'; }
+        }
+        btn.addEventListener('click', async function() {
+            if (_wallet) { _wallet = null; updateUI(); return; }
+            if (!window.ethereum) { showToast('No wallet detected. Install MetaMask.'); return; }
+            try {
+                var accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (accounts.length > 0) { _wallet = accounts[0]; updateUI(); }
+                try { await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x' + CHAIN_ID.toString(16) }] }); }
+                catch(e) { if (e.code === 4902) await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x' + CHAIN_ID.toString(16), chainName: 'Prime Chain Testnet', rpcUrls: [RPC_URL], nativeCurrency: { name: 'PRIM', symbol: 'PRIM', decimals: 18 } }] }); }
+            } catch(e) { showToast('Connection rejected'); }
+        });
+        if (window.ethereum) window.ethereum.on('accountsChanged', function(a) { _wallet = a[0] || null; updateUI(); });
+    }
+
+    function updateSidebarActive() {
+        var hash = location.hash.slice(1) || '/';
+        var page = 'home';
+        if (hash === '/') page = 'home';
+        else if (hash.startsWith('/blocks') || hash.startsWith('/block/')) page = 'blocks';
+        else if (hash.startsWith('/txs') || hash.startsWith('/tx/')) page = 'txs';
+        else if (hash.startsWith('/validators')) page = 'validators';
+        else if (hash.startsWith('/gastracker') || hash.startsWith('/gas-tracker')) page = 'gastracker';
+        else if (hash.startsWith('/tokens') || hash.startsWith('/token/')) page = 'tokens';
+        else if (hash.startsWith('/accounts') || hash.startsWith('/address/')) page = 'accounts';
+        else if (hash.startsWith('/charts')) page = 'charts';
+        else if (hash.startsWith('/network')) page = 'network';
+        document.querySelectorAll('.sidebar-item[data-page], .bottombar-item[data-page]').forEach(function(el) {
+            el.classList.toggle('active', el.dataset.page === page);
+        });
+    }
+
     initTheme();
 
     /* ===========================================
@@ -350,7 +399,7 @@
         }
 
         content.innerHTML = '<div class="main-content"><div class="container" style="padding-top:40px;padding-bottom:40px">' +
-            '<div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:60px 0;color:#8c98a4"><div class="spinner"></div><span>Loading...</span></div>' +
+            '<div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:60px 0;color:var(--text-secondary)"><div class="spinner"></div><span>Loading...</span></div>' +
             '</div></div>';
 
         $$('.nav-link').forEach(function (l) { l.classList.remove('active'); });
@@ -764,7 +813,7 @@
             '        <div class="stat-value">' + formatNum(Math.max(0, state.latestBlock - 6)) + '</div>',
             '      </div>',
             '    </div>',
-            '    <div class="stats-grid" style="margin-top:8px;border-top:1px solid #e9ecef;padding-top:8px">',
+            '    <div class="stats-grid" style="margin-top:8px;border-top:1px solid var(--color-border);padding-top:8px">',
             '      <div class="stat-item">',
             '        <div class="stat-label">VALIDATORS</div>',
             '        <div class="stat-value">' + validators.length + '</div>',
@@ -938,7 +987,7 @@
                 '    <div style="display:flex;align-items:center;gap:0.5rem">',
                 '      <span class="mono" style="font-size:0.82rem">' + formatGas(b.gasUsed || b.gas_used || '0x0') + '</span>',
                 '      <div class="gas-bar" style="width:60px"><div class="gas-bar-fill" style="width:' + gasPercent + '%"></div></div>',
-                '      <span style="font-size:0.7rem;color:#8c98a4">' + gasPercent + '%</span>',
+                '      <span style="font-size:0.7rem;color:var(--text-secondary)">' + gasPercent + '%</span>',
                 '    </div>',
                 '  </td>',
                 '  <td class="mono">' + formatGas(b.gasLimit || b.gas_limit || '0x0') + '</td>',
@@ -1020,8 +1069,8 @@
                     '  <td><a href="#/tx/' + escapeHtml(tx.hash) + '" class="hash-link">' + truncHash(tx.hash) + '</a></td>',
                     '  <td>' + methodBadgeHtml(tx.input) + '</td>',
                     '  <td>' + (tx.from ? '<a href="#/address/' + escapeHtml(tx.from) + '" class="addr-link">' + truncAddr(tx.from) + '</a>' : '—') + '</td>',
-                    '  <td style="color:#8c98a4;font-size:0.75rem">→</td>',
-                    '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:#e5a50a">Contract Create</span>') + '</td>',
+                    '  <td style="color:var(--text-secondary);font-size:0.75rem">→</td>',
+                    '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:var(--warn)">Contract Create</span>') + '</td>',
                     '  <td class="td-right mono">' + formatPRIMShort(tx.value || '0x0') + ' PRIM</td>',
                     '  <td class="mono" style="font-size:0.78rem">' + formatGwei(txGasPrice(tx) || '0x0') + '</td>',
                     '</tr>',
@@ -1066,7 +1115,7 @@
             '    </div>',
             '    <div class="detail-row"><div class="detail-label">Gas Limit</div><div class="detail-value mono">' + formatNum(gasLimit) + '</div></div>',
             '    <div class="detail-row"><div class="detail-label">Base Fee Per Gas</div><div class="detail-value mono">' + (baseFeeRaw !== '0x0' ? formatGwei(baseFeeRaw) + ' <span class="text-muted">(' + formatPRIM(baseFeeRaw) + ')</span>' : '—') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Burnt Fees</div><div class="detail-value mono">' + (burntFees > 0n ? '<span style="color:#dc3545">🔥 ' + formatPRIM(burntFeesHex) + '</span>' : '0 PRIM') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Burnt Fees</div><div class="detail-value mono">' + (burntFees > 0n ? '<span style="color:var(--danger)">🔥 ' + formatPRIM(burntFeesHex) + '</span>' : '0 PRIM') + '</div></div>',
             '    <div class="detail-row"><div class="detail-label">Extra Data</div><div class="detail-value">' + (extraDataDecoded ? escapeHtml(extraDataDecoded) + ' <span class="text-muted mono" style="font-size:0.78rem">(Hex: ' + escapeHtml(extraData) + ')</span>' : '<span class="mono">' + escapeHtml(extraData) + '</span>') + '</div></div>',
             '    <div class="separator"></div>',
             '    <div class="detail-row"><div class="detail-label">Hash</div><div class="detail-value mono">' + (block.hash || '—') + ' ' + (block.hash ? copyBtnHtml(block.hash) : '') + '</div></div>',
@@ -1147,8 +1196,8 @@
                 '  <td><a href="#/block/' + tx._blockNum + '" class="hash-link">' + formatNum(tx._blockNum) + '</a></td>',
                 '  <td class="td-time">' + timeAgo(tx._blockNum, state.latestBlock) + '</td>',
                 '  <td><a href="#/address/' + escapeHtml(tx.from) + '" class="addr-link">' + truncAddr(tx.from) + '</a></td>',
-                '  <td style="color:#8c98a4;font-size:0.75rem">→</td>',
-                '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:#e5a50a">Contract Create</span>') + '</td>',
+                '  <td style="color:var(--text-secondary);font-size:0.75rem">→</td>',
+                '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:var(--warn)">Contract Create</span>') + '</td>',
                 '  <td class="td-right mono">' + formatPRIMShort(tx.value || '0x0') + '</td>',
                 '  <td class="td-right mono text-muted" style="font-size:0.78rem">' + formatPRIMShort(txFeeHex) + '</td>',
                 '</tr>',
@@ -1241,7 +1290,7 @@
         } else if (tx.input && tx.input.length >= 10) {
             var actionDecoded = decodeMethod(tx.input);
             if (actionDecoded) {
-                txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="method-tag">' + escapeHtml(actionDecoded.name) + '</span> on ' + (tx.to ? '<a href="#/address/' + escapeHtml(tx.to) + '" class="addr-link">' + truncAddr(tx.to) + '</a>' : '<span style="color:#e5a50a">New Contract</span>') + (hexToBigInt(tx.value || '0x0') > 0n ? ' with <strong>' + formatPRIM(tx.value) + '</strong>' : '') + '</div></div>';
+                txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="method-tag">' + escapeHtml(actionDecoded.name) + '</span> on ' + (tx.to ? '<a href="#/address/' + escapeHtml(tx.to) + '" class="addr-link">' + truncAddr(tx.to) + '</a>' : '<span style="color:var(--warn)">New Contract</span>') + (hexToBigInt(tx.value || '0x0') > 0n ? ' with <strong>' + formatPRIM(tx.value) + '</strong>' : '') + '</div></div>';
             }
         }
 
@@ -1389,7 +1438,7 @@
             '        <div class="gas-bar" style="width:100px;display:inline-block;vertical-align:middle"><div class="gas-bar-fill" style="width:' + gasBarPercent + '%"></div></div>',
             '      </div>',
             '    </div>',
-            receipt ? '    <div class="detail-row"><div class="detail-label">Burnt &amp; Txn Savings Fees</div><div class="detail-value mono"><span style="color:#dc3545">🔥 Burnt: ' + formatPRIM(burntFeesHex) + '</span> <span class="text-muted" style="margin:0 8px">|</span> 💸 Txn Savings: ' + formatPRIM('0x' + savingsWei.toString(16)) + '</div></div>' : '',
+            receipt ? '    <div class="detail-row"><div class="detail-label">Burnt &amp; Txn Savings Fees</div><div class="detail-value mono"><span style="color:var(--danger)">🔥 Burnt: ' + formatPRIM(burntFeesHex) + '</span> <span class="text-muted" style="margin:0 8px">|</span> 💸 Txn Savings: ' + formatPRIM('0x' + savingsWei.toString(16)) + '</div></div>' : '',
             '    <div class="separator"></div>',
             '    <div class="detail-row"><div class="detail-label">Other Attributes</div><div class="detail-value"><span class="method-tag">Txn Type: ' + txTypeLabel + '</span> <span class="method-tag" style="margin-left:6px">Nonce: ' + (tx.nonce !== undefined ? hexToInt(tx.nonce) : '—') + '</span> <span class="method-tag" style="margin-left:6px">Position In Block: ' + positionInBlock + '</span></div></div>',
             '    ' + inputSection,
@@ -1562,7 +1611,7 @@
                 '  <td class="td-time">' + timeAgo(tx._blockNum, state.latestBlock) + '</td>',
                 '  <td>' + addrDisplay(tx.from) + '</td>',
                 '  <td><span class="status-badge ' + (isFrom ? 'status-fail' : 'status-success') + '" style="font-size:0.7rem">' + (isFrom ? 'OUT' : 'IN') + '</span></td>',
-                '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:#e5a50a">Contract Create</span>') + '</td>',
+                '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:var(--warn)">Contract Create</span>') + '</td>',
                 '  <td class="td-right mono">' + formatPRIMShort(tx.value || '0x0') + '</td>',
                 '  <td class="td-right mono text-muted" style="font-size:0.78rem">' + formatPRIMShort(txFeeHex) + '</td>',
                 '</tr>',
@@ -1580,7 +1629,7 @@
             '        <tbody>' + txRows + '</tbody>',
             '      </table>',
             '    </div>',
-            addressTxs.length >= 50 ? '    <div style="padding:0.75rem 1.25rem;text-align:center;color:#8c98a4;font-size:0.82rem">Showing latest 50 transactions. Scan depth: 500 blocks.</div>' : '',
+            addressTxs.length >= 50 ? '    <div style="padding:0.75rem 1.25rem;text-align:center;color:var(--text-secondary);font-size:0.82rem">Showing latest 50 transactions. Scan depth: 500 blocks.</div>' : '',
             '  </div>',
             '</div>',
         ].join('\n');
@@ -1955,7 +2004,7 @@
         for (var c = 0; c < orderedFees.length; c++) {
             var pct = (orderedFees[c].fee / maxFee) * 100;
             if (pct < 2) pct = 2;
-            barChartHtml += '<div title="Block ' + orderedFees[c].block + ': ' + orderedFees[c].fee.toFixed(4) + ' Gwei" style="flex:1;min-width:3px;background:var(--primary,#4901FF);border-radius:2px 2px 0 0;height:' + pct.toFixed(1) + '%;opacity:0.85;transition:opacity 0.15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85"></div>';
+            barChartHtml += '<div title="Block ' + orderedFees[c].block + ': ' + orderedFees[c].fee.toFixed(4) + ' Gwei" style="flex:1;min-width:3px;background:#9461FF;border-radius:2px 2px 0 0;height:' + pct.toFixed(1) + '%;opacity:0.85;transition:opacity 0.15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85"></div>';
         }
         barChartHtml += '</div>';
 
@@ -1983,17 +2032,17 @@
             '</div>',
 
             '<div class="overview-grid" style="grid-template-columns:repeat(3,1fr)">',
-            '  <div class="stat-card" style="background:#00a186;color:#fff;border:none">',
+            '  <div class="stat-card" style="background:var(--success);color:#fff;border:none">',
             '    <div style="font-size:0.85rem;opacity:0.9;margin-bottom:8px">🟢 Low</div>',
             '    <div style="font-size:1.5rem;font-weight:700">' + gasPriceGwei.toFixed(2) + ' Gwei</div>',
             '    <div style="font-size:0.8rem;opacity:0.8;margin-top:6px">Transfer: ' + transferCostPRIM.toFixed(8) + ' PRIM</div>',
             '  </div>',
-            '  <div class="stat-card" style="background:#0784c3;color:#fff;border:none">',
+            '  <div class="stat-card" style="background:var(--info);color:#fff;border:none">',
             '    <div style="font-size:0.85rem;opacity:0.9;margin-bottom:8px">🔵 Average</div>',
             '    <div style="font-size:1.5rem;font-weight:700">' + gasPriceGwei.toFixed(2) + ' Gwei</div>',
             '    <div style="font-size:0.8rem;opacity:0.8;margin-top:6px">Transfer: ' + transferCostPRIM.toFixed(8) + ' PRIM</div>',
             '  </div>',
-            '  <div class="stat-card" style="background:#e5a50a;color:#fff;border:none">',
+            '  <div class="stat-card" style="background:var(--warn);color:#fff;border:none">',
             '    <div style="font-size:0.85rem;opacity:0.9;margin-bottom:8px">🟠 High</div>',
             '    <div style="font-size:1.5rem;font-weight:700">' + gasPriceGwei.toFixed(2) + ' Gwei</div>',
             '    <div style="font-size:0.8rem;opacity:0.8;margin-top:6px">Transfer: ' + transferCostPRIM.toFixed(8) + ' PRIM</div>',
@@ -2014,7 +2063,7 @@
             '<div class="card" style="margin-top:24px">',
             '  <div class="detail-card-title">Base Fee History (Last ' + orderedFees.length + ' Blocks)</div>',
             '  <div style="padding:0 16px 8px">' + barChartHtml + '</div>',
-            '  <div style="display:flex;justify-content:space-between;padding:0 16px 16px;font-size:0.75rem;color:#8c98a4">',
+            '  <div style="display:flex;justify-content:space-between;padding:0 16px 16px;font-size:0.75rem;color:var(--text-secondary)">',
             '    <span>Block ' + (orderedFees.length > 0 ? orderedFees[0].block : '—') + '</span>',
             '    <span>Block ' + (orderedFees.length > 0 ? orderedFees[orderedFees.length - 1].block : '—') + '</span>',
             '  </div>',
@@ -2237,7 +2286,7 @@
                 '<td><a href="#/block/' + t.blockNum + '" class="hash-link">' + formatNum(t.blockNum) + '</a></td>' +
                 '<td class="td-time">' + timeAgo(t.blockNum, state.latestBlock) + '</td>' +
                 '<td><a href="#/address/' + escapeHtml(t.from) + '" class="addr-link">' + truncAddr(t.from) + '</a></td>' +
-                '<td style="color:#8c98a4;font-size:0.75rem">→</td>' +
+                '<td style="color:var(--text-secondary);font-size:0.75rem">→</td>' +
                 '<td><a href="#/address/' + escapeHtml(t.to) + '" class="addr-link">' + truncAddr(t.to) + '</a></td>' +
                 '<td class="td-right mono">' + formatTokenAmount(t.amount, decimals) + '</td>' +
                 '</tr>';
@@ -2247,7 +2296,7 @@
             '<div class="main-content"><div class="container">',
             '  <a href="#/tokens" class="back-link">' + ICONS.back + ' Back to Token Tracker</a>',
             '  <div class="detail-header">',
-            '    <div class="detail-icon" style="background:#e8f0fe;color:#066a9c">' + ICONS.coin + '</div>',
+            '    <div class="detail-icon" style="background:var(--bg-200);color:var(--color-main)">' + ICONS.coin + '</div>',
             '    <div class="detail-title-group">',
             '      <div class="detail-title">' + escapeHtml(name) + ' <span class="method-tag badge-info" style="margin-left:8px">' + escapeHtml(symbol) + '</span></div>',
             '      <div class="detail-hash">' + escapeHtml(tokenAddr) + ' ' + copyBtnHtml(tokenAddr) + '</div>',
@@ -2476,14 +2525,14 @@
             for (var t = 0; t <= 4; t++) {
                 var yPos = chartH - pad - (t / 4) * (chartH - pad);
                 var val = ((t / 4) * maxVal).toFixed(1);
-                yTicks += '<text x="' + (pad - 5) + '" y="' + (yPos + 4) + '" text-anchor="end" font-size="10" fill="#8c98a4">' + val + '</text>';
+                yTicks += '<text x="' + (pad - 5) + '" y="' + (yPos + 4) + '" text-anchor="end" font-size="10" fill="var(--text-secondary,#99B2C6)">' + val + '</text>';
                 yTicks += '<line x1="' + pad + '" y1="' + yPos + '" x2="' + (chartW - pad) + '" y2="' + yPos + '" stroke="#e9ecef" stroke-dasharray="3"/>';
             }
 
             return '<svg viewBox="0 0 ' + chartW + ' ' + (chartH + 20) + '" style="width:100%;height:auto">' +
                 yTicks + bars +
-                '<text x="' + (chartW / 2) + '" y="' + (chartH + 12) + '" text-anchor="middle" font-size="11" fill="#8c98a4">Block Number</text>' +
-                '<text x="12" y="' + (chartH / 2) + '" text-anchor="middle" font-size="11" fill="#8c98a4" transform="rotate(-90,12,' + (chartH / 2) + ')">' + yLabel + '</text>' +
+                '<text x="' + (chartW / 2) + '" y="' + (chartH + 12) + '" text-anchor="middle" font-size="11" fill="var(--text-secondary,#99B2C6)">Block Number</text>' +
+                '<text x="12" y="' + (chartH / 2) + '" text-anchor="middle" font-size="11" fill="var(--text-secondary,#99B2C6)" transform="rotate(-90,12,' + (chartH / 2) + ')">' + yLabel + '</text>' +
                 '</svg>';
         }
 
@@ -2515,7 +2564,7 @@
             for (var t = 0; t <= 4; t++) {
                 var yPos = (chartH - pad) - (t / 4) * (chartH - pad - 10);
                 var val = (minVal + (t / 4) * (maxVal - minVal)).toFixed(2);
-                yTicks += '<text x="' + (pad - 5) + '" y="' + (yPos + 4) + '" text-anchor="end" font-size="10" fill="#8c98a4">' + val + '</text>';
+                yTicks += '<text x="' + (pad - 5) + '" y="' + (yPos + 4) + '" text-anchor="end" font-size="10" fill="var(--text-secondary,#99B2C6)">' + val + '</text>';
                 yTicks += '<line x1="' + pad + '" y1="' + yPos + '" x2="' + (chartW - pad) + '" y2="' + yPos + '" stroke="#e9ecef" stroke-dasharray="3"/>';
             }
 
@@ -2524,8 +2573,8 @@
                 '<polygon fill="' + color + '" fill-opacity="0.1" points="' + areaPoints.trim() + '"/>' +
                 '<polyline fill="none" stroke="' + color + '" stroke-width="2" points="' + points.trim() + '"/>' +
                 dots +
-                '<text x="' + (chartW / 2) + '" y="' + (chartH + 12) + '" text-anchor="middle" font-size="11" fill="#8c98a4">Block Number</text>' +
-                '<text x="12" y="' + (chartH / 2) + '" text-anchor="middle" font-size="11" fill="#8c98a4" transform="rotate(-90,12,' + (chartH / 2) + ')">' + yLabel + '</text>' +
+                '<text x="' + (chartW / 2) + '" y="' + (chartH + 12) + '" text-anchor="middle" font-size="11" fill="var(--text-secondary,#99B2C6)">Block Number</text>' +
+                '<text x="12" y="' + (chartH / 2) + '" text-anchor="middle" font-size="11" fill="var(--text-secondary,#99B2C6)" transform="rotate(-90,12,' + (chartH / 2) + ')">' + yLabel + '</text>' +
                 '</svg>';
         }
 
@@ -2535,7 +2584,7 @@
             for (var i = 0; i < items.length; i++) total += items[i].stake;
             if (total === 0) return '<div class="table-empty">No stake data</div>';
 
-            var colors = ['#4901FF', '#00a186', '#e5a50a', '#0784c3', '#dc3545', '#6c757d', '#8B5CF6', '#EC4899'];
+            var colors = ['#9461FF', '#1AB280', '#C75E05', '#057AC7', '#B61616', '#C5AFF1', '#6A2FFF', '#E8DCFF'];
             var r = size / 2 - 10;
             var cx = size / 2;
             var cy = size / 2;
@@ -2584,29 +2633,29 @@
             '<div class="latest-grid" style="margin-bottom:24px">',
             '  <div class="card">',
             '    <div class="detail-card-title">Transactions Per Block</div>',
-            '    <div style="padding:16px">' + buildBarChart(txCountData, 'count', 'Tx Count', '#0784c3') + '</div>',
+            '    <div style="padding:16px">' + buildBarChart(txCountData, 'count', 'Tx Count', '#057AC7') + '</div>',
             '  </div>',
             '  <div class="card">',
             '    <div class="detail-card-title">Block Gas Usage (%)</div>',
-            '    <div style="padding:16px">' + buildBarChart(gasData, 'pct', 'Gas Used %', 'var(--primary,#4901FF)') + '</div>',
+            '    <div style="padding:16px">' + buildBarChart(gasData, 'pct', 'Gas Used %', '#9461FF') + '</div>',
             '  </div>',
             '</div>',
 
             '<div class="latest-grid" style="margin-bottom:24px">',
             '  <div class="card">',
             '    <div class="detail-card-title">Block Time (seconds)</div>',
-            '    <div style="padding:16px">' + buildLineChart(timeData, 'block', 'seconds', 'Seconds', '#00a186') + '</div>',
+            '    <div style="padding:16px">' + buildLineChart(timeData, 'block', 'seconds', 'Seconds', '#1AB280') + '</div>',
             '  </div>',
             '  <div class="card">',
             '    <div class="detail-card-title">Base Fee History (Gwei)</div>',
-            '    <div style="padding:16px">' + buildLineChart(feeData, 'block', 'fee', 'Gwei', '#e5a50a') + '</div>',
+            '    <div style="padding:16px">' + buildLineChart(feeData, 'block', 'fee', 'Gwei', '#C75E05') + '</div>',
             '  </div>',
             '</div>',
 
             '<div class="latest-grid" style="margin-bottom:24px">',
             '  <div class="card">',
             '    <div class="detail-card-title">Block Size (bytes)</div>',
-            '    <div style="padding:16px">' + buildBarChart(blockSizeData, 'size', 'Bytes', '#dc3545') + '</div>',
+            '    <div style="padding:16px">' + buildBarChart(blockSizeData, 'size', 'Bytes', '#B61616') + '</div>',
             '  </div>',
             '  <div class="card">',
             '    <div class="detail-card-title">Validator Stake Distribution</div>',
@@ -2644,34 +2693,9 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         initTheme();
-
-        var themeBtn = document.getElementById('themeToggle');
-        if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
-
-        var mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        var mobileMenu = document.getElementById('mobileMenu');
-        var mobileMenuClose = document.getElementById('mobileMenuClose');
-        var mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
-
-        function openMobileMenu() {
-            if (mobileMenu) mobileMenu.classList.add('open');
-            if (mobileMenuOverlay) mobileMenuOverlay.classList.add('open');
-            document.body.style.overflow = 'hidden';
-        }
-        function closeMobileMenu() {
-            if (mobileMenu) mobileMenu.classList.remove('open');
-            if (mobileMenuOverlay) mobileMenuOverlay.classList.remove('open');
-            document.body.style.overflow = '';
-        }
-        if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', openMobileMenu);
-        if (mobileMenuClose) mobileMenuClose.addEventListener('click', closeMobileMenu);
-        if (mobileMenuOverlay) mobileMenuOverlay.addEventListener('click', closeMobileMenu);
-        if (mobileMenu) {
-            mobileMenu.addEventListener('click', function(e) {
-                if (e.target.closest('.mobile-menu-link')) closeMobileMenu();
-            });
-        }
-        window.addEventListener('hashchange', closeMobileMenu);
+        initWallet();
+        updateSidebarActive();
+        window.addEventListener('hashchange', updateSidebarActive);
 
         if (CUSTOM_RPC) {
             var banner = document.createElement('div');
