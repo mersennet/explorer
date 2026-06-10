@@ -235,10 +235,15 @@ table { border-collapse: collapse; border-spacing: 0; }
 }
 
 /* ─── 8. HERO SECTION ────────────────────────────────────────────────────── */
-.hero-section { background: var(--gradient-hero); padding: 56px 0 52px; position: relative; overflow: hidden; }
-.hero-section::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(255,255,255,0.07) 0%, transparent 50%); pointer-events: none; }
+.hero-section { background: #000; padding: 64px 0 58px; position: relative; overflow: hidden; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.hero-section::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 48px 48px; }
+.hero-section::after { content: ''; position: absolute; pointer-events: none; width: 520px; height: 520px;
+    left: 50%; top: -60%; transform: translateX(-50%); border-radius: 50%; filter: blur(110px);
+    background: rgba(125,255,155,0.14); }
 .hero-content { max-width: 680px; margin: 0 auto; text-align: center; position: relative; z-index: 1; padding: 0 24px; animation: fadeUp 0.5s ease-out; }
-.hero-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 24px; letter-spacing: -0.02em; text-shadow: 0 2px 12px rgba(0,0,0,0.15); }
+.hero-title { font-size: 1.6rem; font-weight: 700; color: #fff; margin-bottom: 24px; letter-spacing: -0.02em; }
 .search-form { display: flex; background: #fff; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08); position: relative; transition: box-shadow var(--dur) var(--ease); }
 .search-form:focus-within { box-shadow: 0 8px 32px rgba(125,255,155,0.22), 0 2px 8px rgba(0,0,0,0.08); }
 .search-input { flex: 1; border: none; padding: 15px 20px; font-size: 0.875rem; outline: none; background: transparent; font-family: inherit; color: #1a1a2e; min-width: 0; }
