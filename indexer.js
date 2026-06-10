@@ -14,11 +14,11 @@ if (!process.env.DB_PASS) {
     process.exit(1);
 }
 const pool = new Pool({
-    user: process.env.DB_USER || 'primescan',
+    user: process.env.DB_USER || 'mersennet',
     password: process.env.DB_PASS,
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT) || 5432,
-    database: process.env.DB_NAME || 'primescan',
+    database: process.env.DB_NAME || 'mersennet_explorer',
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,

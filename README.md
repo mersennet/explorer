@@ -1,6 +1,6 @@
-# PrimeScan — Block Explorer
+# Mersennet Explorer — Block Explorer
 
-Block explorer for Prime Chain (Chain ID 7919). Vanilla JavaScript SPA with no build step.
+Block explorer for Mersennet (Chain ID 7919). Vanilla JavaScript SPA with no build step.
 
 **Live:** http://46.225.30.187/
 

@@ -105,11 +105,11 @@
         moon:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>',
     };
 
-    var _currentTheme = localStorage.getItem('primescan-theme') || 'light';
+    var _currentTheme = localStorage.getItem('mersennet-explorer-theme') || 'dark';
 
     function applyTheme(theme) {
         _currentTheme = theme;
-        localStorage.setItem('primescan-theme', theme);
+        localStorage.setItem('mersennet-explorer-theme', theme);
         document.body.classList.toggle('dark-mode', theme === 'dark');
         var indicator = document.getElementById('themeIndicator');
         if (indicator) indicator.classList.toggle('dark', theme === 'dark');
@@ -145,7 +145,7 @@
                 var accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 if (accounts.length > 0) { _wallet = accounts[0]; updateUI(); }
                 try { await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x' + CHAIN_ID.toString(16) }] }); }
-                catch(e) { if (e.code === 4902) await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x' + CHAIN_ID.toString(16), chainName: 'Prime Chain Testnet', rpcUrls: [RPC_URL], nativeCurrency: { name: 'PRIM', symbol: 'PRIM', decimals: 18 } }] }); }
+                catch(e) { if (e.code === 4902) await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x' + CHAIN_ID.toString(16), chainName: 'Mersennet Testnet', rpcUrls: [RPC_URL], nativeCurrency: { name: 'PRIM', symbol: 'PRIM', decimals: 18 } }] }); }
             } catch(e) { toast('Connection rejected', true); }
         });
         if (window.ethereum) window.ethereum.on('accountsChanged', function(a) { _wallet = a[0] || null; updateUI(); });
@@ -169,28 +169,28 @@
         document.querySelectorAll('.sidebar-item[data-page], .bottombar-item[data-page]').forEach(function(el) {
             el.classList.toggle('active', el.dataset.page === page);
         });
-        var titleMap = { home:'PrimeScan', blocks:'Blocks', txs:'Transactions', validators:'Validators', gastracker:'Gas Tracker', tokens:'Tokens', accounts:'Top Accounts', charts:'Charts & Stats', network:'Network Info', approvals:'Token Approvals', watchlist:'Watchlist', dapps:'DApps' };
+        var titleMap = { home:'Mersennet Explorer', blocks:'Blocks', txs:'Transactions', validators:'Validators', gastracker:'Gas Tracker', tokens:'Tokens', accounts:'Top Accounts', charts:'Charts & Stats', network:'Network Info', approvals:'Token Approvals', watchlist:'Watchlist', dapps:'DApps' };
         var titleEl = document.getElementById('pageTitle');
-        if (titleEl) titleEl.textContent = titleMap[page] || 'PrimeScan';
+        if (titleEl) titleEl.textContent = titleMap[page] || 'Mersennet Explorer';
     }
 
     /* ===========================================
        WATCHLIST (localStorage)
        =========================================== */
     function getWatchlist() {
-        try { return JSON.parse(localStorage.getItem('primescan-watchlist') || '[]'); } catch { return []; }
+        try { return JSON.parse(localStorage.getItem('mersennet-explorer-watchlist') || '[]'); } catch { return []; }
     }
     function addToWatchlist(addr, label) {
         var list = getWatchlist();
         addr = (addr || '').toLowerCase();
         if (list.some(function(w) { return w.address === addr; })) return false;
         list.push({ address: addr, label: label || '', added: Date.now() });
-        localStorage.setItem('primescan-watchlist', JSON.stringify(list));
+        localStorage.setItem('mersennet-explorer-watchlist', JSON.stringify(list));
         return true;
     }
     function removeFromWatchlist(addr) {
         var list = getWatchlist().filter(function(w) { return w.address !== (addr || '').toLowerCase(); });
-        localStorage.setItem('primescan-watchlist', JSON.stringify(list));
+        localStorage.setItem('mersennet-explorer-watchlist', JSON.stringify(list));
     }
     function isWatched(addr) {
         return getWatchlist().some(function(w) { return w.address === (addr || '').toLowerCase(); });
@@ -1032,7 +1032,7 @@
         el.innerHTML = [
             '<div class="hero-section">',
             '  <div class="hero-content">',
-            '    <h1 class="hero-title">The Prime Chain Blockchain Explorer</h1>',
+            '    <h1 class="hero-title">The Mersennet Blockchain Explorer</h1>',
             '    ' + searchBarHtml('hero'),
             '    <div class="hero-shortcuts">Press <kbd>/</kbd> to search &middot; <a href="#/dapps">Explore DApps</a> &middot; <a href="#/approvals">Token Approvals</a> &middot; <a href="#/watchlist">Watchlist</a></div>',
             '  </div>',
@@ -1846,7 +1846,7 @@
                 '  <div class="detail-row"><div class="detail-label">License</div><div class="detail-value">' + escapeHtml(verified.license) + '</div></div>',
                 '  <div class="detail-row"><div class="detail-label">Optimization</div><div class="detail-value">Enabled (200 runs, via-ir)</div></div>',
                 '  <div class="detail-row"><div class="detail-label">EVM Version</div><div class="detail-value">Shanghai</div></div>',
-                '  <div class="detail-row"><div class="detail-label">Source Code</div><div class="detail-value"><a href="https://github.com/PrimeNumbersLabs/prime-chain/tree/main/' + escapeHtml(verified.source) + '" target="_blank" rel="noopener">View on GitHub →</a></div></div>',
+                '  <div class="detail-row"><div class="detail-label">Source Code</div><div class="detail-value"><a href="https://github.com/mersennet/mersennet/tree/main/' + escapeHtml(verified.source) + '" target="_blank" rel="noopener">View on GitHub →</a></div></div>',
                 '</div>',
             ].join('\n');
         }
@@ -1934,7 +1934,7 @@
                     '  <div class="detail-card" style="margin-top:1rem">',
                     '    <div class="detail-card-title">Source Code</div>',
                     '    <div style="padding:1rem 1.25rem">',
-                    '      <a href="https://github.com/PrimeNumbersLabs/prime-chain/tree/main/' + escapeHtml(verified.source) + '" target="_blank" class="btn btn-primary" style="font-size:0.85rem">View Source on GitHub →</a>',
+                    '      <a href="https://github.com/mersennet/mersennet/tree/main/' + escapeHtml(verified.source) + '" target="_blank" class="btn btn-primary" style="font-size:0.85rem">View Source on GitHub →</a>',
                     '    </div>',
                     '  </div>',
                 ].join('\n') : '',
@@ -2293,14 +2293,14 @@
             '  <div class="page-header">',
             '    <div>',
             '      <h1 class="page-title">Network Information</h1>',
-            '      <div class="page-subtitle">Prime Chain Testnet configuration and endpoints</div>',
+            '      <div class="page-subtitle">Mersennet Testnet configuration and endpoints</div>',
             '    </div>',
             '  </div>',
             '',
             '  <div class="latest-grid" style="margin-bottom:1.5rem">',
             '    <div class="detail-card">',
             '      <div class="detail-card-title">Testnet Configuration</div>',
-            '      <div class="detail-row"><div class="detail-label">Network Name</div><div class="detail-value">Prime Chain Testnet</div></div>',
+            '      <div class="detail-row"><div class="detail-label">Network Name</div><div class="detail-value">Mersennet Testnet</div></div>',
             '      <div class="detail-row"><div class="detail-label">Chain ID</div><div class="detail-value mono">' + CHAIN_ID + ' (0x' + CHAIN_ID.toString(16) + ')</div></div>',
             '      <div class="detail-row"><div class="detail-label">Currency Symbol</div><div class="detail-value">PRIM</div></div>',
             '      <div class="detail-row"><div class="detail-label">Decimals</div><div class="detail-value mono">18</div></div>',
@@ -2313,13 +2313,11 @@
             '      <div class="detail-card-title">Endpoints</div>',
             '      <div class="detail-row"><div class="detail-label">JSON-RPC</div><div class="detail-value mono">http://46.225.30.187:8545 ' + copyBtnHtml('http://46.225.30.187:8545') + '</div></div>',
             '      <div class="detail-row"><div class="detail-label">WebSocket</div><div class="detail-value mono">ws://46.225.30.187:8546 ' + copyBtnHtml('ws://46.225.30.187:8546') + '</div></div>',
-            '      <div class="detail-row"><div class="detail-label">Explorer</div><div class="detail-value"><a href="http://46.225.30.187" target="_blank">http://46.225.30.187</a></div></div>',
-            '      <div class="detail-row"><div class="detail-label">Faucet</div><div class="detail-value"><a href="http://46.225.30.187:4003" target="_blank">http://46.225.30.187:4003</a></div></div>',
-            '      <div class="detail-row"><div class="detail-label">PrimeSwap DEX</div><div class="detail-value"><a href="http://46.225.30.187:4000" target="_blank">http://46.225.30.187:4000</a></div></div>',
-            '      <div class="detail-row"><div class="detail-label">Validator Dashboard</div><div class="detail-value"><a href="http://46.225.30.187:4001" target="_blank">http://46.225.30.187:4001</a></div></div>',
-            '      <div class="detail-row"><div class="detail-label">Grafana</div><div class="detail-value"><a href="http://46.225.30.187:3000" target="_blank">http://46.225.30.187:3000</a></div></div>',
-            '      <div class="detail-row"><div class="detail-label">Docs</div><div class="detail-value"><a href="http://46.225.30.187:3001" target="_blank">http://46.225.30.187:3001</a></div></div>',
-            '      <div class="detail-row"><div class="detail-label">Status Page</div><div class="detail-value"><a href="http://46.225.30.187:3002" target="_blank">http://46.225.30.187:3002</a></div></div>',
+            '      <div class="detail-row"><div class="detail-label">Explorer</div><div class="detail-value"><a href="https://explorer.mersennet.com" target="_blank">explorer.mersennet.com</a></div></div>',
+            '      <div class="detail-row"><div class="detail-label">Faucet</div><div class="detail-value"><a href="https://faucet.mersennet.com" target="_blank">faucet.mersennet.com</a></div></div>',
+            '      <div class="detail-row"><div class="detail-label">Trade</div><div class="detail-value"><a href="https://trade.mersennet.com" target="_blank">trade.mersennet.com</a></div></div>',
+            '      <div class="detail-row"><div class="detail-label">Docs</div><div class="detail-value"><a href="https://docs.mersennet.com" target="_blank">docs.mersennet.com</a></div></div>',
+            '      <div class="detail-row"><div class="detail-label">Website</div><div class="detail-value"><a href="https://mersennet.com" target="_blank">mersennet.com</a></div></div>',
             '      <div style="padding:0.85rem 1.5rem">',
             '        <button id="addMetaMask" class="btn btn-primary" style="padding:0.55rem 1.25rem;font-size:0.85rem;cursor:pointer">🦊 Add to MetaMask</button>',
             '      </div>',
@@ -2362,7 +2360,7 @@
                         method: 'wallet_addEthereumChain',
                         params: [{
                             chainId: '0x' + CHAIN_ID.toString(16),
-                            chainName: 'Prime Chain Testnet',
+                            chainName: 'Mersennet Testnet',
                             nativeCurrency: { name: 'PRIM', symbol: 'PRIM', decimals: 18 },
                             rpcUrls: ['http://46.225.30.187:8545'],
                             blockExplorerUrls: ['http://46.225.30.187'],
@@ -2613,7 +2611,7 @@
             breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Tokens' }]),
             '<div class="page-header">',
             '  <h1 class="page-title">Token Tracker</h1>',
-            '  <p class="page-subtitle">ERC-20 tokens deployed on Prime Chain</p>',
+            '  <p class="page-subtitle">ERC-20 tokens deployed on Mersennet</p>',
             '</div>',
             '<div class="card">',
             '  <div style="padding:16px;border-bottom:1px solid var(--border,#e9ecef)">',
@@ -3275,12 +3273,12 @@
        =========================================== */
     async function pageDApps(el) {
         var dapps = [
-            { name: 'PrimeSwap DEX', desc: 'Swap tokens on Prime Chain\'s native DEX', url: 'http://46.225.30.187:4000', icon: '🔄', category: 'DeFi' },
+            { name: 'Mersennet Trade', desc: 'Perpetuals on the native on-chain order book', url: 'https://trade.mersennet.com', icon: '📈', category: 'DeFi' },
+            { name: 'PrimeSwap DEX', desc: 'Swap tokens on Mersennet\'s native DEX', url: 'http://46.225.30.187:4000', icon: '🔄', category: 'DeFi' },
             { name: 'Validator Dashboard', desc: 'Monitor and manage validator nodes', url: 'http://46.225.30.187:4001', icon: '🛡️', category: 'Staking' },
-            { name: 'Faucet', desc: 'Get free testnet PRIM tokens', url: 'http://46.225.30.187:4003', icon: '💧', category: 'Tools' },
-            { name: 'Grafana Monitoring', desc: 'Network health and performance metrics', url: 'http://46.225.30.187:3000', icon: '📊', category: 'Analytics' },
-            { name: 'Documentation', desc: 'Prime Chain developer documentation', url: 'http://46.225.30.187:3001', icon: '📖', category: 'Docs' },
-            { name: 'Status Page', desc: 'Real-time network status and uptime', url: 'http://46.225.30.187:3002', icon: '🟢', category: 'Tools' },
+            { name: 'Faucet', desc: 'Get free testnet PRIM tokens', url: 'https://faucet.mersennet.com', icon: '💧', category: 'Tools' },
+            { name: 'Documentation', desc: 'Mersennet developer documentation', url: 'https://docs.mersennet.com', icon: '📖', category: 'Docs' },
+            { name: 'Project Site', desc: 'Mersennet — the zero-knowledge L1', url: 'https://mersennet.com', icon: '🌌', category: 'Docs' },
             { name: 'Token Approvals', desc: 'Check and manage token allowances', url: '#/approvals', icon: '🔐', category: 'Security', internal: true },
             { name: 'Gas Tracker', desc: 'Monitor gas prices and trends', url: '#/gastracker', icon: '⛽', category: 'Tools', internal: true },
         ];
@@ -3312,7 +3310,7 @@
             '<div class="page-header">',
             '  <div>',
             '    <h1 class="page-title">DApps & Quick Actions</h1>',
-            '    <div class="page-subtitle">Explore applications and tools on Prime Chain</div>',
+            '    <div class="page-subtitle">Explore applications and tools on Mersennet</div>',
             '  </div>',
             '</div>',
             cardsHtml,

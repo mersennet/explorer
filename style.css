@@ -1,14 +1,14 @@
 /* =============================================================================
-   PrimeScan — Prime Chain Explorer
+   Mersennet Explorer
    Design system: PrimeFi / PrimeStaking UI v2
    ============================================================================= */
 
 /* ─── 1. DESIGN TOKENS ───────────────────────────────────────────────────── */
 :root {
-    --color-main: #9461FF;
-    --color-secondary: #6A2FFF;
+    --color-main: #7c5cff;
+    --color-secondary: #5b3df0;
     --color-white: #FFFFFF;
-    --accent: #9461FF;
+    --accent: #7c5cff;
 
     --bg-100: #F8F9FE;
     --bg-200: #F3EDFF;
@@ -26,8 +26,8 @@
     --border-subtle: #F5F6F8;
     --color-overlay: #D8D0EA80;
 
-    --gradient-primary: linear-gradient(90deg, #9461FF 35%, #6A2FFF 100%);
-    --gradient-hero: linear-gradient(135deg, #9461FF 0%, #6A2FFF 50%, #4901FF 100%);
+    --gradient-primary: linear-gradient(90deg, #7c5cff 35%, #5b3df0 100%);
+    --gradient-hero: linear-gradient(135deg, #7c5cff 0%, #5b3df0 50%, #4a32c8 100%);
 
     --success: #1AB280;
     --success-bg: #DFFBEE;
@@ -65,47 +65,48 @@
 }
 
 /* ─── Dark mode ──────────────────────────────────────────────────────────── */
+/* Cosmic theme — matches mersennet.com (void / deep / surface, violet + cyan) */
 .dark-mode {
     --color-main: #EFE8FF;
-    --color-secondary: #4901FF;
-    --color-white: #281459;
-    --accent: #C5AFF1;
+    --color-secondary: #7c5cff;
+    --color-white: #120c2e;
+    --accent: #9d86ff;
 
-    --bg-100: #0D002F;
-    --bg-200: #1A0A45;
-    --bg-300: #2D1670;
-    --bg-400: #AB8BF5;
-    --bg-card: #1A0A45;
-    --bg-surface: #140838;
+    --bg-100: #05030f;
+    --bg-200: #0a0720;
+    --bg-300: #120c2e;
+    --bg-400: #9d86ff;
+    --bg-card: #0a0720;
+    --bg-surface: #080518;
 
     --text-primary: #F0ECFF;
-    --text-secondary: #B4B1F5;
-    --text-tertiary: #7B6FA8;
+    --text-secondary: #a99fd6;
+    --text-tertiary: #6f659e;
 
-    --color-border: #2D1670;
-    --border: #2D1670;
-    --border-subtle: #231060;
-    --color-overlay: #0E003099;
+    --color-border: #1d1542;
+    --border: #1d1542;
+    --border-subtle: #161038;
+    --color-overlay: #05030f99;
 
-    --gradient-primary: linear-gradient(90deg, #C5AFF1 35%, #6A2FFF 100%);
+    --gradient-primary: linear-gradient(90deg, #9d86ff 0%, #7c5cff 100%);
 
     --success: #1AD598;
     --success-bg: rgba(26,213,152,0.12);
     --danger: #ef4444;
     --danger-bg: rgba(239,68,68,0.12);
-    --warn: #f59e0b;
-    --warn-bg: rgba(245,158,11,0.12);
-    --info: #60a5fa;
-    --info-bg: rgba(96,165,250,0.12);
+    --warn: #ffc857;
+    --warn-bg: rgba(255,200,87,0.12);
+    --info: #2ff0ff;
+    --info-bg: rgba(47,240,255,0.12);
 
-    --gradient-hero: linear-gradient(135deg, #4901FF 0%, #3d01d0 50%, #281459 100%);
+    --gradient-hero: linear-gradient(135deg, #7c5cff 0%, #4a32c8 50%, #120c2e 100%);
 
     --shadow-xs: 0 1px 2px rgba(0,0,0,0.2);
     --shadow-card: 0 1px 4px rgba(0,0,0,0.2), 0 0 1px rgba(0,0,0,0.1);
     --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
     --shadow-lg: 0 12px 40px rgba(0,0,0,0.4);
     --shadow-header: 0 1px 4px rgba(0,0,0,0.3);
-    --shadow-hover: 0 8px 24px rgba(148,97,255,0.2), 0 2px 8px rgba(0,0,0,0.2);
+    --shadow-hover: 0 8px 24px rgba(124,92,255,0.25), 0 2px 8px rgba(0,0,0,0.2);
 }
 
 /* ─── 2. RESET & BASE ────────────────────────────────────────────────────── */
