@@ -29,7 +29,13 @@
     /* ===========================================
        KNOWN CONTRACTS
        =========================================== */
+    /* Native precompiles on the Mersennet chain */
+    const PRIME_ORDERS_PRECOMPILE  = '0x0000000000000000000000000000000000000100';
+    const SHIELD_BRIDGE_PRECOMPILE = '0x0000000000000000000000000000000000000200';
+
     const KNOWN_CONTRACTS = {
+        '0x0000000000000000000000000000000000000100': { name: 'PrimeOrders',  type: 'precompile', compiler: 'native (Rust)', source: 'crates/core/src/precompiles.rs', license: 'MIT' },
+        '0x0000000000000000000000000000000000000200': { name: 'ShieldBridge', type: 'precompile', compiler: 'native (Rust)', source: 'crates/core/src/precompiles.rs', license: 'MIT' },
         '0x973ee1bf0907287d1eb8a144d88b34f515c83f29': { name: 'Multicall3',       type: 'utility',                                      compiler: 'solc 0.8.20', source: 'contracts/src/foundation/Multicall3.sol',    license: 'MIT' },
         '0x079bf1207b51acda83e2e8178344f62a883f8479': { name: 'WPRIM',            type: 'token',  symbol: 'WPRIM', decimals: 18,         compiler: 'solc 0.8.20', source: 'contracts/src/foundation/WPRIM.sol',        license: 'MIT' },
         '0xb22f77d89122e9e3784bfd3eee9616273f38238d': { name: 'MockUSDC',         type: 'token',  symbol: 'USDC',  decimals: 6,          compiler: 'solc 0.8.20', source: 'contracts/src/foundation/MockERC20.sol',    license: 'MIT' },
@@ -169,7 +175,7 @@
         document.querySelectorAll('.sidebar-item[data-page], .bottombar-item[data-page]').forEach(function(el) {
             el.classList.toggle('active', el.dataset.page === page);
         });
-        var titleMap = { home:'Mersennet Explorer', blocks:'Blocks', txs:'Transactions', validators:'Validators', gastracker:'Gas Tracker', tokens:'Tokens', accounts:'Top Accounts', charts:'Charts & Stats', network:'Network Info', approvals:'Token Approvals', watchlist:'Watchlist', dapps:'DApps' };
+        var titleMap = { home:'Mersennet Explorer', blocks:'Blocks', txs:'Transactions', validators:'Validators', gastracker:'Gas Tracker', tokens:'Tokens', accounts:'Top Accounts', charts:'Charts & Stats', network:'Network Info', approvals:'Token Approvals', watchlist:'Watchlist', dapps:'DApps', verify:'Verify Proofs', shielded:'Shielded Markets' };
         var titleEl = document.getElementById('pageTitle');
         if (titleEl) titleEl.textContent = titleMap[page] || 'Mersennet Explorer';
     }
@@ -844,10 +850,73 @@
         return { name: selector, badge_class: 'badge-info' };
     }
 
-    function methodBadgeHtml(input) {
+    function methodBadgeHtml(input, to) {
+        var toAddr = (to || '').toLowerCase();
+        if (toAddr === SHIELD_BRIDGE_PRECOMPILE) {
+            return '<span class="method-tag badge-shielded" title="Shielded transaction — details are private. Only nullifiers and commitments are recorded on-chain.">🛡 Shielded</span>';
+        }
+        if (toAddr === PRIME_ORDERS_PRECOMPILE) {
+            var po = decodeMethod(input);
+            return '<span class="method-tag badge-info">' + (po ? escapeHtml(po.name) : 'PrimeOrders') + '</span>';
+        }
         var decoded = decodeMethod(input);
         if (!decoded) return '';
         return '<span class="method-tag ' + decoded.badge_class + '">' + escapeHtml(decoded.name) + '</span>';
+    }
+
+    /* ===========================================
+       SHIELDED / PRIVACY HELPERS
+       =========================================== */
+
+    /** Convert a serde-serialized [u8;32] (array of numbers) or hex string to 0x-hex. */
+    function bytesToHex(v) {
+        if (typeof v === 'string') return v.startsWith('0x') ? v : '0x' + v;
+        if (Array.isArray(v)) {
+            return '0x' + v.map(function (b) { return (b & 0xff).toString(16).padStart(2, '0'); }).join('');
+        }
+        return '—';
+    }
+
+    /** Shielded domain events serialize as externally-tagged enums:
+     *  { "FbaCleared": {...} }. Normalize to { kind, data }. */
+    function normalizeShieldedEvent(ev) {
+        var data = ev.data || {};
+        if (ev.kind) return { kind: ev.kind, data: data };
+        var keys = Object.keys(data);
+        if (keys.length === 1 && typeof data[keys[0]] === 'object') {
+            return { kind: keys[0], data: data[keys[0]] };
+        }
+        return { kind: 'shielded_event', data: data };
+    }
+
+    function shieldedEventRowHtml(ev) {
+        var n = normalizeShieldedEvent(ev);
+        var k = (n.kind || '').toLowerCase();
+        var d = n.data || {};
+        var label, desc;
+        if (k.indexOf('fba') !== -1 || n.kind === 'FbaCleared') {
+            label = 'Auction Cleared';
+            desc = 'Market #' + (d.market_id != null ? d.market_id : '?') +
+                ' — uniform-price batch auction, ' + (d.intent_count || 0) + ' intents (participants private)';
+        } else if (k.indexOf('mempool') !== -1 || n.kind === 'MempoolBatchAdmitted') {
+            label = 'Encrypted Batch';
+            desc = (d.intent_count || 0) + ' threshold-encrypted intents admitted (contents private until decryption)';
+        } else if (k.indexOf('liquidation') !== -1 || n.kind === 'LiquidationSettled') {
+            label = 'Liquidation Settled';
+            desc = 'Sealed-bid auction — winner identified only by bond commitment ' +
+                truncHash(bytesToHex(d.winner_bond_commitment));
+        } else if (k.indexOf('root') !== -1 || n.kind === 'ShieldedRootAdvanced') {
+            label = 'Shielded Root Advanced';
+            desc = '+' + (d.notes_added || 0) + ' notes, +' + (d.nullifiers_added || 0) +
+                ' nullifiers → root ' + truncHash(bytesToHex(d.new_root));
+        } else {
+            label = n.kind || 'Shielded Event';
+            desc = 'Aggregate-only event (no addresses or amounts are revealed)';
+        }
+        return '<div class="detail-row">' +
+            '<div class="detail-label"><span class="method-tag badge-shielded">🛡 ' + escapeHtml(label) + '</span></div>' +
+            '<div class="detail-value" style="color:var(--text-secondary)">' + escapeHtml(desc) + '</div>' +
+            '</div>';
     }
 
     /* ===========================================
@@ -1323,6 +1392,15 @@
         var difficulty = block.difficulty || block.totalDifficulty || '0x0';
         var nonce = block.nonce || '0x0000000000000000';
 
+        var domainEvents = block.domainEvents || block.domain_events || [];
+        var shieldedEvents = domainEvents.filter(function (ev) { return ev && ev.domain === 'shielded'; });
+        var otherEvents = domainEvents.filter(function (ev) { return ev && ev.domain !== 'shielded'; });
+        var shieldedRootEv = null;
+        for (var sei = 0; sei < shieldedEvents.length; sei++) {
+            var nse = normalizeShieldedEvent(shieldedEvents[sei]);
+            if ((nse.kind || '').toLowerCase().indexOf('root') !== -1) shieldedRootEv = nse;
+        }
+
         var txRows = '';
         if (txCount > 0) {
             txRows = block.transactions.map(function (t) {
@@ -1330,7 +1408,7 @@
                 return [
                     '<tr>',
                     '  <td><a href="#/tx/' + escapeHtml(tx.hash) + '" class="hash-link">' + truncHash(tx.hash) + '</a></td>',
-                    '  <td>' + methodBadgeHtml(tx.input) + '</td>',
+                    '  <td>' + methodBadgeHtml(tx.input, tx.to) + '</td>',
                     '  <td>' + (tx.from ? '<a href="#/address/' + escapeHtml(tx.from) + '" class="addr-link">' + truncAddr(tx.from) + '</a>' : '—') + '</td>',
                     '  <td style="color:var(--text-secondary);font-size:0.75rem">→</td>',
                     '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:var(--warn)">Contract Create</span>') + '</td>',
@@ -1390,6 +1468,20 @@
             '    <div class="detail-row"><div class="detail-label">Nonce</div><div class="detail-value mono">' + nonce + '</div></div>',
             '  </div>',
             '',
+            '  <div class="detail-card" id="privacy">',
+            '    <div class="detail-card-title">🛡 Privacy &amp; Proofs</div>',
+            '    <div class="detail-row"><div class="detail-label">ZK State Proof</div><div class="detail-value" id="blockProofStatus"><span class="text-muted">Checking…</span></div></div>',
+            '    <div class="detail-row"><div class="detail-label">Shielded State Root</div><div class="detail-value mono" id="blockShieldedRoot">' + (shieldedRootEv ? bytesToHex(shieldedRootEv.data.new_root) : '<span class="text-muted">—</span>') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Nullifier Root</div><div class="detail-value mono" id="blockNullifierRoot"><span class="text-muted">—</span></div></div>',
+            shieldedEvents.length > 0 ? [
+                '    <div class="separator"></div>',
+                '    <div class="detail-row"><div class="detail-label">Shielded Activity</div><div class="detail-value text-muted">' + shieldedEvents.length + ' aggregate-only event' + (shieldedEvents.length !== 1 ? 's' : '') + ' — no addresses or amounts are revealed</div></div>',
+                shieldedEvents.map(shieldedEventRowHtml).join('\n'),
+            ].join('\n') : '',
+            '    <div class="separator"></div>',
+            '    <div class="detail-row"><div class="detail-label"></div><div class="detail-value"><a href="#/verify?block=' + num + '" class="hash-link">Verify this block\'s state proof →</a></div></div>',
+            '  </div>',
+            '',
             txCount > 0 ? [
                 '  <div class="detail-card" id="txs">',
                 '    <div class="detail-card-title">Transactions (' + txCount + ')</div>',
@@ -1405,6 +1497,30 @@
             ].join('\n') : '',
             '</div></div>',
         ].join('\n');
+
+        // Async: fetch the SP1 state-transition proof for this block.
+        (async function loadBlockProof() {
+            var statusEl = document.getElementById('blockProofStatus');
+            if (!statusEl) return;
+            try {
+                var proof = await rpc('prime_getStateProof', ['0x' + num.toString(16)]);
+                if (!statusEl.isConnected) return;
+                if (proof && proof.proofBincodeHex) {
+                    var sizeKb = ((proof.proofBincodeHex.length - 2) / 2 / 1024).toFixed(1);
+                    statusEl.innerHTML = '<span class="status-badge status-success"><span class="status-dot"></span>' +
+                        escapeHtml(proof.proofType || 'SP1') + ' proof attached</span>' +
+                        ' <span class="text-muted" style="margin-left:8px">' + sizeKb + ' KB · ' + (proof.txCount || 0) + ' txs proven</span>';
+                    var sr = document.getElementById('blockShieldedRoot');
+                    if (sr && proof.newStateRoot) sr.textContent = proof.newStateRoot;
+                    var nr = document.getElementById('blockNullifierRoot');
+                    if (nr && proof.newNullifierRoot) nr.textContent = proof.newNullifierRoot;
+                } else {
+                    statusEl.innerHTML = '<span class="text-muted">' + escapeHtml((proof && proof.reason) || 'No state proof at this block') + '</span>';
+                }
+            } catch (e) {
+                if (statusEl.isConnected) statusEl.innerHTML = '<span class="text-muted">Proof unavailable (' + escapeHtml(e.message) + ')</span>';
+            }
+        })();
     }
     pageBlockDetail._page = 'blockchain';
 
@@ -1455,7 +1571,7 @@
             return [
                 '<tr>',
                 '  <td><a href="#/tx/' + escapeHtml(tx.hash) + '" class="hash-link">' + truncHash(tx.hash) + '</a></td>',
-                '  <td>' + methodBadgeHtml(tx.input) + '</td>',
+                '  <td>' + methodBadgeHtml(tx.input, tx.to) + '</td>',
                 '  <td><a href="#/block/' + tx._blockNum + '" class="hash-link">' + formatNum(tx._blockNum) + '</a></td>',
                 '  <td class="td-time">' + timeAgo(tx._blockNum, state.latestBlock) + '</td>',
                 '  <td><a href="#/address/' + escapeHtml(tx.from) + '" class="addr-link">' + truncAddr(tx.from) + '</a></td>',
@@ -1549,8 +1665,12 @@
         var savingsWei = feeWei - burntFeesWei;
         if (savingsWei < 0n) savingsWei = 0n;
 
+        var isShieldedTx = (tx.to || '').toLowerCase() === SHIELD_BRIDGE_PRECOMPILE;
+
         var txActionHtml = '';
-        if (tx.value && hexToBigInt(tx.value) > 0n && (!tx.input || tx.input === '0x')) {
+        if (isShieldedTx) {
+            txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="method-tag badge-shielded">🛡 Shielded</span> <span class="text-muted">Interaction with the ShieldBridge precompile — note contents, recipients, and shielded amounts are private. Only nullifiers and commitments are recorded on-chain.</span></div></div>';
+        } else if (tx.value && hexToBigInt(tx.value) > 0n && (!tx.input || tx.input === '0x')) {
             txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="status-badge status-success" style="font-size:0.8rem"><span class="status-dot"></span>Transfer</span> <strong>' + formatPRIM(tx.value) + '</strong> to ' + (tx.to ? '<a href="#/address/' + escapeHtml(tx.to) + '" class="addr-link">' + truncAddr(tx.to) + '</a>' : 'Contract') + '</div></div>';
         } else if (tx.input && tx.input.length >= 10) {
             var actionDecoded = decodeMethod(tx.input);
@@ -1808,6 +1928,7 @@
             '  <div class="detail-card-title">Overview</div>',
             '  <div class="detail-row"><div class="detail-label">PRIM Balance</div><div class="detail-value mono" style="font-size:1rem;font-weight:600">' + formatPRIM(balance) + '</div></div>',
             '  <div class="detail-row"><div class="detail-label">Token Holdings</div><div class="detail-value">' + (tokenBalances.length > 0 ? '<span class="method-tag">' + tokenBalances.length + ' Token' + (tokenBalances.length !== 1 ? 's' : '') + '</span>' : 'None') + '</div></div>',
+            !isContract ? '  <div class="detail-row"><div class="detail-label">🛡 Privacy</div><div class="detail-value text-muted" style="font-size:0.8rem">Only transparent activity is shown. Shielded transfers, orders, and positions on Mersennet are private and not publicly linkable to this address.</div></div>' : '',
             '</div>',
         ].join('\n');
 
@@ -1876,7 +1997,7 @@
             var inputData = tx.input || '0x';
             return '<tr>' +
                 '<td><a href="#/tx/' + escapeHtml(tx.hash) + '" class="hash-link">' + truncHash(tx.hash) + '</a></td>' +
-                '<td>' + methodBadgeHtml(inputData) + '</td>' +
+                '<td>' + methodBadgeHtml(inputData, txTo) + '</td>' +
                 '<td><a href="#/block/' + bn + '" class="hash-link">' + formatNum(bn) + '</a></td>' +
                 '<td class="td-time">' + (tx.timestamp ? formatTimeAgo(parseInt(tx.timestamp)) : timeAgo(bn, state.latestBlock)) + '</td>' +
                 '<td>' + addrDisplay(txFrom) + '</td>' +
@@ -3320,6 +3441,155 @@
     pageDApps._page = 'dapps';
 
     /* ===========================================
+       PAGE: VERIFY STATE PROOFS
+       =========================================== */
+    async function pageVerify(el) {
+        await refreshGlobal();
+        var query = (location.hash.split('?')[1] || '');
+        var qBlock = (query.match(/(?:^|&)block=(\d+)/) || [])[1] || '';
+
+        el.innerHTML = [
+            '<div class="main-content"><div class="container">',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Verify Proofs' }]),
+            '  <div class="detail-header">',
+            '    <div class="detail-icon" style="background:rgba(124,93,250,0.12)">🛡</div>',
+            '    <div class="detail-title-group">',
+            '      <div class="detail-title">Verify State Proofs</div>',
+            '      <div class="text-muted" style="font-size:0.85rem">Every Mersennet block carries an SP1 zero-knowledge proof of its state transition. Fetch and verify the proof for any block — no trust in the RPC node required beyond the proof itself.</div>',
+            '    </div>',
+            '  </div>',
+            '  <div class="detail-card">',
+            '    <div class="detail-card-title">Fetch Proof</div>',
+            '    <div style="display:flex;gap:10px;padding:1rem;flex-wrap:wrap">',
+            '      <input id="verifyBlockInput" class="search-input" type="text" placeholder="Block number (empty = latest)" value="' + escapeHtml(qBlock) + '" style="flex:1;min-width:200px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-surface);color:var(--text-primary)">',
+            '      <button id="verifyFetchBtn" class="btn btn-primary" style="padding:10px 20px;border-radius:8px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-weight:600">Fetch Proof</button>',
+            '    </div>',
+            '  </div>',
+            '  <div id="verifyResult"></div>',
+            '</div></div>',
+        ].join('\n');
+
+        var resultEl = document.getElementById('verifyResult');
+
+        async function fetchAndRender() {
+            var raw = document.getElementById('verifyBlockInput').value.trim();
+            var params = raw ? ['0x' + parseInt(raw, 10).toString(16)] : ['latest'];
+            resultEl.innerHTML = '<div class="detail-card"><div style="padding:1.5rem" class="text-muted">Fetching proof…</div></div>';
+            var proof;
+            try {
+                proof = await rpc('prime_getStateProof', params);
+            } catch (e) {
+                resultEl.innerHTML = '<div class="detail-card"><div style="padding:1.5rem" class="text-muted">RPC error: ' + escapeHtml(e.message) + '</div></div>';
+                return;
+            }
+            if (!proof || !proof.proofBincodeHex) {
+                resultEl.innerHTML = '<div class="detail-card"><div style="padding:1.5rem" class="text-muted">' + escapeHtml((proof && proof.reason) || 'No state proof available for this block.') + '</div></div>';
+                return;
+            }
+            var sizeKb = ((proof.proofBincodeHex.length - 2) / 2 / 1024).toFixed(1);
+            resultEl.innerHTML = [
+                '<div class="detail-card">',
+                '  <div class="detail-card-title">State Transition Proof — Block #' + formatNum(proof.blockHeight || 0) + '</div>',
+                '  <div class="detail-row"><div class="detail-label">Proof Type</div><div class="detail-value"><span class="method-tag badge-shielded">' + escapeHtml(proof.proofType || 'SP1') + '</span></div></div>',
+                '  <div class="detail-row"><div class="detail-label">Block Hash</div><div class="detail-value mono">' + escapeHtml(proof.blockHash || '—') + '</div></div>',
+                '  <div class="detail-row"><div class="detail-label">Txs Proven</div><div class="detail-value">' + (proof.txCount || 0) + '</div></div>',
+                '  <div class="detail-row"><div class="detail-label">Proof Size</div><div class="detail-value">' + sizeKb + ' KB</div></div>',
+                '  <div class="separator"></div>',
+                '  <div class="detail-row"><div class="detail-label">Prev State Root</div><div class="detail-value mono">' + escapeHtml(proof.prevStateRoot || '—') + '</div></div>',
+                '  <div class="detail-row"><div class="detail-label">New State Root</div><div class="detail-value mono">' + escapeHtml(proof.newStateRoot || '—') + '</div></div>',
+                '  <div class="detail-row"><div class="detail-label">Prev Nullifier Root</div><div class="detail-value mono">' + escapeHtml(proof.prevNullifierRoot || '—') + '</div></div>',
+                '  <div class="detail-row"><div class="detail-label">New Nullifier Root</div><div class="detail-value mono">' + escapeHtml(proof.newNullifierRoot || '—') + '</div></div>',
+                '  <div class="detail-row"><div class="detail-label">Market State Hash</div><div class="detail-value mono">' + escapeHtml(proof.newMarketStateHash || '—') + '</div></div>',
+                '  <div class="separator"></div>',
+                '  <div class="detail-row"><div class="detail-label">Verification</div><div class="detail-value" id="verifyStatus">',
+                '    <button id="verifyRunBtn" class="btn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-primary);cursor:pointer;font-weight:600">Verify proof on node</button>',
+                '  </div></div>',
+                '</div>',
+            ].join('\n');
+
+            var runBtn = document.getElementById('verifyRunBtn');
+            runBtn.addEventListener('click', async function () {
+                var statusEl = document.getElementById('verifyStatus');
+                statusEl.innerHTML = '<span class="text-muted">Verifying…</span>';
+                try {
+                    var res = await rpc('prime_verifyStateProof', [proof.proofBincodeHex]);
+                    if (res && res.valid) {
+                        statusEl.innerHTML = '<span class="status-badge status-success"><span class="status-dot"></span>Proof valid — state transition verified</span>';
+                    } else {
+                        statusEl.innerHTML = '<span class="status-badge status-fail"><span class="status-dot"></span>Proof INVALID</span>';
+                    }
+                } catch (e) {
+                    statusEl.innerHTML = '<span class="text-muted">Verification failed: ' + escapeHtml(e.message) + '</span>';
+                }
+            });
+        }
+
+        document.getElementById('verifyFetchBtn').addEventListener('click', fetchAndRender);
+        document.getElementById('verifyBlockInput').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') fetchAndRender();
+        });
+        fetchAndRender();
+    }
+    pageVerify._page = 'verify';
+
+    /* ===========================================
+       PAGE: SHIELDED MARKETS
+       =========================================== */
+    async function pageShieldedMarkets(el) {
+        await refreshGlobal();
+        var aggregates = null;
+        var shieldedRoot = null;
+        try { aggregates = await rpc('prime_getShieldedMarketAggregates', []); } catch (e) { /* node may not expose */ }
+        try { shieldedRoot = await rpc('prime_getShieldedRoot', []); } catch (e) { /* ignore */ }
+
+        var markets = (aggregates && aggregates.markets) || [];
+        var rows = markets.map(function (m) {
+            return '<tr>' +
+                '<td class="mono">#' + escapeHtml(String(m.marketId)) + '</td>' +
+                '<td class="td-right mono">' + formatNum(Number(hexToBigInt(m.markPrice || '0x0'))) + '</td>' +
+                '<td class="td-right mono">' + formatNum(Number(hexToBigInt(m.lastClearingPrice || '0x0'))) + '</td>' +
+                '<td class="td-right mono">' + formatNum(Number(hexToBigInt(m.lastVolume || '0x0'))) + '</td>' +
+                '<td class="td-right mono">' + formatNum(Number(hexToBigInt(m.longOpenInterest || '0x0'))) + '</td>' +
+                '<td class="td-right mono">' + formatNum(Number(hexToBigInt(m.shortOpenInterest || '0x0'))) + '</td>' +
+                '<td class="td-right mono">' + (m.liquidatableCount || 0) + '</td>' +
+                '</tr>';
+        }).join('');
+
+        el.innerHTML = [
+            '<div class="main-content"><div class="container">',
+            breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Shielded Markets' }]),
+            '  <div class="detail-header">',
+            '    <div class="detail-icon" style="background:rgba(124,93,250,0.12)">🛡</div>',
+            '    <div class="detail-title-group">',
+            '      <div class="detail-title">Shielded Markets</div>',
+            '      <div class="text-muted" style="font-size:0.85rem">Aggregate-only view of Mersennet\'s shielded order flow. Individual orders, positions, and trader addresses are private — only market-level aggregates are published on-chain.</div>',
+            '    </div>',
+            '  </div>',
+            shieldedRoot && shieldedRoot.shieldedStateRoot ? [
+                '  <div class="detail-card">',
+                '    <div class="detail-card-title">Shielded State</div>',
+                '    <div class="detail-row"><div class="detail-label">Current Shielded Root</div><div class="detail-value mono">' + escapeHtml(shieldedRoot.shieldedStateRoot) + '</div></div>',
+                '  </div>',
+            ].join('\n') : '',
+            '  <div class="detail-card">',
+            '    <div class="detail-card-title">Market Aggregates</div>',
+            markets.length > 0 ? [
+                '    <div class="table-responsive">',
+                '      <table class="data-table">',
+                '        <thead><tr>',
+                '          <th>Market</th><th class="td-right">Mark Price</th><th class="td-right">Last Clearing</th><th class="td-right">Last Volume</th><th class="td-right">Long OI</th><th class="td-right">Short OI</th><th class="td-right">Liquidatable</th>',
+                '        </tr></thead>',
+                '        <tbody>' + rows + '</tbody>',
+                '      </table>',
+                '    </div>',
+            ].join('\n') : '    <div class="table-empty">No shielded market activity yet' + (aggregates ? '' : ' (shielded RPC not reachable)') + '</div>',
+            '  </div>',
+            '</div></div>',
+        ].join('\n');
+    }
+    pageShieldedMarkets._page = 'shielded';
+
+    /* ===========================================
        REGISTER ROUTES
        =========================================== */
     route('/',               pageHome);
@@ -3339,6 +3609,8 @@
     route('/watchlist',      pageWatchlist);
     route('/approvals',      pageApprovals);
     route('/dapps',          pageDApps);
+    route('/verify',         pageVerify);
+    route('/shielded',       pageShieldedMarkets);
 
     /* ===========================================
        INIT

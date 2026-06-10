@@ -304,6 +304,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 .badge-danger { background: var(--danger-bg); color: var(--danger); }
 .badge-warning { background: var(--warn-bg); color: var(--warn); }
 .badge-info { background: var(--info-bg); color: var(--info); }
+.badge-shielded { background: rgba(124, 93, 250, 0.14); color: var(--accent); border: 1px solid rgba(124, 93, 250, 0.35); }
 .badge-secondary { background: var(--bg-200); color: var(--text-secondary); }
 .badge-value { background: var(--info-bg); color: var(--info); }
 .badge-fail { background: var(--danger-bg); color: var(--danger); }
