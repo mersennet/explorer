@@ -151,7 +151,7 @@
                 var accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 if (accounts.length > 0) { _wallet = accounts[0]; updateUI(); }
                 try { await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x' + CHAIN_ID.toString(16) }] }); }
-                catch(e) { if (e.code === 4902) await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x' + CHAIN_ID.toString(16), chainName: 'Mersennet Testnet', rpcUrls: [RPC_URL], nativeCurrency: { name: 'PRIM', symbol: 'PRIM', decimals: 18 } }] }); }
+                catch(e) { if (e.code === 4902) await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x' + CHAIN_ID.toString(16), chainName: 'Mersennet Testnet', rpcUrls: [RPC_URL], nativeCurrency: { name: 'MRSN', symbol: 'MRSN', decimals: 18 } }] }); }
             } catch(e) { toast('Connection rejected', true); }
         });
         if (window.ethereum) window.ethereum.on('accountsChanged', function(a) { _wallet = a[0] || null; updateUI(); });
@@ -419,12 +419,12 @@
 
     function formatPRIM(hex) {
         const wei = hexToBigInt(hex);
-        if (wei === 0n) return '0 PRIM';
+        if (wei === 0n) return '0 MRSN';
         const whole = wei / 1000000000000000000n;
         const frac = wei % 1000000000000000000n;
-        if (frac === 0n) return whole.toLocaleString('en-US') + ' PRIM';
+        if (frac === 0n) return whole.toLocaleString('en-US') + ' MRSN';
         const fracStr = frac.toString().padStart(18, '0').replace(/0+$/, '');
-        return whole.toLocaleString('en-US') + '.' + fracStr.slice(0, 6) + ' PRIM';
+        return whole.toLocaleString('en-US') + '.' + fracStr.slice(0, 6) + ' MRSN';
     }
 
     function formatPRIMShort(hex) {
@@ -1141,7 +1141,7 @@
             '        <div class="home-stat-icon" style="background:var(--warn-bg);color:var(--warn)">' + ICONS.coin + '</div>',
             '        <div class="home-stat-content">',
             '          <div class="home-stat-label">Total Staked</div>',
-            '          <div class="home-stat-value">' + formatPRIMShort('0x' + totalStake.toString(16)) + ' PRIM</div>',
+            '          <div class="home-stat-value">' + formatPRIMShort('0x' + totalStake.toString(16)) + ' MRSN</div>',
             '        </div>',
             '      </div>',
             '      <div class="home-stat-card anim-reveal" style="--d:5">',
@@ -1276,7 +1276,7 @@
             '    </div>',
             '  </div>',
             '  <div class="item-right">',
-            '    <span class="badge badge-sm badge-secondary">' + value + ' PRIM</span>',
+            '    <span class="badge badge-sm badge-secondary">' + value + ' MRSN</span>',
             '  </div>',
             '</div>',
         ].join('');
@@ -1341,7 +1341,7 @@
             '    <div class="table-responsive">',
             '      <table class="data-table" id="blocksTable">',
             '        <thead><tr>',
-            '          <th data-sort="0">Block</th><th>Age</th><th>Fee Recipient</th><th data-sort="3">Txn</th><th>Gas Used</th><th>Gas Limit</th><th>Base Fee</th><th class="td-right">Burnt Fees (PRIM)</th>',
+            '          <th data-sort="0">Block</th><th>Age</th><th>Fee Recipient</th><th data-sort="3">Txn</th><th>Gas Used</th><th>Gas Limit</th><th>Base Fee</th><th class="td-right">Burnt Fees (MRSN)</th>',
             '        </tr></thead>',
             '        <tbody>' + (rows || '<tr><td colspan="8" class="table-empty">No blocks</td></tr>') + '</tbody>',
             '      </table>',
@@ -1412,7 +1412,7 @@
                     '  <td>' + (tx.from ? '<a href="#/address/' + escapeHtml(tx.from) + '" class="addr-link">' + truncAddr(tx.from) + '</a>' : '—') + '</td>',
                     '  <td style="color:var(--text-secondary);font-size:0.75rem">→</td>',
                     '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:var(--warn)">Contract Create</span>') + '</td>',
-                    '  <td class="td-right mono">' + formatPRIMShort(tx.value || '0x0') + ' PRIM</td>',
+                    '  <td class="td-right mono">' + formatPRIMShort(tx.value || '0x0') + ' MRSN</td>',
                     '  <td class="mono" style="font-size:0.78rem">' + formatGwei(txGasPrice(tx) || '0x0') + '</td>',
                     '</tr>',
                 ].join('');
@@ -1456,7 +1456,7 @@
             '    </div>',
             '    <div class="detail-row"><div class="detail-label">Gas Limit</div><div class="detail-value mono">' + formatNum(gasLimit) + '</div></div>',
             '    <div class="detail-row"><div class="detail-label">Base Fee Per Gas</div><div class="detail-value mono">' + (baseFeeRaw !== '0x0' ? formatGwei(baseFeeRaw) + ' <span class="text-muted">(' + formatPRIM(baseFeeRaw) + ')</span>' : '—') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Burnt Fees</div><div class="detail-value mono">' + (burntFees > 0n ? '<span style="color:var(--danger)">🔥 ' + formatPRIM(burntFeesHex) + '</span>' : '0 PRIM') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Burnt Fees</div><div class="detail-value mono">' + (burntFees > 0n ? '<span style="color:var(--danger)">🔥 ' + formatPRIM(burntFeesHex) + '</span>' : '0 MRSN') + '</div></div>',
             '    <div class="detail-row"><div class="detail-label">Extra Data</div><div class="detail-value">' + (extraDataDecoded ? escapeHtml(extraDataDecoded) + ' <span class="text-muted mono" style="font-size:0.78rem">(Hex: ' + escapeHtml(extraData) + ')</span>' : '<span class="mono">' + escapeHtml(extraData) + '</span>') + '</div></div>',
             '    <div class="separator"></div>',
             '    <div class="detail-row"><div class="detail-label">Hash</div><div class="detail-value mono">' + (block.hash || '—') + ' ' + (block.hash ? copyBtnHtml(block.hash) : '') + '</div></div>',
@@ -1926,7 +1926,7 @@
         var overviewHtml = [
             '<div class="detail-card" style="margin-bottom:1.5rem">',
             '  <div class="detail-card-title">Overview</div>',
-            '  <div class="detail-row"><div class="detail-label">PRIM Balance</div><div class="detail-value mono" style="font-size:1rem;font-weight:600">' + formatPRIM(balance) + '</div></div>',
+            '  <div class="detail-row"><div class="detail-label">MRSN Balance</div><div class="detail-value mono" style="font-size:1rem;font-weight:600">' + formatPRIM(balance) + '</div></div>',
             '  <div class="detail-row"><div class="detail-label">Token Holdings</div><div class="detail-value">' + (tokenBalances.length > 0 ? '<span class="method-tag">' + tokenBalances.length + ' Token' + (tokenBalances.length !== 1 ? 's' : '') + '</span>' : 'None') + '</div></div>',
             !isContract ? '  <div class="detail-row"><div class="detail-label">🛡 Privacy</div><div class="detail-value text-muted" style="font-size:0.8rem">Only transparent activity is shown. Shielded transfers, orders, and positions on Mersennet are private and not publicly linkable to this address.</div></div>' : '',
             '</div>',
@@ -2374,7 +2374,7 @@
             '    <div class="detail-row"><div class="detail-label">Consensus</div><div class="detail-value">Delegated Proof-of-Stake (DPoS)</div></div>',
             '    <div class="detail-row"><div class="detail-label">Min Stake</div><div class="detail-value mono">Contact validator operators for delegation</div></div>',
             '    <div class="detail-row"><div class="detail-label">Block Time</div><div class="detail-value">~' + BLOCK_TIME_SECS + ' second</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Block Reward</div><div class="detail-value mono">10 PRIM (halving every 35M blocks)</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Block Reward</div><div class="detail-value mono">10 MRSN (halving every 35M blocks)</div></div>',
             '    <div class="detail-row"><div class="detail-label">Total Staked</div><div class="detail-value mono">' + formatPRIM('0x' + totalStake.toString(16)) + '</div></div>',
             '    <div class="detail-row"><div class="detail-label">Staking APR (est.)</div><div class="detail-value mono">' + (totalStake > 0n ? (Number(10n * 365n * 86400n * 10000n * 1000000000000000000n / (totalStake * BigInt(BLOCK_TIME_SECS))) / 100).toFixed(2) + '%' : '—') + '</div></div>',
             '    <div class="detail-row"><div class="detail-label">Validator Dashboard</div><div class="detail-value"><a href="http://46.225.30.187:4001" target="_blank" class="hash-link">Open Dashboard →</a></div></div>',
@@ -2423,7 +2423,7 @@
             '      <div class="detail-card-title">Testnet Configuration</div>',
             '      <div class="detail-row"><div class="detail-label">Network Name</div><div class="detail-value">Mersennet Testnet</div></div>',
             '      <div class="detail-row"><div class="detail-label">Chain ID</div><div class="detail-value mono">' + CHAIN_ID + ' (0x' + CHAIN_ID.toString(16) + ')</div></div>',
-            '      <div class="detail-row"><div class="detail-label">Currency Symbol</div><div class="detail-value">PRIM</div></div>',
+            '      <div class="detail-row"><div class="detail-label">Currency Symbol</div><div class="detail-value">MRSN</div></div>',
             '      <div class="detail-row"><div class="detail-label">Decimals</div><div class="detail-value mono">18</div></div>',
             '      <div class="detail-row"><div class="detail-label">Block Time</div><div class="detail-value">~' + BLOCK_TIME_SECS + ' seconds</div></div>',
             '      <div class="detail-row"><div class="detail-label">Consensus</div><div class="detail-value">Delegated Proof-of-Stake</div></div>',
@@ -2457,8 +2457,8 @@
             '',
             '  <div class="detail-card">',
             '    <div class="detail-card-title">Token Economics</div>',
-            '    <div class="detail-row"><div class="detail-label">Max Supply</div><div class="detail-value mono">1,000,000,000 PRIM</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Initial Block Reward</div><div class="detail-value mono">10 PRIM</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Max Supply</div><div class="detail-value mono">1,000,000,000 MRSN</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Initial Block Reward</div><div class="detail-value mono">10 MRSN</div></div>',
             '    <div class="detail-row"><div class="detail-label">Halving Interval</div><div class="detail-value mono">35,000,000 blocks (~2.22 years)</div></div>',
             '    <div class="detail-row"><div class="detail-label">Block Rewards</div><div class="detail-value">70%</div></div>',
             '    <div class="detail-row"><div class="detail-label">Ecosystem &amp; Grants</div><div class="detail-value">10%</div></div>',
@@ -2482,7 +2482,7 @@
                         params: [{
                             chainId: '0x' + CHAIN_ID.toString(16),
                             chainName: 'Mersennet Testnet',
-                            nativeCurrency: { name: 'PRIM', symbol: 'PRIM', decimals: 18 },
+                            nativeCurrency: { name: 'MRSN', symbol: 'MRSN', decimals: 18 },
                             rpcUrls: ['http://46.225.30.187:8545'],
                             blockExplorerUrls: ['http://46.225.30.187'],
                         }],
@@ -2592,21 +2592,21 @@
             '    <div class="gas-tier-label">10th Percentile</div>',
             '    <div class="gas-tier-value">' + p10.toFixed(4) + '</div>',
             '    <div class="gas-tier-unit">Gwei</div>',
-            '    <div class="gas-tier-sub">Transfer: ' + (p10 * 21000 / 1e9).toFixed(8) + ' PRIM</div>',
+            '    <div class="gas-tier-sub">Transfer: ' + (p10 * 21000 / 1e9).toFixed(8) + ' MRSN</div>',
             '  </div>',
             '  <div class="gas-tier-card anim-reveal" style="--d:1;--tier-color:var(--info)">',
             '    <div class="gas-tier-badge" style="background:var(--info-bg);color:var(--info)">Average</div>',
             '    <div class="gas-tier-label">50th Percentile</div>',
             '    <div class="gas-tier-value">' + p50.toFixed(4) + '</div>',
             '    <div class="gas-tier-unit">Gwei</div>',
-            '    <div class="gas-tier-sub">Transfer: ' + (p50 * 21000 / 1e9).toFixed(8) + ' PRIM</div>',
+            '    <div class="gas-tier-sub">Transfer: ' + (p50 * 21000 / 1e9).toFixed(8) + ' MRSN</div>',
             '  </div>',
             '  <div class="gas-tier-card anim-reveal" style="--d:2;--tier-color:var(--warn)">',
             '    <div class="gas-tier-badge" style="background:var(--warn-bg);color:var(--warn)">High</div>',
             '    <div class="gas-tier-label">90th Percentile</div>',
             '    <div class="gas-tier-value">' + p90.toFixed(4) + '</div>',
             '    <div class="gas-tier-unit">Gwei</div>',
-            '    <div class="gas-tier-sub">Transfer: ' + (p90 * 21000 / 1e9).toFixed(8) + ' PRIM</div>',
+            '    <div class="gas-tier-sub">Transfer: ' + (p90 * 21000 / 1e9).toFixed(8) + ' MRSN</div>',
             '  </div>',
             '</div>',
 
@@ -2636,7 +2636,7 @@
             '    <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">',
             '      <div><label style="display:block;font-size:0.75rem;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Gas Units</label><input type="number" id="gasCalcUnits" class="gas-input" value="21000" style="width:150px"></div>',
             '      <div><label style="display:block;font-size:0.75rem;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Gas Price (Gwei)</label><input type="number" id="gasCalcPrice" class="gas-input" value="' + gasPriceGwei.toFixed(4) + '" step="0.001" style="width:150px"></div>',
-            '      <div id="gasCalcResult" style="font-size:1rem;font-weight:700;color:var(--accent);padding-bottom:8px">= ' + transferCostPRIM.toFixed(8) + ' PRIM</div>',
+            '      <div id="gasCalcResult" style="font-size:1rem;font-weight:700;color:var(--accent);padding-bottom:8px">= ' + transferCostPRIM.toFixed(8) + ' MRSN</div>',
             '    </div>',
             '    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">',
             '      <button class="btn btn-outline btn-sm gas-preset" data-gas="21000">Transfer (21k)</button>',
@@ -2667,7 +2667,7 @@
             var price = parseFloat(document.getElementById('gasCalcPrice').value) || 0;
             var cost = (units * price) / 1e9;
             var resultEl = document.getElementById('gasCalcResult');
-            if (resultEl) resultEl.textContent = '= ' + cost.toFixed(8) + ' PRIM';
+            if (resultEl) resultEl.textContent = '= ' + cost.toFixed(8) + ' MRSN';
         }
         var calcUnits = document.getElementById('gasCalcUnits');
         var calcPrice = document.getElementById('gasCalcPrice');
@@ -3028,7 +3028,7 @@
             breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Top Accounts' }]),
             '<div class="page-header">',
             '  <h1 class="page-title">Top Accounts</h1>',
-            '  <p class="page-subtitle">Accounts ranked by PRIM balance</p>',
+            '  <p class="page-subtitle">Accounts ranked by MRSN balance</p>',
             '</div>',
             '<div class="overview-grid" style="grid-template-columns:repeat(3,1fr)">',
             '  <div class="stat-card"><div class="stat-card-label">Total Accounts Tracked</div><div class="stat-card-value">' + formatNum(entries.length) + '</div></div>',
@@ -3397,7 +3397,7 @@
             { name: 'Mersennet Trade', desc: 'Perpetuals on the native on-chain order book', url: 'https://trade.mersennet.com', icon: '📈', category: 'DeFi' },
             { name: 'PrimeSwap DEX', desc: 'Swap tokens on Mersennet\'s native DEX', url: 'http://46.225.30.187:4000', icon: '🔄', category: 'DeFi' },
             { name: 'Validator Dashboard', desc: 'Monitor and manage validator nodes', url: 'http://46.225.30.187:4001', icon: '🛡️', category: 'Staking' },
-            { name: 'Faucet', desc: 'Get free testnet PRIM tokens', url: 'https://faucet.mersennet.com', icon: '💧', category: 'Tools' },
+            { name: 'Faucet', desc: 'Get free testnet MRSN tokens', url: 'https://faucet.mersennet.com', icon: '💧', category: 'Tools' },
             { name: 'Documentation', desc: 'Mersennet developer documentation', url: 'https://docs.mersennet.com', icon: '📖', category: 'Docs' },
             { name: 'Project Site', desc: 'Mersennet — the zero-knowledge L1', url: 'https://mersennet.com', icon: '🌌', category: 'Docs' },
             { name: 'Token Approvals', desc: 'Check and manage token allowances', url: '#/approvals', icon: '🔐', category: 'Security', internal: true },
