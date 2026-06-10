@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mersennet Explorer</title>
     <meta name="description" content="Explore blocks, transactions, addresses, contracts and validators on Mersennet (Chain ID 131071)">
-    <meta name="theme-color" content="#7c5cff">
+    <meta name="theme-color" content="#000000">
     <meta property="og:title" content="Mersennet Explorer">
     <meta property="og:description" content="Explore blocks, transactions, addresses, contracts and validators on Mersennet (Chain ID 131071)">
     <meta property="og:type" content="website">
@@ -15,8 +15,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=5">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg%20viewBox='0%200%20125%2086'%20fill='none'%20xmlns='http%3A//www.w3.org/2000/svg'><path%20d='M0%200C4.65%204.23%205.79%209.68%207.09%2015.62%208.41%2021.18%2010.06%2025.1%2014.72%2028.56%2020.1%2031.38%2024.77%2032.16%2030.72%2030.56%2034.86%2028.52%2036.66%2026.54%2038.84%2022.5%2040.67%2019.13%2041.47%2017.73%2044.72%2015.56%2047.3%2020.77%2046.34%2024%2044.84%2029.43%2040.78%2040.81%2033.12%2049.57%2022.72%2055.56%2013.28%2059.91%203.47%2061.59-6.47%2057.94-20.15%2051.68-27.12%2043.07-32.59%2029.25-34.19%2020.71-34.33%2012.37-30.28%204.56-22.13-5.1-10.58-7.39%200%200Z'%20fill='%239461FF'%20transform='translate(33.28%2C24.44)'/><path%20d='M0%200C10.09%206.6%2017.64%2015.51%2020.59%2027.38%2021.87%2035.58%2021.85%2043.56%2018%2051%2014.35%2055.33%2010.62%2058.67%204.88%2059.4-3.03%2059.34-8.26%2058.88-14.12%2053.25-17.87%2048.7-18.8%2043.14-20.04%2037.52-21.41%2032.48-22.87%2029.81-27.12%2026.75-31.96%2024.27-36.79%2023.27-42.14%2024.49-47.72%2026.74-49.97%2030.54-52.68%2035.76-54%2038-54%2038-57%2040-58.58%2038.42-58.28%2036.88-58.38%2034.69-58.22%2023.85-52.44%2014.54-45%207-32.28-4.18-15.38-8.02%200%200Z'%20fill='%239461FF'%20transform='translate(104%2C6)'/></svg>">
+    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg viewBox='0 0 96 96' xmlns='http://www.w3.org/2000/svg'><g fill='%237dff9b'><rect x='8' y='14' width='12' height='68' rx='6'/><rect x='25' y='14' width='12' height='30' rx='6'/><rect x='42' y='14' width='12' height='46' rx='6'/><rect x='59' y='14' width='12' height='30' rx='6'/><rect x='76' y='14' width='12' height='68' rx='6'/></g></svg>">
 </head>
 <body>
     <a class="skip-link" href="#pageContent">Skip to content</a>
@@ -25,9 +25,8 @@
     <aside class="sidebar" id="sidebar" aria-label="Main navigation">
         <div class="sidebar-top">
             <a href="#/" class="sidebar-logo">
-                <svg class="sidebar-logo-icon" width="28" height="19" viewBox="0 0 125 86" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M0 0 C4.65 4.23 5.79 9.68 7.09 15.62 C8.41 21.18 10.06 25.1 14.72 28.56 C20.1 31.38 24.77 32.16 30.72 30.56 C34.86 28.52 36.66 26.54 38.84 22.5 C40.67 19.13 41.47 17.73 44.72 15.56 C47.3 20.77 46.34 24 44.84 29.43 C40.78 40.81 33.12 49.57 22.72 55.56 C13.28 59.91 3.47 61.59 -6.47 57.94 C-20.15 51.68 -27.12 43.07 -32.59 29.25 C-34.19 20.71 -34.33 12.37 -30.28 4.56 C-22.13 -5.1 -10.58 -7.39 0 0 Z" fill="currentColor" transform="translate(33.28,24.44)"/>
-                    <path d="M0 0 C10.09 6.6 17.64 15.51 20.59 27.38 C21.87 35.58 21.85 43.56 18 51 C14.35 55.33 10.62 58.67 4.88 59.4 C-3.03 59.34 -8.26 58.88 -14.12 53.25 C-17.87 48.7 -18.8 43.14 -20.04 37.52 C-21.41 32.48 -22.87 29.81 -27.12 26.75 C-31.96 24.27 -36.79 23.27 -42.14 24.49 C-47.72 26.74 -49.97 30.54 -52.68 35.76 C-54 38 -54 38 -57 40 C-58.58 38.42 -58.28 36.88 -58.38 34.69 C-58.22 23.85 -52.44 14.54 -45 7 C-32.28 -4.18 -15.38 -8.02 0 0 Z" fill="currentColor" transform="translate(104,6)"/>
+                <svg class="sidebar-logo-icon" width="24" height="24" viewBox="0 0 96 96" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="8" y="14" width="12" height="68" rx="6"/><rect x="25" y="14" width="12" height="30" rx="6"/><rect x="42" y="14" width="12" height="46" rx="6"/><rect x="59" y="14" width="12" height="30" rx="6"/><rect x="76" y="14" width="12" height="68" rx="6"/>
                 </svg>
                 <span class="sidebar-logo-text">Mersennet Explorer</span>
             </a>
@@ -219,6 +218,6 @@
     </div>
 
     <div class="toast" id="toast" aria-live="polite"></div>
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=6"></script>
 </body>
 </html>

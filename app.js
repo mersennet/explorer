@@ -2109,7 +2109,7 @@
                 var h = (txsByBlock[bn] / maxCount) * (chartH - pad);
                 var x = pad + j * ((chartW - pad * 2) / blockNums.length);
                 var y = chartH - pad - h;
-                bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + Math.max(1, h).toFixed(1) + '" fill="#9461FF" opacity="0.8" rx="1"><title>Block ' + bn + ': ' + txsByBlock[bn] + ' tx</title></rect>';
+                bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + Math.max(1, h).toFixed(1) + '" fill="#7dff9b" opacity="0.8" rx="1"><title>Block ' + bn + ': ' + txsByBlock[bn] + ' tx</title></rect>';
             });
             var inCount = 0, outCount = 0, totalValue = 0n;
             addressTxs.forEach(function(tx) {
@@ -2558,7 +2558,7 @@
         for (var c = 0; c < orderedFees.length; c++) {
             var pct = (orderedFees[c].fee / maxFee) * 100;
             if (pct < 2) pct = 2;
-            barChartHtml += '<div title="Block ' + orderedFees[c].block + ': ' + orderedFees[c].fee.toFixed(4) + ' Gwei" style="flex:1;min-width:3px;background:#9461FF;border-radius:2px 2px 0 0;height:' + pct.toFixed(1) + '%;opacity:0.85;transition:opacity 0.15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85"></div>';
+            barChartHtml += '<div title="Block ' + orderedFees[c].block + ': ' + orderedFees[c].fee.toFixed(4) + ' Gwei" style="flex:1;min-width:3px;background:#7dff9b;border-radius:2px 2px 0 0;height:' + pct.toFixed(1) + '%;opacity:0.85;transition:opacity 0.15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85"></div>';
         }
         barChartHtml += '</div>';
 
@@ -3181,7 +3181,7 @@
             for (var i = 0; i < items.length; i++) total += items[i].stake;
             if (total === 0) return '<div class="table-empty">No stake data</div>';
 
-            var colors = ['#9461FF', '#1AB280', '#C75E05', '#057AC7', '#B61616', '#C5AFF1', '#6A2FFF', '#E8DCFF'];
+            var colors = ['#7dff9b', '#1AB280', '#ff9a3c', '#5b8cff', '#ff5240', '#b07cff', '#2bd96a', '#c4ffd4'];
             var r = size / 2 - 10;
             var cx = size / 2;
             var cy = size / 2;
@@ -3235,7 +3235,7 @@
             '  </div>',
             '  <div class="card">',
             '    <div class="detail-card-title">Block Gas Usage (%)</div>',
-            '    <div style="padding:16px">' + buildBarChart(gasData, 'pct', 'Gas Used %', '#9461FF') + '</div>',
+            '    <div style="padding:16px">' + buildBarChart(gasData, 'pct', 'Gas Used %', '#7dff9b') + '</div>',
             '  </div>',
             '</div>',
 
@@ -3452,7 +3452,7 @@
             '<div class="main-content"><div class="container">',
             breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Verify Proofs' }]),
             '  <div class="detail-header">',
-            '    <div class="detail-icon" style="background:rgba(124,93,250,0.12)">🛡</div>',
+            '    <div class="detail-icon" style="background:rgba(176,124,255,0.12)">🛡</div>',
             '    <div class="detail-title-group">',
             '      <div class="detail-title">Verify State Proofs</div>',
             '      <div class="text-muted" style="font-size:0.85rem">Every Mersennet block carries an SP1 zero-knowledge proof of its state transition. Fetch and verify the proof for any block — no trust in the RPC node required beyond the proof itself.</div>',
@@ -3559,7 +3559,7 @@
             '<div class="main-content"><div class="container">',
             breadcrumbHtml([{ label: 'Home', href: '#/' }, { label: 'Shielded Markets' }]),
             '  <div class="detail-header">',
-            '    <div class="detail-icon" style="background:rgba(124,93,250,0.12)">🛡</div>',
+            '    <div class="detail-icon" style="background:rgba(176,124,255,0.12)">🛡</div>',
             '    <div class="detail-title-group">',
             '      <div class="detail-title">Shielded Markets</div>',
             '      <div class="text-muted" style="font-size:0.85rem">Aggregate-only view of Mersennet\'s shielded order flow. Individual orders, positions, and trader addresses are private — only market-level aggregates are published on-chain.</div>',

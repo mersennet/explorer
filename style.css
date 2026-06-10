@@ -5,29 +5,29 @@
 
 /* ─── 1. DESIGN TOKENS ───────────────────────────────────────────────────── */
 :root {
-    --color-main: #7c5cff;
-    --color-secondary: #5b3df0;
+    --color-main: #0fae62;
+    --color-secondary: #0a8f50;
     --color-white: #FFFFFF;
-    --accent: #7c5cff;
+    --accent: #0fae62;
 
-    --bg-100: #F8F9FE;
-    --bg-200: #F3EDFF;
-    --bg-300: #E8DCFF;
-    --bg-400: #C5AFF1;
+    --bg-100: #F8FDF9;
+    --bg-200: #EAF9EF;
+    --bg-300: #D6F4E0;
+    --bg-400: #9BE7B6;
     --bg-card: #FFFFFF;
-    --bg-surface: #F8F9FE;
+    --bg-surface: #F8FDF9;
 
-    --text-primary: #3A334D;
-    --text-secondary: #99B2C6;
-    --text-tertiary: #B4C1CF;
+    --text-primary: #2E3B33;
+    --text-secondary: #8FA89A;
+    --text-tertiary: #B0C4B8;
 
-    --color-border: #F1F5F7;
-    --border: #F1F5F7;
-    --border-subtle: #F5F6F8;
-    --color-overlay: #D8D0EA80;
+    --color-border: #EDF4EF;
+    --border: #EDF4EF;
+    --border-subtle: #F3F8F4;
+    --color-overlay: #D0E8D880;
 
-    --gradient-primary: linear-gradient(90deg, #7c5cff 35%, #5b3df0 100%);
-    --gradient-hero: linear-gradient(135deg, #7c5cff 0%, #5b3df0 50%, #4a32c8 100%);
+    --gradient-primary: linear-gradient(90deg, #0fae62 35%, #0a8f50 100%);
+    --gradient-hero: linear-gradient(135deg, #0fae62 0%, #0a8f50 50%, #07703e 100%);
 
     --success: #1AB280;
     --success-bg: #DFFBEE;
@@ -52,7 +52,7 @@
     --shadow-md: 0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
     --shadow-lg: 0 12px 40px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
     --shadow-header: 0 1px 3px rgba(0,0,0,0.04);
-    --shadow-hover: 0 8px 24px rgba(148,97,255,0.12), 0 2px 6px rgba(0,0,0,0.04);
+    --shadow-hover: 0 8px 24px rgba(15,174,98,0.12), 0 2px 6px rgba(0,0,0,0.04);
 
     --sidebar-w: 64px;
     --sidebar-w-xl: 250px;
@@ -65,48 +65,48 @@
 }
 
 /* ─── Dark mode ──────────────────────────────────────────────────────────── */
-/* Cosmic theme — matches mersennet.com (void / deep / surface, violet + cyan) */
+/* Mersennet brand — terminal green on pure black (matches mersennet.com) */
 .dark-mode {
-    --color-main: #EFE8FF;
-    --color-secondary: #7c5cff;
-    --color-white: #120c2e;
-    --accent: #9d86ff;
+    --color-main: #EAFFEF;
+    --color-secondary: #7dff9b;
+    --color-white: #101312;
+    --accent: #7dff9b;
 
-    --bg-100: #05030f;
-    --bg-200: #0a0720;
-    --bg-300: #120c2e;
-    --bg-400: #9d86ff;
-    --bg-card: #0a0720;
-    --bg-surface: #080518;
+    --bg-100: #000000;
+    --bg-200: #0a0c0b;
+    --bg-300: #141716;
+    --bg-400: #7dff9b;
+    --bg-card: #0a0c0b;
+    --bg-surface: #050606;
 
-    --text-primary: #F0ECFF;
-    --text-secondary: #a99fd6;
-    --text-tertiary: #6f659e;
+    --text-primary: #ececef;
+    --text-secondary: #9a9aa6;
+    --text-tertiary: #62626f;
 
-    --color-border: #1d1542;
-    --border: #1d1542;
-    --border-subtle: #161038;
-    --color-overlay: #05030f99;
+    --color-border: #1c201d;
+    --border: #1c201d;
+    --border-subtle: #131614;
+    --color-overlay: #00000099;
 
-    --gradient-primary: linear-gradient(90deg, #9d86ff 0%, #7c5cff 100%);
+    --gradient-primary: linear-gradient(90deg, #7dff9b 0%, #2bd96a 100%);
 
     --success: #1AD598;
     --success-bg: rgba(26,213,152,0.12);
-    --danger: #ef4444;
-    --danger-bg: rgba(239,68,68,0.12);
-    --warn: #ffc857;
-    --warn-bg: rgba(255,200,87,0.12);
-    --info: #2ff0ff;
-    --info-bg: rgba(47,240,255,0.12);
+    --danger: #ff5240;
+    --danger-bg: rgba(255,82,64,0.12);
+    --warn: #ff9a3c;
+    --warn-bg: rgba(255,154,60,0.12);
+    --info: #5b8cff;
+    --info-bg: rgba(91,140,255,0.12);
 
-    --gradient-hero: linear-gradient(135deg, #7c5cff 0%, #4a32c8 50%, #120c2e 100%);
+    --gradient-hero: linear-gradient(135deg, #2bd96a 0%, #0a8f50 50%, #04130a 100%);
 
     --shadow-xs: 0 1px 2px rgba(0,0,0,0.2);
     --shadow-card: 0 1px 4px rgba(0,0,0,0.2), 0 0 1px rgba(0,0,0,0.1);
     --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
     --shadow-lg: 0 12px 40px rgba(0,0,0,0.4);
     --shadow-header: 0 1px 4px rgba(0,0,0,0.3);
-    --shadow-hover: 0 8px 24px rgba(124,92,255,0.25), 0 2px 8px rgba(0,0,0,0.2);
+    --shadow-hover: 0 8px 24px rgba(125,255,155,0.18), 0 2px 8px rgba(0,0,0,0.2);
 }
 
 /* ─── 2. RESET & BASE ────────────────────────────────────────────────────── */
@@ -114,7 +114,7 @@
 html { font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 body { font-family: var(--font-ui); font-weight: 400; background: var(--bg-100); color: var(--text-primary); min-height: 100vh; line-height: 1.6; display: flex; overflow-x: hidden; transition: background var(--dur-slow) var(--ease), color var(--dur-slow) var(--ease); }
 a { color: inherit; text-decoration: none; }
-::selection { background: rgba(148,97,255,0.2); }
+::selection { background: rgba(125,255,155,0.22); }
 img,svg { display: block; max-width: 100%; }
 button, input, select, textarea { font-family: inherit; }
 ul, ol { list-style: none; }
@@ -209,7 +209,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 .wallet-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 600; color: var(--color-white); background: var(--gradient-primary); position: relative; overflow: hidden; transition: all var(--dur) var(--ease); border: none; cursor: pointer; font-family: var(--font-ui); }
 .wallet-btn::before { content: ''; position: absolute; inset: 1px; border-radius: calc(var(--radius) - 1px); background: var(--accent); transition: background var(--dur) var(--ease); }
 .wallet-btn:hover::before { background: transparent; }
-.wallet-btn:hover { box-shadow: 0 4px 12px rgba(148,97,255,0.3); transform: translateY(-1px); }
+.wallet-btn:hover { box-shadow: 0 4px 12px rgba(125,255,155,0.25); transform: translateY(-1px); }
 .wallet-btn svg, .wallet-btn span { position: relative; z-index: 1; }
 .wallet-btn svg { stroke: currentColor; }
 .wallet-btn.connected { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--color-border); }
@@ -240,7 +240,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 .hero-content { max-width: 680px; margin: 0 auto; text-align: center; position: relative; z-index: 1; padding: 0 24px; animation: fadeUp 0.5s ease-out; }
 .hero-title { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 24px; letter-spacing: -0.02em; text-shadow: 0 2px 12px rgba(0,0,0,0.15); }
 .search-form { display: flex; background: #fff; border-radius: var(--radius-lg); overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08); position: relative; transition: box-shadow var(--dur) var(--ease); }
-.search-form:focus-within { box-shadow: 0 8px 32px rgba(148,97,255,0.25), 0 2px 8px rgba(0,0,0,0.08); }
+.search-form:focus-within { box-shadow: 0 8px 32px rgba(125,255,155,0.22), 0 2px 8px rgba(0,0,0,0.08); }
 .search-input { flex: 1; border: none; padding: 15px 20px; font-size: 0.875rem; outline: none; background: transparent; font-family: inherit; color: #1a1a2e; min-width: 0; }
 .search-input::placeholder { color: #9ca3af; }
 .search-btn { background: var(--color-main); color: #fff; border: none; padding: 15px 26px; font-weight: 600; cursor: pointer; transition: background 0.2s; font-family: inherit; font-size: 0.875rem; white-space: nowrap; }
@@ -304,7 +304,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 .badge-danger { background: var(--danger-bg); color: var(--danger); }
 .badge-warning { background: var(--warn-bg); color: var(--warn); }
 .badge-info { background: var(--info-bg); color: var(--info); }
-.badge-shielded { background: rgba(124, 93, 250, 0.14); color: var(--accent); border: 1px solid rgba(124, 93, 250, 0.35); }
+.badge-shielded { background: rgba(176, 124, 255, 0.14); color: #b07cff; border: 1px solid rgba(176, 124, 255, 0.35); }
 .badge-secondary { background: var(--bg-200); color: var(--text-secondary); }
 .badge-value { background: var(--info-bg); color: var(--info); }
 .badge-fail { background: var(--danger-bg); color: var(--danger); }
@@ -365,7 +365,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 /* ─── 21. BUTTONS ────────────────────────────────────────────────────────── */
 .btn { padding: 8px 16px; border-radius: var(--radius); font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.2s var(--ease); border: none; font-family: inherit; display: inline-flex; align-items: center; gap: 6px; }
 .btn-primary { background: var(--accent); color: var(--color-white); }
-.btn-primary:hover { background: var(--color-secondary); box-shadow: 0 4px 12px rgba(148,97,255,0.3); transform: translateY(-1px); }
+.btn-primary:hover { background: var(--color-secondary); box-shadow: 0 4px 12px rgba(125,255,155,0.25); transform: translateY(-1px); }
 .btn-outline { background: transparent; border: 1px solid var(--color-border); color: var(--text-primary); }
 .btn-outline:hover { border-color: var(--accent); color: var(--accent); background: var(--bg-200); }
 .btn-link { background: none; border: none; color: var(--accent); padding: 4px; cursor: pointer; }
@@ -423,7 +423,7 @@ table { border-collapse: collapse; border-spacing: 0; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .new-item { animation: highlightNew 0.8s ease; }
-@keyframes highlightNew { from { background: rgba(148,97,255,0.12); } to { background: transparent; } }
+@keyframes highlightNew { from { background: rgba(125,255,155,0.12); } to { background: transparent; } }
 
 /* ─── 31. SKIP LINK ──────────────────────────────────────────────────────── */
 .skip-link { position: absolute; top: -100%; left: 50%; transform: translateX(-50%); background: var(--accent); color: var(--color-white); padding: 8px 16px; border-radius: 0 0 8px 8px; font-size: 0.85rem; font-weight: 600; z-index: 999; transition: top 0.2s; }
@@ -556,7 +556,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); ou
 
 /* ─── 47. GAS TRACKER INPUTS ─────────────────────────────────────────────── */
 .gas-input { border: 1px solid var(--color-border); border-radius: var(--radius); padding: 8px 12px; font-size: 0.85rem; background: var(--bg-card); color: var(--text-primary); font-family: var(--font-mono); transition: border-color 0.15s, box-shadow 0.15s; outline: none; }
-.gas-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(148,97,255,0.1); }
+.gas-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(125,255,155,0.12); }
 
 /* ─── 48. GAS TIER CARDS ─────────────────────────────────────────────────── */
 .gas-tier-card { background: var(--bg-card); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 24px; text-align: center; transition: all 0.25s var(--ease); position: relative; overflow: hidden; }
