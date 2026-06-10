@@ -19,7 +19,7 @@
     })();
     const CUSTOM_RPC = RPC_URL !== location.origin + '/rpc';
 
-    const CHAIN_ID        = 7919;
+    const CHAIN_ID        = 131071;
     const BLOCK_TIME_SECS = 1;
     const POLL_MS         = 3000;
     const ITEMS_PER_PAGE  = 25;

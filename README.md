@@ -1,6 +1,6 @@
 # Mersennet Explorer — Block Explorer
 
-Block explorer for Mersennet (Chain ID 7919). Vanilla JavaScript SPA with no build step.
+Block explorer for Mersennet (Chain ID 131071). Vanilla JavaScript SPA with no build step.
 
 **Live:** http://46.225.30.187/
 
@@ -30,7 +30,7 @@ Edit the top of `app.js`:
 
 ```javascript
 var RPC_URL = 'http://46.225.30.187:8545';
-var CHAIN_ID = 7919;
+var CHAIN_ID = 131071;
 var BLOCK_TIME_SECS = 1;
 ```
 
