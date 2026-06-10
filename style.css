@@ -571,3 +571,32 @@ input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); ou
 /* ─── 49. DAPP CATEGORY TITLE ────────────────────────────────────────────── */
 .dapp-category-title { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
 .dapp-category-title::after { content: ''; flex: 1; height: 1px; background: var(--color-border); }
+
+/* ── Polish pass: skeletons, focus, empty states ──────────────────────── */
+:focus-visible { outline: 2px solid var(--accent, #7dff9b); outline-offset: 2px; border-radius: 4px; }
+
+.skeleton-row td, .skeleton-line {
+    position: relative; overflow: hidden;
+    background: rgba(127, 127, 127, 0.08);
+    border-radius: 4px; color: transparent !important;
+}
+.skeleton-line { display: block; height: 0.9em; margin: 0.35em 0; }
+.skeleton-row td::after, .skeleton-line::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(127,255,155,0.10), transparent);
+    animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+    .skeleton-row td::after, .skeleton-line::after { animation: none; }
+}
+
+.table-empty { padding: 36px 16px; }
+.table-empty .empty-mark { width: 34px; height: 34px; margin: 0 auto 10px; opacity: 0.35; display: block; }
+
+.search-box:focus-within { box-shadow: 0 0 0 2px rgba(125, 255, 155, 0.5), 0 6px 24px rgba(0,0,0,0.25); }
+
+.stat-card { transition: transform 0.18s ease, border-color 0.18s ease; }
+.stat-card:hover { transform: translateY(-2px); border-color: rgba(125, 255, 155, 0.35); }
+
+tbody tr { transition: background 0.12s ease; }
