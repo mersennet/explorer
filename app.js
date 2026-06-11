@@ -34,15 +34,15 @@
     const SHIELD_BRIDGE_PRECOMPILE = '0x0000000000000000000000000000000000000200';
 
     const KNOWN_CONTRACTS = {
-        '0x0000000000000000000000000000000000000100': { name: 'PrimeOrders',  type: 'precompile', compiler: 'native (Rust)', source: 'crates/core/src/precompiles.rs', license: 'MIT' },
+        '0x0000000000000000000000000000000000000100': { name: 'MersennetOrders',  type: 'precompile', compiler: 'native (Rust)', source: 'crates/core/src/precompiles.rs', license: 'MIT' },
         '0x0000000000000000000000000000000000000200': { name: 'ShieldBridge', type: 'precompile', compiler: 'native (Rust)', source: 'crates/core/src/precompiles.rs', license: 'MIT' },
         '0x973ee1bf0907287d1eb8a144d88b34f515c83f29': { name: 'Multicall3',       type: 'utility',                                      compiler: 'solc 0.8.20', source: 'contracts/src/foundation/Multicall3.sol',    license: 'MIT' },
         '0x079bf1207b51acda83e2e8178344f62a883f8479': { name: 'WPRIM',            type: 'token',  symbol: 'WPRIM', decimals: 18,         compiler: 'solc 0.8.20', source: 'contracts/src/foundation/WPRIM.sol',        license: 'MIT' },
         '0xb22f77d89122e9e3784bfd3eee9616273f38238d': { name: 'MockUSDC',         type: 'token',  symbol: 'USDC',  decimals: 6,          compiler: 'solc 0.8.20', source: 'contracts/src/foundation/MockERC20.sol',    license: 'MIT' },
         '0x877feca38919acd7aaf7cb81f100e0454aa95c17': { name: 'MockUSDT',         type: 'token',  symbol: 'USDT',  decimals: 6,          compiler: 'solc 0.8.20', source: 'contracts/src/foundation/MockERC20.sol',    license: 'MIT' },
         '0xb88d63a65691effbf4b6808325b1588912c15cf4': { name: 'MockDAI',          type: 'token',  symbol: 'DAI',   decimals: 18,         compiler: 'solc 0.8.20', source: 'contracts/src/foundation/MockERC20.sol',    license: 'MIT' },
-        '0x63f7a64db6d2b965189b8b48b7435668021f6b17': { name: 'PrimeSwapFactory', type: 'dex',                                           compiler: 'solc 0.8.20', source: 'contracts/src/dex/PrimeSwapFactory.sol',    license: 'GPL-3.0' },
-        '0x9f337f433e71ce969b991511f1dcd3d0622116bb': { name: 'PrimeSwapRouter',  type: 'dex',                                           compiler: 'solc 0.8.20', source: 'contracts/src/dex/PrimeSwapRouter.sol',     license: 'GPL-3.0' },
+        '0x63f7a64db6d2b965189b8b48b7435668021f6b17': { name: 'MersennetSwapFactory', type: 'dex',                                           compiler: 'solc 0.8.20', source: 'contracts/src/dex/MersennetSwapFactory.sol',    license: 'GPL-3.0' },
+        '0x9f337f433e71ce969b991511f1dcd3d0622116bb': { name: 'MersennetSwapRouter',  type: 'dex',                                           compiler: 'solc 0.8.20', source: 'contracts/src/dex/MersennetSwapRouter.sol',     license: 'GPL-3.0' },
         '0xad98d3b1c27a33487dd1f450dc60b2d88626250c': { name: 'UniswapV3Factory',     type: 'dex',                                      compiler: 'solc 0.7.6', source: 'Uniswap V3 Core',               license: 'BUSL-1.1' },
         '0x77066b50f9a6fae7867abee3742d4b7c438946ae': { name: 'SwapRouter',           type: 'dex',                                      compiler: 'solc 0.7.6', source: 'Uniswap V3 Periphery',           license: 'GPL-2.0' },
         '0x6c12f22a793e0560ba0387d808fef69299f6ccb6': { name: 'NonfungiblePositionManager', type: 'dex',                                 compiler: 'solc 0.7.6', source: 'Uniswap V3 Periphery',           license: 'GPL-2.0' },
@@ -575,7 +575,7 @@
         try {
             const [chainIdHex, blockHex, gasHex] = await Promise.all([
                 rpc('eth_chainId'),
-                rpc('prime_blockNumber'),
+                rpc('mersennet_blockNumber'),
                 rpc('eth_gasPrice'),
             ]);
             state.chainId = hexToInt(chainIdHex);
@@ -857,7 +857,7 @@
         }
         if (toAddr === PRIME_ORDERS_PRECOMPILE) {
             var po = decodeMethod(input);
-            return '<span class="method-tag badge-info">' + (po ? escapeHtml(po.name) : 'PrimeOrders') + '</span>';
+            return '<span class="method-tag badge-info">' + (po ? escapeHtml(po.name) : 'MersennetOrders') + '</span>';
         }
         var decoded = decodeMethod(input);
         if (!decoded) return '';
@@ -1018,14 +1018,14 @@
         var promises = [];
         for (var i = 0; i < count && startNum - i >= 0; i++) {
             var num = startNum - i;
-            promises.push(rpc('prime_getBlockByNumber', ['0x' + num.toString(16), !!fullTxs]).catch(function () { return null; }));
+            promises.push(rpc('mersennet_getBlockByNumber', ['0x' + num.toString(16), !!fullTxs]).catch(function () { return null; }));
         }
         return (await Promise.all(promises)).filter(Boolean);
     }
 
     async function fetchValidators() {
         try {
-            var v = await rpc('prime_validators');
+            var v = await rpc('mersennet_validators');
             if (Array.isArray(v)) { state.validators = v; return v; }
         } catch (e) { /* ignore */ }
         return state.validators || [];
@@ -1361,7 +1361,7 @@
         await refreshGlobal();
         var num = parseInt(blockNum, 10);
         var hex = '0x' + num.toString(16);
-        var block = await rpc('prime_getBlockByNumber', [hex, true]);
+        var block = await rpc('mersennet_getBlockByNumber', [hex, true]);
         if (!block) {
             el.innerHTML = '<div class="main-content"><div class="container"><div class="table-empty">Block not found</div></div></div>';
             return;
@@ -1503,7 +1503,7 @@
             var statusEl = document.getElementById('blockProofStatus');
             if (!statusEl) return;
             try {
-                var proof = await rpc('prime_getStateProof', ['0x' + num.toString(16)]);
+                var proof = await rpc('mersennet_getStateProof', ['0x' + num.toString(16)]);
                 if (!statusEl.isConnected) return;
                 if (proof && proof.proofBincodeHex) {
                     var sizeKb = ((proof.proofBincodeHex.length - 2) / 2 / 1024).toFixed(1);
@@ -1538,7 +1538,7 @@
             var promises = [];
             for (var i = 0; i < batchSize && state.latestBlock - offset - i >= 0; i++) {
                 var num = state.latestBlock - offset - i;
-                promises.push(rpc('prime_getBlockByNumber', ['0x' + num.toString(16), true]).catch(function () { return null; }));
+                promises.push(rpc('mersennet_getBlockByNumber', ['0x' + num.toString(16), true]).catch(function () { return null; }));
             }
             var blocks = (await Promise.all(promises)).filter(Boolean);
             for (var bi = 0; bi < blocks.length; bi++) {
@@ -1657,7 +1657,7 @@
 
         var blockForTimestamp = null;
         if (blockNum !== null) {
-            try { blockForTimestamp = await rpc('prime_getBlockByNumber', ['0x' + blockNum.toString(16), false]); } catch (e) {}
+            try { blockForTimestamp = await rpc('mersennet_getBlockByNumber', ['0x' + blockNum.toString(16), false]); } catch (e) {}
         }
         var baseFeeFromBlock = blockForTimestamp ? (blockForTimestamp.baseFeePerGas || blockForTimestamp.base_fee_per_gas || blockForTimestamp.base_fee || '0x0') : '0x0';
         var burntFeesWei = hexToBigInt(baseFeeFromBlock) * BigInt(rcptGasUsed);
@@ -2843,7 +2843,7 @@
             var blkPromises = [];
             for (var bi = 0; bi < batchSz && state.latestBlock - offset - bi >= 0; bi++) {
                 var bnum = state.latestBlock - offset - bi;
-                blkPromises.push(rpc('prime_getBlockByNumber', ['0x' + bnum.toString(16), true]).catch(function() { return null; }));
+                blkPromises.push(rpc('mersennet_getBlockByNumber', ['0x' + bnum.toString(16), true]).catch(function() { return null; }));
             }
             var blks = (await Promise.all(blkPromises)).filter(Boolean);
             for (var bk = 0; bk < blks.length; bk++) {
@@ -3395,7 +3395,7 @@
     async function pageDApps(el) {
         var dapps = [
             { name: 'Mersennet Trade', desc: 'Perpetuals on the native on-chain order book', url: 'https://trade.mersennet.com', icon: '📈', category: 'DeFi' },
-            { name: 'PrimeSwap DEX', desc: 'Swap tokens on Mersennet\'s native DEX', url: 'http://46.225.30.187:4000', icon: '🔄', category: 'DeFi' },
+            { name: 'Mersennet Swap DEX', desc: 'Swap tokens on Mersennet\'s native DEX', url: 'http://46.225.30.187:4000', icon: '🔄', category: 'DeFi' },
             { name: 'Validator Dashboard', desc: 'Monitor and manage validator nodes', url: 'http://46.225.30.187:4001', icon: '🛡️', category: 'Staking' },
             { name: 'Faucet', desc: 'Get free testnet MRSN tokens', url: 'https://faucet.mersennet.com', icon: '💧', category: 'Tools' },
             { name: 'Documentation', desc: 'Mersennet developer documentation', url: 'https://docs.mersennet.com', icon: '📖', category: 'Docs' },
@@ -3477,7 +3477,7 @@
             resultEl.innerHTML = '<div class="detail-card"><div style="padding:1.5rem" class="text-muted">Fetching proof…</div></div>';
             var proof;
             try {
-                proof = await rpc('prime_getStateProof', params);
+                proof = await rpc('mersennet_getStateProof', params);
             } catch (e) {
                 resultEl.innerHTML = '<div class="detail-card"><div style="padding:1.5rem" class="text-muted">RPC error: ' + escapeHtml(e.message) + '</div></div>';
                 return;
@@ -3512,7 +3512,7 @@
                 var statusEl = document.getElementById('verifyStatus');
                 statusEl.innerHTML = '<span class="text-muted">Verifying…</span>';
                 try {
-                    var res = await rpc('prime_verifyStateProof', [proof.proofBincodeHex]);
+                    var res = await rpc('mersennet_verifyStateProof', [proof.proofBincodeHex]);
                     if (res && res.valid) {
                         statusEl.innerHTML = '<span class="status-badge status-success"><span class="status-dot"></span>Proof valid — state transition verified</span>';
                     } else {
@@ -3539,8 +3539,8 @@
         await refreshGlobal();
         var aggregates = null;
         var shieldedRoot = null;
-        try { aggregates = await rpc('prime_getShieldedMarketAggregates', []); } catch (e) { /* node may not expose */ }
-        try { shieldedRoot = await rpc('prime_getShieldedRoot', []); } catch (e) { /* ignore */ }
+        try { aggregates = await rpc('mersennet_getShieldedMarketAggregates', []); } catch (e) { /* node may not expose */ }
+        try { shieldedRoot = await rpc('mersennet_getShieldedRoot', []); } catch (e) { /* ignore */ }
 
         var markets = (aggregates && aggregates.markets) || [];
         var rows = markets.map(function (m) {
