@@ -151,7 +151,7 @@
                 var accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 if (accounts.length > 0) { _wallet = accounts[0]; updateUI(); }
                 try { await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x' + CHAIN_ID.toString(16) }] }); }
-                catch(e) { if (e.code === 4902) await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x' + CHAIN_ID.toString(16), chainName: 'Mersennet Testnet', rpcUrls: [RPC_URL], nativeCurrency: { name: 'MRSN', symbol: 'MRSN', decimals: 18 } }] }); }
+                catch(e) { if (e.code === 4902) await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x' + CHAIN_ID.toString(16), chainName: 'Mersennet Testnet', rpcUrls: ['https://rpc.mersennet.com'], blockExplorerUrls: ['https://explorer.mersennet.com'], nativeCurrency: { name: 'MRSN', symbol: 'MRSN', decimals: 18 } }] }); }
             } catch(e) { toast('Connection rejected', true); }
         });
         if (window.ethereum) window.ethereum.on('accountsChanged', function(a) { _wallet = a[0] || null; updateUI(); });
@@ -2432,8 +2432,8 @@
             '    </div>',
             '    <div class="detail-card">',
             '      <div class="detail-card-title">Endpoints</div>',
-            '      <div class="detail-row"><div class="detail-label">JSON-RPC</div><div class="detail-value mono">http://46.225.30.187:8545 ' + copyBtnHtml('http://46.225.30.187:8545') + '</div></div>',
-            '      <div class="detail-row"><div class="detail-label">WebSocket</div><div class="detail-value mono">ws://46.225.30.187:8546 ' + copyBtnHtml('ws://46.225.30.187:8546') + '</div></div>',
+            '      <div class="detail-row"><div class="detail-label">JSON-RPC</div><div class="detail-value mono">https://rpc.mersennet.com ' + copyBtnHtml('https://rpc.mersennet.com') + '</div></div>',
+            '      <div class="detail-row"><div class="detail-label">WebSocket</div><div class="detail-value mono">wss://rpc.mersennet.com ' + copyBtnHtml('wss://rpc.mersennet.com') + '</div></div>',
             '      <div class="detail-row"><div class="detail-label">Explorer</div><div class="detail-value"><a href="https://explorer.mersennet.com" target="_blank">explorer.mersennet.com</a></div></div>',
             '      <div class="detail-row"><div class="detail-label">Faucet</div><div class="detail-value"><a href="https://faucet.mersennet.com" target="_blank">faucet.mersennet.com</a></div></div>',
             '      <div class="detail-row"><div class="detail-label">Trade</div><div class="detail-value"><a href="https://trade.mersennet.com" target="_blank">trade.mersennet.com</a></div></div>',
@@ -2483,8 +2483,8 @@
                             chainId: '0x' + CHAIN_ID.toString(16),
                             chainName: 'Mersennet Testnet',
                             nativeCurrency: { name: 'MRSN', symbol: 'MRSN', decimals: 18 },
-                            rpcUrls: ['http://46.225.30.187:8545'],
-                            blockExplorerUrls: ['http://46.225.30.187'],
+                            rpcUrls: ['https://rpc.mersennet.com'],
+                            blockExplorerUrls: ['https://explorer.mersennet.com'],
                         }],
                     });
                     toast('Network added to MetaMask!');
