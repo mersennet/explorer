@@ -37,7 +37,7 @@
         '0x0000000000000000000000000000000000000100': { name: 'MersennetOrders',  type: 'precompile', compiler: 'native (Rust)', source: 'crates/core/src/precompiles.rs', license: 'MIT' },
         '0x0000000000000000000000000000000000000200': { name: 'ShieldBridge', type: 'precompile', compiler: 'native (Rust)', source: 'crates/core/src/precompiles.rs', license: 'MIT' },
         '0x973ee1bf0907287d1eb8a144d88b34f515c83f29': { name: 'Multicall3',       type: 'utility',                                      compiler: 'solc 0.8.20', source: 'contracts/src/foundation/Multicall3.sol',    license: 'MIT' },
-        '0x079bf1207b51acda83e2e8178344f62a883f8479': { name: 'WPRIM',            type: 'token',  symbol: 'WPRIM', decimals: 18,         compiler: 'solc 0.8.20', source: 'contracts/src/foundation/WPRIM.sol',        license: 'MIT' },
+        '0x079bf1207b51acda83e2e8178344f62a883f8479': { name: 'Wrapped MRSN',     type: 'token',  symbol: 'WMRSN', decimals: 18,         compiler: 'solc 0.8.20', source: 'contracts/src/foundation/WMRSN.sol',        license: 'MIT' },
         '0xb22f77d89122e9e3784bfd3eee9616273f38238d': { name: 'MockUSDC',         type: 'token',  symbol: 'USDC',  decimals: 6,          compiler: 'solc 0.8.20', source: 'contracts/src/foundation/MockERC20.sol',    license: 'MIT' },
         '0x877feca38919acd7aaf7cb81f100e0454aa95c17': { name: 'MockUSDT',         type: 'token',  symbol: 'USDT',  decimals: 6,          compiler: 'solc 0.8.20', source: 'contracts/src/foundation/MockERC20.sol',    license: 'MIT' },
         '0xb88d63a65691effbf4b6808325b1588912c15cf4': { name: 'MockDAI',          type: 'token',  symbol: 'DAI',   decimals: 18,         compiler: 'solc 0.8.20', source: 'contracts/src/foundation/MockERC20.sol',    license: 'MIT' },
