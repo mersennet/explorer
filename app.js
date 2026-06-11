@@ -30,7 +30,7 @@
        KNOWN CONTRACTS
        =========================================== */
     /* Native precompiles on the Mersennet chain */
-    const PRIME_ORDERS_PRECOMPILE  = '0x0000000000000000000000000000000000000100';
+    const MERSENNET_ORDERS_PRECOMPILE  = '0x0000000000000000000000000000000000000100';
     const SHIELD_BRIDGE_PRECOMPILE = '0x0000000000000000000000000000000000000200';
 
     const KNOWN_CONTRACTS = {
@@ -417,7 +417,7 @@
         return num.toLocaleString('en-US');
     }
 
-    function formatPRIM(hex) {
+    function formatMRSN(hex) {
         const wei = hexToBigInt(hex);
         if (wei === 0n) return '0 MRSN';
         const whole = wei / 1000000000000000000n;
@@ -427,7 +427,7 @@
         return whole.toLocaleString('en-US') + '.' + fracStr.slice(0, 6) + ' MRSN';
     }
 
-    function formatPRIMShort(hex) {
+    function formatMRSNShort(hex) {
         const wei = hexToBigInt(hex);
         if (wei === 0n) return '0';
         const whole = wei / 1000000000000000000n;
@@ -855,7 +855,7 @@
         if (toAddr === SHIELD_BRIDGE_PRECOMPILE) {
             return '<span class="method-tag badge-shielded" title="Shielded transaction — details are private. Only nullifiers and commitments are recorded on-chain.">🛡 Shielded</span>';
         }
-        if (toAddr === PRIME_ORDERS_PRECOMPILE) {
+        if (toAddr === MERSENNET_ORDERS_PRECOMPILE) {
             var po = decodeMethod(input);
             return '<span class="method-tag badge-info">' + (po ? escapeHtml(po.name) : 'MersennetOrders') + '</span>';
         }
@@ -1141,7 +1141,7 @@
             '        <div class="home-stat-icon" style="background:var(--warn-bg);color:var(--warn)">' + ICONS.coin + '</div>',
             '        <div class="home-stat-content">',
             '          <div class="home-stat-label">Total Staked</div>',
-            '          <div class="home-stat-value">' + formatPRIMShort('0x' + totalStake.toString(16)) + ' MRSN</div>',
+            '          <div class="home-stat-value">' + formatMRSNShort('0x' + totalStake.toString(16)) + ' MRSN</div>',
             '        </div>',
             '      </div>',
             '      <div class="home-stat-card anim-reveal" style="--d:5">',
@@ -1256,7 +1256,7 @@
     }
 
     function txPanelItem(tx, isNew) {
-        var value = formatPRIMShort(tx.value || '0x0');
+        var value = formatMRSNShort(tx.value || '0x0');
         var txFrom = tx.from_addr || tx.from || '';
         var txTo = tx.to_addr || tx.to || '';
         var bn = parseInt(tx.block_number || tx.blockNumber || tx._blockNum || 0);
@@ -1322,7 +1322,7 @@
                 '  </td>',
                 '  <td class="mono">' + formatGas(b.gasLimit || b.gas_limit || '0x0') + '</td>',
                 '  <td class="mono">' + (baseFee !== '0x0' ? formatGwei(baseFee) : '—') + '</td>',
-                '  <td class="td-right mono text-muted" style="font-size:0.78rem">' + (burntWei > 0n ? formatPRIMShort(burntHex) : '0') + '</td>',
+                '  <td class="td-right mono text-muted" style="font-size:0.78rem">' + (burntWei > 0n ? formatMRSNShort(burntHex) : '0') + '</td>',
                 '</tr>',
             ].join('');
         }).join('');
@@ -1412,7 +1412,7 @@
                     '  <td>' + (tx.from ? '<a href="#/address/' + escapeHtml(tx.from) + '" class="addr-link">' + truncAddr(tx.from) + '</a>' : '—') + '</td>',
                     '  <td style="color:var(--text-secondary);font-size:0.75rem">→</td>',
                     '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:var(--warn)">Contract Create</span>') + '</td>',
-                    '  <td class="td-right mono">' + formatPRIMShort(tx.value || '0x0') + ' MRSN</td>',
+                    '  <td class="td-right mono">' + formatMRSNShort(tx.value || '0x0') + ' MRSN</td>',
                     '  <td class="mono" style="font-size:0.78rem">' + formatGwei(txGasPrice(tx) || '0x0') + '</td>',
                     '</tr>',
                 ].join('');
@@ -1455,8 +1455,8 @@
             '      </div>',
             '    </div>',
             '    <div class="detail-row"><div class="detail-label">Gas Limit</div><div class="detail-value mono">' + formatNum(gasLimit) + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Base Fee Per Gas</div><div class="detail-value mono">' + (baseFeeRaw !== '0x0' ? formatGwei(baseFeeRaw) + ' <span class="text-muted">(' + formatPRIM(baseFeeRaw) + ')</span>' : '—') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Burnt Fees</div><div class="detail-value mono">' + (burntFees > 0n ? '<span style="color:var(--danger)">🔥 ' + formatPRIM(burntFeesHex) + '</span>' : '0 MRSN') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Base Fee Per Gas</div><div class="detail-value mono">' + (baseFeeRaw !== '0x0' ? formatGwei(baseFeeRaw) + ' <span class="text-muted">(' + formatMRSN(baseFeeRaw) + ')</span>' : '—') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Burnt Fees</div><div class="detail-value mono">' + (burntFees > 0n ? '<span style="color:var(--danger)">🔥 ' + formatMRSN(burntFeesHex) + '</span>' : '0 MRSN') + '</div></div>',
             '    <div class="detail-row"><div class="detail-label">Extra Data</div><div class="detail-value">' + (extraDataDecoded ? escapeHtml(extraDataDecoded) + ' <span class="text-muted mono" style="font-size:0.78rem">(Hex: ' + escapeHtml(extraData) + ')</span>' : '<span class="mono">' + escapeHtml(extraData) + '</span>') + '</div></div>',
             '    <div class="separator"></div>',
             '    <div class="detail-row"><div class="detail-label">Hash</div><div class="detail-value mono">' + (block.hash || '—') + ' ' + (block.hash ? copyBtnHtml(block.hash) : '') + '</div></div>',
@@ -1577,8 +1577,8 @@
                 '  <td><a href="#/address/' + escapeHtml(tx.from) + '" class="addr-link">' + truncAddr(tx.from) + '</a></td>',
                 '  <td style="color:var(--text-secondary);font-size:0.75rem">→</td>',
                 '  <td>' + (tx.to ? addrDisplay(tx.to) : '<span style="color:var(--warn)">Contract Create</span>') + '</td>',
-                '  <td class="td-right mono">' + formatPRIMShort(tx.value || '0x0') + '</td>',
-                '  <td class="td-right mono text-muted" style="font-size:0.78rem">' + formatPRIMShort(txFeeHex) + '</td>',
+                '  <td class="td-right mono">' + formatMRSNShort(tx.value || '0x0') + '</td>',
+                '  <td class="td-right mono text-muted" style="font-size:0.78rem">' + formatMRSNShort(txFeeHex) + '</td>',
                 '</tr>',
             ].join('');
         }).join('');
@@ -1671,11 +1671,11 @@
         if (isShieldedTx) {
             txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="method-tag badge-shielded">🛡 Shielded</span> <span class="text-muted">Interaction with the ShieldBridge precompile — note contents, recipients, and shielded amounts are private. Only nullifiers and commitments are recorded on-chain.</span></div></div>';
         } else if (tx.value && hexToBigInt(tx.value) > 0n && (!tx.input || tx.input === '0x')) {
-            txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="status-badge status-success" style="font-size:0.8rem"><span class="status-dot"></span>Transfer</span> <strong>' + formatPRIM(tx.value) + '</strong> to ' + (tx.to ? '<a href="#/address/' + escapeHtml(tx.to) + '" class="addr-link">' + truncAddr(tx.to) + '</a>' : 'Contract') + '</div></div>';
+            txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="status-badge status-success" style="font-size:0.8rem"><span class="status-dot"></span>Transfer</span> <strong>' + formatMRSN(tx.value) + '</strong> to ' + (tx.to ? '<a href="#/address/' + escapeHtml(tx.to) + '" class="addr-link">' + truncAddr(tx.to) + '</a>' : 'Contract') + '</div></div>';
         } else if (tx.input && tx.input.length >= 10) {
             var actionDecoded = decodeMethod(tx.input);
             if (actionDecoded) {
-                txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="method-tag">' + escapeHtml(actionDecoded.name) + '</span> on ' + (tx.to ? '<a href="#/address/' + escapeHtml(tx.to) + '" class="addr-link">' + truncAddr(tx.to) + '</a>' : '<span style="color:var(--warn)">New Contract</span>') + (hexToBigInt(tx.value || '0x0') > 0n ? ' with <strong>' + formatPRIM(tx.value) + '</strong>' : '') + '</div></div>';
+                txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="method-tag">' + escapeHtml(actionDecoded.name) + '</span> on ' + (tx.to ? '<a href="#/address/' + escapeHtml(tx.to) + '" class="addr-link">' + truncAddr(tx.to) + '</a>' : '<span style="color:var(--warn)">New Contract</span>') + (hexToBigInt(tx.value || '0x0') > 0n ? ' with <strong>' + formatMRSN(tx.value) + '</strong>' : '') + '</div></div>';
             }
         }
 
@@ -1797,7 +1797,7 @@
                     '<td>' + (it.from ? '<a href="#/address/' + escapeHtml(it.from) + '" class="addr-link">' + truncAddr(it.from) + '</a>' : '—') + '</td>' +
                     '<td style="color:var(--text-secondary)">→</td>' +
                     '<td>' + (it.to ? '<a href="#/address/' + escapeHtml(it.to) + '" class="addr-link">' + truncAddr(it.to) + '</a>' : '<span style="color:var(--warn)">CREATE</span>') + '</td>' +
-                    '<td class="mono td-right">' + formatPRIMShort(it.value) + '</td>' +
+                    '<td class="mono td-right">' + formatMRSNShort(it.value) + '</td>' +
                     '</tr>';
             }).join('');
             internalsSection = '<div class="detail-card"><div class="detail-card-title">Internal Transactions (' + internalTxs.length + ')</div>' +
@@ -1827,9 +1827,9 @@
             '    <div class="detail-row"><div class="detail-label">From</div><div class="detail-value mono"><a href="#/address/' + escapeHtml(tx.from) + '" class="addr-link">' + escapeHtml(tx.from) + '</a> ' + copyBtnHtml(tx.from) + '</div></div>',
             '    <div class="detail-row"><div class="detail-label">To</div><div class="detail-value mono">' + toDisplay + '</div></div>',
             '    <div class="separator"></div>',
-            '    <div class="detail-row"><div class="detail-label">Value</div><div class="detail-value mono">' + formatPRIM(tx.value || '0x0') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Transaction Fee</div><div class="detail-value mono">' + (receipt ? formatPRIM(feeHex) : '—') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Gas Price</div><div class="detail-value mono">' + formatGwei(txGasPriceVal) + ' <span class="text-muted">(' + formatPRIM(txGasPriceVal) + ')</span></div></div>',
+            '    <div class="detail-row"><div class="detail-label">Value</div><div class="detail-value mono">' + formatMRSN(tx.value || '0x0') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Transaction Fee</div><div class="detail-value mono">' + (receipt ? formatMRSN(feeHex) : '—') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Gas Price</div><div class="detail-value mono">' + formatGwei(txGasPriceVal) + ' <span class="text-muted">(' + formatMRSN(txGasPriceVal) + ')</span></div></div>',
             txType === 2 ? '    <div class="detail-row"><div class="detail-label">Gas Fees</div><div class="detail-value mono">Base: ' + formatGwei(baseFeeFromBlock) + (maxFeePerGas ? ' | Max: ' + formatGwei(maxFeePerGas) : '') + (maxPriorityFee ? ' | Max Priority: ' + formatGwei(maxPriorityFee) : '') + '</div></div>' : '',
             '    <div class="detail-row">',
             '      <div class="detail-label">Gas Limit &amp; Usage by Txn</div>',
@@ -1841,7 +1841,7 @@
             '        <div class="gas-bar" style="width:100px;display:inline-block;vertical-align:middle"><div class="gas-bar-fill" style="width:' + gasBarPercent + '%"></div></div>',
             '      </div>',
             '    </div>',
-            receipt ? '    <div class="detail-row"><div class="detail-label">Burnt &amp; Txn Savings Fees</div><div class="detail-value mono"><span style="color:var(--danger)">🔥 Burnt: ' + formatPRIM(burntFeesHex) + '</span> <span class="text-muted" style="margin:0 8px">|</span> 💸 Txn Savings: ' + formatPRIM('0x' + savingsWei.toString(16)) + '</div></div>' : '',
+            receipt ? '    <div class="detail-row"><div class="detail-label">Burnt &amp; Txn Savings Fees</div><div class="detail-value mono"><span style="color:var(--danger)">🔥 Burnt: ' + formatMRSN(burntFeesHex) + '</span> <span class="text-muted" style="margin:0 8px">|</span> 💸 Txn Savings: ' + formatMRSN('0x' + savingsWei.toString(16)) + '</div></div>' : '',
             '    <div class="separator"></div>',
             '    <div class="detail-row"><div class="detail-label">Other Attributes</div><div class="detail-value"><span class="method-tag">Txn Type: ' + txTypeLabel + '</span> <span class="method-tag" style="margin-left:6px">Nonce: ' + (tx.nonce !== undefined ? hexToInt(tx.nonce) : '—') + '</span> <span class="method-tag" style="margin-left:6px">Position In Block: ' + positionInBlock + '</span></div></div>',
             '    ' + inputSection,
@@ -1926,7 +1926,7 @@
         var overviewHtml = [
             '<div class="detail-card" style="margin-bottom:1.5rem">',
             '  <div class="detail-card-title">Overview</div>',
-            '  <div class="detail-row"><div class="detail-label">MRSN Balance</div><div class="detail-value mono" style="font-size:1rem;font-weight:600">' + formatPRIM(balance) + '</div></div>',
+            '  <div class="detail-row"><div class="detail-label">MRSN Balance</div><div class="detail-value mono" style="font-size:1rem;font-weight:600">' + formatMRSN(balance) + '</div></div>',
             '  <div class="detail-row"><div class="detail-label">Token Holdings</div><div class="detail-value">' + (tokenBalances.length > 0 ? '<span class="method-tag">' + tokenBalances.length + ' Token' + (tokenBalances.length !== 1 ? 's' : '') + '</span>' : 'None') + '</div></div>',
             !isContract ? '  <div class="detail-row"><div class="detail-label">🛡 Privacy</div><div class="detail-value text-muted" style="font-size:0.8rem">Only transparent activity is shown. Shielded transfers, orders, and positions on Mersennet are private and not publicly linkable to this address.</div></div>' : '',
             '</div>',
@@ -1937,7 +1937,7 @@
             '  <div class="detail-card-title">More Info</div>',
             '  <div class="detail-row"><div class="detail-label">Address Type</div><div class="detail-value">' + typeLabel + '</div></div>',
             '  <div class="detail-row"><div class="detail-label">Nonce</div><div class="detail-value mono">' + formatNum(nonce) + '</div></div>',
-            isValidator && validatorInfo ? '  <div class="detail-row"><div class="detail-label">Validator Stake</div><div class="detail-value mono">' + formatPRIM(validatorInfo.stake) + '</div></div>' : '',
+            isValidator && validatorInfo ? '  <div class="detail-row"><div class="detail-label">Validator Stake</div><div class="detail-value mono">' + formatMRSN(validatorInfo.stake) + '</div></div>' : '',
             isContract ? '  <div class="detail-row"><div class="detail-label">Contract Code</div><div class="detail-value">' + formatNum(code.length) + ' bytes' + (verified ? ' <span class="status-badge status-success"><span class="status-dot"></span>Verified</span>' : '') + '</div></div>' : '',
             '</div>',
         ].join('\n');
@@ -2003,8 +2003,8 @@
                 '<td>' + addrDisplay(txFrom) + '</td>' +
                 '<td><span class="status-badge ' + (isFrom ? 'status-fail' : 'status-success') + '" style="font-size:0.7rem">' + (isFrom ? 'OUT' : 'IN') + '</span></td>' +
                 '<td>' + (txTo ? addrDisplay(txTo) : '<span style="color:var(--warn)">Contract Create</span>') + '</td>' +
-                '<td class="td-right mono">' + formatPRIMShort(tx.value || '0x0') + '</td>' +
-                '<td class="td-right mono text-muted" style="font-size:0.78rem">' + formatPRIMShort(txFeeHex) + '</td>' +
+                '<td class="td-right mono">' + formatMRSNShort(tx.value || '0x0') + '</td>' +
+                '<td class="td-right mono text-muted" style="font-size:0.78rem">' + formatMRSNShort(txFeeHex) + '</td>' +
                 '</tr>';
         }
 
@@ -2123,7 +2123,7 @@
                 '    <div class="stat-card"><div class="stat-card-label">Total Txs</div><div class="stat-card-value">' + addressTxs.length + '</div></div>',
                 '    <div class="stat-card"><div class="stat-card-label">Incoming</div><div class="stat-card-value" style="color:var(--success)">' + inCount + '</div></div>',
                 '    <div class="stat-card"><div class="stat-card-label">Outgoing</div><div class="stat-card-value" style="color:var(--danger)">' + outCount + '</div></div>',
-                '    <div class="stat-card"><div class="stat-card-label">Total Value</div><div class="stat-card-value">' + formatPRIMShort('0x' + totalValue.toString(16)) + '</div></div>',
+                '    <div class="stat-card"><div class="stat-card-label">Total Value</div><div class="stat-card-value">' + formatMRSNShort('0x' + totalValue.toString(16)) + '</div></div>',
                 '  </div>',
                 '  <div class="card">',
                 '    <div class="detail-card-title">Transaction Activity by Block</div>',
@@ -2320,7 +2320,7 @@
                 '<tr>',
                 '  <td class="td-mono" style="font-weight:600;color:var(--text-muted)">' + (i + 1) + '</td>',
                 '  <td><a href="#/address/' + escapeHtml(v.address) + '" class="hash-link">' + escapeHtml(v.address) + '</a> ' + copyBtnHtml(v.address) + '</td>',
-                '  <td class="td-mono">' + formatPRIM(v.stake) + '</td>',
+                '  <td class="td-mono">' + formatMRSN(v.stake) + '</td>',
                 '  <td>',
                 '    <div style="display:flex;align-items:center;gap:0.5rem">',
                 '      <div class="stake-bar" style="width:80px"><div class="stake-bar-fill" style="width:' + pct + '%"></div></div>',
@@ -2349,7 +2349,7 @@
             '    </div>',
             '    <div class="stat-card">',
             '      <div class="stat-card-label">Total Staked</div>',
-            '      <div class="stat-card-value">' + formatPRIM('0x' + totalStake.toString(16)) + '</div>',
+            '      <div class="stat-card-value">' + formatMRSN('0x' + totalStake.toString(16)) + '</div>',
             '    </div>',
             '    <div class="stat-card">',
             '      <div class="stat-card-label">Block Height</div>',
@@ -2375,7 +2375,7 @@
             '    <div class="detail-row"><div class="detail-label">Min Stake</div><div class="detail-value mono">Direct staking — delegation not yet live</div></div>',
             '    <div class="detail-row"><div class="detail-label">Block Time</div><div class="detail-value">~' + BLOCK_TIME_SECS + ' second</div></div>',
             '    <div class="detail-row"><div class="detail-label">Block Reward</div><div class="detail-value mono">10 MRSN (halving every 35M blocks)</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Total Staked</div><div class="detail-value mono">' + formatPRIM('0x' + totalStake.toString(16)) + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Total Staked</div><div class="detail-value mono">' + formatMRSN('0x' + totalStake.toString(16)) + '</div></div>',
             '    <div class="detail-row"><div class="detail-label">Staking APR (est.)</div><div class="detail-value mono">' + (totalStake > 0n ? (Number(10n * 365n * 86400n * 10000n * 1000000000000000000n / (totalStake * BigInt(BLOCK_TIME_SECS))) / 100).toFixed(2) + '%' : '—') + '</div></div>',
             '    <div class="detail-row"><div class="detail-label">Validator Dashboard</div><div class="detail-value"><a href="http://46.225.30.187:4001" target="_blank" class="hash-link">Open Dashboard →</a></div></div>',
             '  </div>',
@@ -2536,7 +2536,7 @@
 
         var gasPriceGwei = Number(hexToBigInt(state.gasPrice)) / 1e9;
         var transferCostWei = Number(hexToBigInt(state.gasPrice)) * 21000;
-        var transferCostPRIM = transferCostWei / 1e18;
+        var transferCostMRSN = transferCostWei / 1e18;
 
         var allBaseFeeValues = baseFees.map(function(f) { return f.fee; }).sort(function(a,b) { return a - b; });
         var p10 = allBaseFeeValues[Math.floor(allBaseFeeValues.length * 0.1)] || gasPriceGwei;
@@ -2636,7 +2636,7 @@
             '    <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">',
             '      <div><label style="display:block;font-size:0.75rem;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Gas Units</label><input type="number" id="gasCalcUnits" class="gas-input" value="21000" style="width:150px"></div>',
             '      <div><label style="display:block;font-size:0.75rem;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Gas Price (Gwei)</label><input type="number" id="gasCalcPrice" class="gas-input" value="' + gasPriceGwei.toFixed(4) + '" step="0.001" style="width:150px"></div>',
-            '      <div id="gasCalcResult" style="font-size:1rem;font-weight:700;color:var(--accent);padding-bottom:8px">= ' + transferCostPRIM.toFixed(8) + ' MRSN</div>',
+            '      <div id="gasCalcResult" style="font-size:1rem;font-weight:700;color:var(--accent);padding-bottom:8px">= ' + transferCostMRSN.toFixed(8) + ' MRSN</div>',
             '    </div>',
             '    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">',
             '      <button class="btn btn-outline btn-sm gas-preset" data-gas="21000">Transfer (21k)</button>',
@@ -3017,7 +3017,7 @@
                 '<td>' + (ri + 1) + '</td>' +
                 '<td><a href="#/address/' + escapeHtml(e.addr) + '" class="addr-link mono">' + truncAddr(e.addr) + '</a> ' + copyBtnHtml(e.addr) + '</td>' +
                 '<td>' + escapeHtml(e.name) + '</td>' +
-                '<td class="mono">' + formatPRIM(e.balanceHex) + '</td>' +
+                '<td class="mono">' + formatMRSN(e.balanceHex) + '</td>' +
                 '<td class="mono">' + e.percentage + '%</td>' +
                 '<td><span class="method-tag ' + typeBadge + '">' + escapeHtml(e.type) + '</span></td>' +
                 '</tr>';
@@ -3290,7 +3290,7 @@
                     '<td>' + (i + 1) + '</td>' +
                     '<td><a href="#/address/' + escapeHtml(w.address) + '" class="addr-link mono">' + truncAddr(w.address) + '</a> ' + copyBtnHtml(w.address) + '</td>' +
                     '<td>' + (nameTag ? escapeHtml(nameTag) : '<span class="text-muted">—</span>') + '</td>' +
-                    '<td class="mono">' + formatPRIM(balances[i] || '0x0') + '</td>' +
+                    '<td class="mono">' + formatMRSN(balances[i] || '0x0') + '</td>' +
                     '<td class="td-time">' + new Date(w.added).toLocaleDateString() + '</td>' +
                     '<td><button class="btn btn-outline watchlist-remove" data-addr="' + escapeHtml(w.address) + '" style="font-size:0.75rem;padding:2px 8px;color:var(--danger)">Remove</button></td>' +
                     '</tr>';
