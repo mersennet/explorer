@@ -1,0 +1,91 @@
+/* Mersennet Explorer — design tokens
+ * Brand: phosphor green (#7dff9b) + teal (#40e0b4) on near-black. JetBrains Mono
+ * for data, Sora for UI. Privacy/ZK surfaces use teal (NOT violet — the legacy
+ * violet #b07cff is intentionally gone). Mersenne-prime / perfect-number theme.
+ */
+:root {
+  /* surfaces (dark, default) */
+  --bg: #000000;
+  --bg-surface: #050706;
+  --bg-card: #0a0d0b;
+  --bg-card-2: #10140f;
+  --bg-elev: #161b15;
+  --bg-hover: #1a2018;
+  --border: #1d241c;
+  --border-strong: #2a342700;
+  --border-soft: #161b15;
+
+  /* brand */
+  --accent: #7dff9b;          /* phosphor green */
+  --accent-dim: #2bd96a;
+  --accent-deep: #0a8f50;
+  --teal: #40e0b4;            /* privacy/ZK accent */
+  --teal-dim: #1fb894;
+
+  /* text */
+  --text: #eef2ee;
+  --text-2: #9aa69d;
+  --text-3: #5f6b62;
+  --text-inverse: #04130a;
+
+  /* status */
+  --up: #1ad598;
+  --down: #ff5240;
+  --warn: #ffb23c;
+  --info: #5b8cff;
+  --up-bg: rgba(26, 213, 152, 0.12);
+  --down-bg: rgba(255, 82, 64, 0.12);
+  --warn-bg: rgba(255, 178, 60, 0.12);
+  --info-bg: rgba(91, 140, 255, 0.12);
+  --accent-bg: rgba(125, 255, 155, 0.10);
+  --teal-bg: rgba(64, 224, 180, 0.10);
+
+  /* gradients */
+  --grad-accent: linear-gradient(90deg, #7dff9b 0%, #2bd96a 100%);
+  --grad-hero: radial-gradient(120% 120% at 0% 0%, rgba(125,255,155,0.16) 0%, rgba(64,224,180,0.06) 36%, rgba(0,0,0,0) 70%);
+  --grad-teal: linear-gradient(90deg, #40e0b4 0%, #1fb894 100%);
+
+  /* type */
+  --font-ui: 'Sora', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --fs-xs: 11px; --fs-sm: 12px; --fs-base: 13px; --fs-md: 14px;
+  --fs-lg: 16px; --fs-xl: 20px; --fs-2xl: 26px; --fs-3xl: 34px; --fs-hero: 46px;
+
+  /* shape */
+  --radius-xs: 6px; --radius: 9px; --radius-lg: 13px; --radius-xl: 18px; --radius-pill: 100px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow: 0 8px 30px rgba(0,0,0,.5);
+  --shadow-glow: 0 0 0 1px rgba(125,255,155,.18), 0 10px 40px rgba(125,255,155,.06);
+  --shadow-glow-teal: 0 0 0 1px rgba(64,224,180,.22), 0 10px 40px rgba(64,224,180,.07);
+
+  /* layout */
+  --sidebar-w: 248px;
+  --sidebar-w-collapsed: 66px;
+  --header-h: 60px;
+  --maxw: 1320px;
+  --ease: cubic-bezier(.4, 0, .2, 1);
+  --ease-bounce: cubic-bezier(.34, 1.56, .64, 1);
+}
+
+/* light theme (toggle adds .light to <html>) */
+html.light {
+  --bg: #f6f8f6;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-2: #f1f4f1;
+  --bg-elev: #eef2ee;
+  --bg-hover: #e9efe9;
+  --border: #dde6dd;
+  --border-soft: #e8eee8;
+  --accent: #0a8f50;
+  --accent-dim: #0fae62;
+  --teal: #0f9b86;
+  --text: #14201a;
+  --text-2: #5a6b60;
+  --text-3: #8aa090;
+  --text-inverse: #ffffff;
+  --up: #0a8f50; --down: #c5283d; --warn: #b3650a; --info: #2563c7;
+  --grad-hero: radial-gradient(120% 120% at 0% 0%, rgba(15,174,98,0.10) 0%, rgba(15,155,134,0.04) 40%, rgba(0,0,0,0) 70%);
+  --shadow: 0 6px 24px rgba(20,40,28,.08);
+  --shadow-glow: 0 0 0 1px rgba(10,143,80,.18), 0 8px 30px rgba(10,143,80,.06);
+}

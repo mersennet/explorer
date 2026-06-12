@@ -1,0 +1,33 @@
+# Caddy vhost for explorer.mersennet.com
+#
+# The explorer is a static ES-module SPA. It needs two reverse proxies on the
+# SAME origin so the frontend can use relative /rpc and /api:
+#   /rpc  -> the Mersennet node JSON-RPC (and WS upgrade)   [REQUIRED]
+#   /api  -> the indexer (indexer.js, 127.0.0.1:3334)        [OPTIONAL — unlocks
+#            top accounts, address history, token transfers, charts, search]
+#
+# Without the /api proxy the explorer still works fully (RPC-first); pages that
+# need the indexer degrade gracefully with an "indexer offline" note.
+#
+# Replace NODE_RPC with the node host:port (e.g. 127.0.0.1:8545).
+
+explorer.mersennet.com {
+	encode gzip
+	root * /var/www/explorer
+
+	# JSON-RPC + WebSocket (same handler; the node upgrades WS on /rpc).
+	handle /rpc* {
+		reverse_proxy NODE_RPC
+	}
+
+	# Indexer REST API (run: PORT=3334 node indexer.js). Optional but recommended.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3334
+	}
+
+	# SPA: serve assets, fall back to index.html for hash routes.
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}
