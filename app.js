@@ -853,7 +853,7 @@
     function methodBadgeHtml(input, to) {
         var toAddr = (to || '').toLowerCase();
         if (toAddr === SHIELD_BRIDGE_PRECOMPILE) {
-            return '<span class="method-tag badge-shielded" title="Shielded transaction — details are private. Only nullifiers and commitments are recorded on-chain.">🛡 Shielded</span>';
+            return '<span class="method-tag badge-shielded" title="Shielded transaction: details are private. Only nullifiers and commitments are recorded on-chain.">🛡 Shielded</span>';
         }
         if (toAddr === MERSENNET_ORDERS_PRECOMPILE) {
             var po = decodeMethod(input);
@@ -897,13 +897,13 @@
         if (k.indexOf('fba') !== -1 || n.kind === 'FbaCleared') {
             label = 'Auction Cleared';
             desc = 'Market #' + (d.market_id != null ? d.market_id : '?') +
-                ' — uniform-price batch auction, ' + (d.intent_count || 0) + ' intents (participants private)';
+                ': uniform-price batch auction, ' + (d.intent_count || 0) + ' intents (participants private)';
         } else if (k.indexOf('mempool') !== -1 || n.kind === 'MempoolBatchAdmitted') {
             label = 'Encrypted Batch';
             desc = (d.intent_count || 0) + ' threshold-encrypted intents admitted (contents private until decryption)';
         } else if (k.indexOf('liquidation') !== -1 || n.kind === 'LiquidationSettled') {
             label = 'Liquidation Settled';
-            desc = 'Sealed-bid auction — winner identified only by bond commitment ' +
+            desc = 'Sealed-bid auction. Winner identified only by bond commitment ' +
                 truncHash(bytesToHex(d.winner_bond_commitment));
         } else if (k.indexOf('root') !== -1 || n.kind === 'ShieldedRootAdvanced') {
             label = 'Shielded Root Advanced';
@@ -1480,7 +1480,7 @@
             '    <div class="detail-row"><div class="detail-label">Nullifier Root</div><div class="detail-value mono" id="blockNullifierRoot"><span class="text-muted">—</span></div></div>',
             shieldedEvents.length > 0 ? [
                 '    <div class="separator"></div>',
-                '    <div class="detail-row"><div class="detail-label">Shielded Activity</div><div class="detail-value text-muted">' + shieldedEvents.length + ' aggregate-only event' + (shieldedEvents.length !== 1 ? 's' : '') + ' — no addresses or amounts are revealed</div></div>',
+                '    <div class="detail-row"><div class="detail-label">Shielded Activity</div><div class="detail-value text-muted">' + shieldedEvents.length + ' aggregate-only event' + (shieldedEvents.length !== 1 ? 's' : '') + ': no addresses or amounts are revealed</div></div>',
                 shieldedEvents.map(shieldedEventRowHtml).join('\n'),
             ].join('\n') : '',
             '    <div class="separator"></div>',
@@ -1674,7 +1674,7 @@
 
         var txActionHtml = '';
         if (isShieldedTx) {
-            txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="method-tag badge-shielded">🛡 Shielded</span> <span class="text-muted">Interaction with the ShieldBridge precompile — note contents, recipients, and shielded amounts are private. Only nullifiers and commitments are recorded on-chain.</span></div></div>';
+            txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="method-tag badge-shielded">🛡 Shielded</span> <span class="text-muted">Interaction with the ShieldBridge precompile. Note contents, recipients, and shielded amounts are private. Only nullifiers and commitments are recorded on-chain.</span></div></div>';
         } else if (tx.value && hexToBigInt(tx.value) > 0n && (!tx.input || tx.input === '0x')) {
             txActionHtml = '<div class="detail-row"><div class="detail-label">Transaction Action</div><div class="detail-value"><span class="status-badge status-success" style="font-size:0.8rem"><span class="status-dot"></span>Transfer</span> <strong>' + formatMRSN(tx.value) + '</strong> to ' + (tx.to ? '<a href="#/address/' + escapeHtml(tx.to) + '" class="addr-link">' + truncAddr(tx.to) + '</a>' : 'Contract') + '</div></div>';
         } else if (tx.input && tx.input.length >= 10) {
@@ -2377,7 +2377,7 @@
             '  <div class="detail-card" style="margin-top:1.5rem">',
             '    <div class="detail-card-title">Staking Information</div>',
             '    <div class="detail-row"><div class="detail-label">Consensus</div><div class="detail-value">Proof-of-Stake (HotStuff-2 BFT)</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Min Stake</div><div class="detail-value mono">Direct staking — delegation not yet live</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Min Stake</div><div class="detail-value mono">Direct staking (delegation not yet live)</div></div>',
             '    <div class="detail-row"><div class="detail-label">Block Time</div><div class="detail-value">~' + BLOCK_TIME_SECS + ' second</div></div>',
             '    <div class="detail-row"><div class="detail-label">Block Reward</div><div class="detail-value mono">2.3 MRSN (halving every 33,550,336 blocks, ~1.06 years)</div></div>',
             '    <div class="detail-row"><div class="detail-label">Total Staked</div><div class="detail-value mono">' + formatMRSN('0x' + totalStake.toString(16)) + '</div></div>',
@@ -3416,7 +3416,7 @@
             { name: 'Validator Dashboard', desc: 'Monitor and manage validator nodes', url: 'https://dashboard.mersennet.com', icon: '🛡️', category: 'Staking' },
             { name: 'Faucet', desc: 'Get free testnet MRSN tokens', url: 'https://faucet.mersennet.com', icon: '💧', category: 'Tools' },
             { name: 'Documentation', desc: 'Mersennet developer documentation', url: 'https://docs.mersennet.com', icon: '📖', category: 'Docs' },
-            { name: 'Project Site', desc: 'Mersennet — the zero-knowledge L1', url: 'https://mersennet.com', icon: '🌌', category: 'Docs' },
+            { name: 'Project Site', desc: 'Mersennet, the zero-knowledge L1', url: 'https://mersennet.com', icon: '🌌', category: 'Docs' },
             { name: 'Token Approvals', desc: 'Check and manage token allowances', url: '#/approvals', icon: '🔐', category: 'Security', internal: true },
             { name: 'Gas Tracker', desc: 'Monitor gas prices and trends', url: '#/gastracker', icon: '⛽', category: 'Tools', internal: true },
         ];
@@ -3472,7 +3472,7 @@
             '    <div class="detail-icon" style="background:rgba(176,124,255,0.12)">🛡</div>',
             '    <div class="detail-title-group">',
             '      <div class="detail-title">Verify State Proofs</div>',
-            '      <div class="text-muted" style="font-size:0.85rem">Every Mersennet block carries an SP1 zero-knowledge proof of its state transition. Fetch and verify the proof for any block — no trust in the RPC node required beyond the proof itself.</div>',
+            '      <div class="text-muted" style="font-size:0.85rem">Every Mersennet block carries an SP1 zero-knowledge proof of its state transition. Fetch and verify the proof for any block: no trust in the RPC node required beyond the proof itself.</div>',
             '    </div>',
             '  </div>',
             '  <div class="detail-card">',
@@ -3506,7 +3506,7 @@
             var sizeKb = ((proof.proofBincodeHex.length - 2) / 2 / 1024).toFixed(1);
             resultEl.innerHTML = [
                 '<div class="detail-card">',
-                '  <div class="detail-card-title">State Transition Proof — Block #' + formatNum(proof.blockHeight || 0) + '</div>',
+                '  <div class="detail-card-title">State Transition Proof, Block #' + formatNum(proof.blockHeight || 0) + '</div>',
                 '  <div class="detail-row"><div class="detail-label">Proof Type</div><div class="detail-value"><span class="method-tag badge-shielded">' + escapeHtml(proof.proofType || 'SP1') + '</span></div></div>',
                 '  <div class="detail-row"><div class="detail-label">Block Hash</div><div class="detail-value mono">' + escapeHtml(proof.blockHash || '—') + '</div></div>',
                 '  <div class="detail-row"><div class="detail-label">Txs Proven</div><div class="detail-value">' + (proof.txCount || 0) + '</div></div>',
@@ -3531,7 +3531,7 @@
                 try {
                     var res = await rpc('mersennet_verifyStateProof', [proof.proofBincodeHex]);
                     if (res && res.valid) {
-                        statusEl.innerHTML = '<span class="status-badge status-success"><span class="status-dot"></span>Proof valid — state transition verified</span>';
+                        statusEl.innerHTML = '<span class="status-badge status-success"><span class="status-dot"></span>Proof valid: state transition verified</span>';
                     } else {
                         statusEl.innerHTML = '<span class="status-badge status-fail"><span class="status-dot"></span>Proof INVALID</span>';
                     }
@@ -3579,7 +3579,7 @@
             '    <div class="detail-icon" style="background:rgba(176,124,255,0.12)">🛡</div>',
             '    <div class="detail-title-group">',
             '      <div class="detail-title">Shielded Markets</div>',
-            '      <div class="text-muted" style="font-size:0.85rem">Aggregate-only view of Mersennet\'s shielded order flow. Individual orders, positions, and trader addresses are private — only market-level aggregates are published on-chain.</div>',
+            '      <div class="text-muted" style="font-size:0.85rem">Aggregate-only view of Mersennet\'s shielded order flow. Individual orders, positions, and trader addresses are private. Only market-level aggregates are published on-chain.</div>',
             '    </div>',
             '  </div>',
             shieldedRoot && shieldedRoot.shieldedStateRoot ? [

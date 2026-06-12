@@ -1,4 +1,4 @@
-# Mersennet Explorer — Block Explorer
+# Mersennet Explorer: Block Explorer
 
 Block explorer for Mersennet (Chain ID 131071). Vanilla JavaScript SPA with no build step.
 
