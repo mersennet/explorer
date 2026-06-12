@@ -33,6 +33,7 @@ export const api = {
   address: (a) => api.safe(`/address/${a}`),
   addressTxs: (a, page = 1, limit = 25) => api.safe(`/address/${a}/txs?page=${page}&limit=${limit}`),
   addressTokenTxs: (a, page = 1, limit = 25) => api.safe(`/address/${a}/token-txs?page=${page}&limit=${limit}`),
+  addressTokens: (a) => api.safe(`/address/${a}/tokens`),
   topAccounts: (limit = 50) => api.safe(`/top-accounts?limit=${limit}`),
   dailyStats: (days = 30) => api.safe(`/daily-stats?days=${days}`),
   minerStats: () => api.safe('/miner-stats'),

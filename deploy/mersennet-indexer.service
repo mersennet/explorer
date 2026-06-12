@@ -1,0 +1,27 @@
+[Unit]
+Description=Mersennet Explorer Indexer (Postgres ingest + REST API on /api)
+Documentation=https://github.com/mersennet/explorer
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mersennet
+Group=mersennet
+WorkingDirectory=/opt/mersennet-indexer
+EnvironmentFile=/opt/mersennet-indexer/.env
+ExecStart=/usr/bin/node /opt/mersennet-indexer/indexer.js
+Restart=always
+RestartSec=5
+# graceful: the indexer handles SIGTERM (closes server + pool)
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

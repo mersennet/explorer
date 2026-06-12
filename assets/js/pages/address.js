@@ -5,7 +5,7 @@ import { CONFIG, KNOWN_CONTRACTS, KNOWN_METHODS } from '../config.js';
 import { rpcBatch, getBalance, getNonce, getCode, getCodeAttestation } from '../rpc.js';
 import { api } from '../api.js';
 import { render, icon, avatar, copyBtn, hashLink, addrLink, skeletonRows, emptyState } from '../ui.js';
-import { fmtMrsn, fmtNum, hexToNum, shortHash, timeAgo, esc } from '../format.js';
+import { fmtMrsn, fmtNum, fmtUnits, hexToNum, shortHash, timeAgo, esc } from '../format.js';
 
 const WATCH_KEY = 'mersennet-explorer-watchlist';
 
@@ -44,6 +44,8 @@ export default async function address(params) {
     <div class="grid cols-3" id="kvCards">
       ${statSk()}${statSk()}${statSk()}
     </div>
+
+    <div id="holdingsCard" style="margin-top:14px"></div>
 
     <div id="attestCard" style="margin-top:14px"></div>
 
@@ -91,6 +93,9 @@ export default async function address(params) {
     ${stat('tx', isContract ? 'Code size' : 'Nonce', isContract ? fmtNum((code.length - 2) / 2) + ' <span style="color:var(--text-3);font-size:var(--fs-md)">bytes</span>' : fmtNum(hexToNum(nonce)), isContract ? 'on-chain bytecode' : 'transactions sent')}
     ${stat('account', 'Type', isContract ? 'Contract' : 'EOA', known ? esc(known.name) : (isContract ? 'has bytecode' : 'externally owned'))}`;
 
+  // --- token holdings (RPC balanceOf for known tokens; indexer auto-discovers more) ---
+  buildHoldings(addr);
+
   // --- code attestation (contracts only) ---
   if (isContract) {
     const att = await getCodeAttestation(addr);
@@ -111,30 +116,47 @@ export default async function address(params) {
     }
   }
 
-  // --- tabs: lazy-load each tab's data once, cache results ---
+  // --- tabs: lazy-load each tab's page, cache by (tab, page) ---
   const cache = {};
   await api.probe();
   let activeTab = 'txs';
+  const pageState = { txs: 1, tokens: 1 };
+  const LIMIT = CONFIG.itemsPerPage;
 
   async function loadTab(tab) {
     const body = document.getElementById('tabBody');
     if (!body) return;
-    if (cache[tab]) { body.innerHTML = cache[tab]; return; }
+    const page = pageState[tab];
+    const ck = `${tab}:${page}`;
+    if (cache[ck]) { body.innerHTML = cache[ck]; return; }
     body.innerHTML = `<table class="tbl"><tbody>${skeletonRows(8, 4)}</tbody></table>`;
-    const html = tab === 'txs' ? await buildTxs() : await buildTokens();
+    const html = tab === 'txs' ? await buildTxs(page) : await buildTokens(page);
     if (!alive) return;
-    cache[tab] = html;
-    if (activeTab === tab) body.innerHTML = html;
+    cache[ck] = html;
+    if (activeTab === tab && pageState[tab] === page) body.innerHTML = html;
   }
 
-  async function buildTxs() {
+  function pager(page, total) {
+    const pages = Math.max(1, Math.ceil((total || 0) / LIMIT));
+    if (pages <= 1) return '';
+    const dis = (ok) => (ok ? '' : 'disabled');
+    return `<div class="pager" data-pages="${pages}">
+      <button class="btn sq" data-pg="first" ${dis(page > 1)} title="Newest">«</button>
+      <button class="btn sq" data-pg="prev" ${dis(page > 1)}>‹</button>
+      <span style="font-size:var(--fs-sm);color:var(--text-2);padding:0 8px">Page ${fmtNum(page)} of ${fmtNum(pages)} · ${fmtNum(total)} total</span>
+      <button class="btn sq" data-pg="next" ${dis(page < pages)}>›</button>
+      <button class="btn sq" data-pg="last" ${dis(page < pages)} title="Oldest">»</button>
+    </div>`;
+  }
+
+  async function buildTxs(page) {
     if (!api.available) {
       return notePanel(
         'Full transaction history requires the indexer',
         'This explorer is reading directly from the node, which does not index per-address history. Connect the indexer to see a complete, paginated transaction list.'
       );
     }
-    const data = await api.addressTxs(addr, 1, CONFIG.itemsPerPage);
+    const data = await api.addressTxs(addr, page, LIMIT);
     const list = data && Array.isArray(data.txs) ? data.txs : [];
     if (!list.length) return tableShell(['Tx hash', 'Block', 'From → To', 'Value', 'Age'],
       emptyRow(5, 'No transactions', 'This address has no recorded transactions yet.'));
@@ -152,19 +174,18 @@ export default async function address(params) {
       </tr>`;
     }).join('');
     const total = data.total != null ? data.total : list.length;
-    return tableShell(['Tx hash', 'Block', 'From → To', 'Value', 'Age'], rows) +
-      `<div style="padding:11px 18px;color:var(--text-3);font-size:var(--fs-xs);border-top:1px solid var(--border-soft)">Showing ${list.length} of ${fmtNum(total)} · <a class="link" href="#/txs">view global tx feed →</a></div>`;
+    return tableShell(['Tx hash', 'Block', 'From → To', 'Value', 'Age'], rows) + pager(page, total);
   }
 
-  async function buildTokens() {
+  async function buildTokens(page) {
     if (!api.available) {
       return notePanel(
         'Token transfers require the indexer',
         'Token (ERC-20 style) transfer history is reconstructed by the indexer from logs. Connect it to view transfers for this address.'
       );
     }
-    const data = await api.addressTokenTxs(addr, 1, CONFIG.itemsPerPage);
-    const list = data && Array.isArray(data.txs) ? data.txs : (data && Array.isArray(data.transfers) ? data.transfers : []);
+    const data = await api.addressTokenTxs(addr, page, LIMIT);
+    const list = data && Array.isArray(data.transfers) ? data.transfers : (data && Array.isArray(data.txs) ? data.txs : []);
     if (!list.length) return tableShell(['Tx hash', 'Token', 'From → To', 'Amount', 'Age'],
       emptyRow(5, 'No token transfers', 'No token transfers recorded for this address.'));
     const rows = list.map((t) => {
@@ -172,17 +193,58 @@ export default async function address(params) {
       const to = t.to_addr || t.to;
       const out = (from || '').toLowerCase() === addr;
       const counter = out ? to : from;
-      const tok = t.token || t.token_addr || t.contract;
-      const amount = t.value != null ? t.value : t.amount;
+      const tok = t.token_address || t.token || t.contract;
+      const meta = tok ? KNOWN_CONTRACTS[String(tok).toLowerCase()] : null;
+      const amount = t.amount != null ? t.amount : t.value;
       return `<tr class="row-enter">
-        <td>${t.hash ? hashLink(t.hash, 'tx') : '—'}</td>
-        <td>${tok ? addrLink(tok) : '<span class="badge token">token</span>'}</td>
+        <td>${(t.tx_hash || t.hash) ? hashLink(t.tx_hash || t.hash, 'tx') : '—'}</td>
+        <td>${tok ? `${addrLink(tok)} ${meta ? `<span class="badge accent">${esc(meta.symbol)}</span>` : ''}` : '<span class="badge token">token</span>'}</td>
         <td style="font-size:var(--fs-xs)"><span class="badge ${out ? 'warn' : 'ok'}" style="margin-right:6px">${out ? 'OUT' : 'IN'}</span>${counter ? addrLink(counter) : '—'}</td>
-        <td class="num">${amount != null ? fmtMrsn(amount) : '—'}</td>
+        <td class="num">${tokenAmount(amount, meta)}</td>
         <td class="num" style="color:var(--text-3)">${timeAgo(t.timestamp)}</td>
       </tr>`;
     }).join('');
-    return tableShell(['Tx hash', 'Token', 'From → To', 'Amount', 'Age'], rows);
+    const total = data.total != null ? data.total : list.length;
+    return tableShell(['Tx hash', 'Token', 'From → To', 'Amount', 'Age'], rows) + pager(page, total);
+  }
+
+  // --- token holdings: known tokens via RPC balanceOf; indexer auto-discovers more ---
+  async function buildHoldings(a) {
+    const card = document.getElementById('holdingsCard');
+    if (!card) return;
+    await api.probe();
+    const knownToks = Object.keys(KNOWN_CONTRACTS).filter((k) => KNOWN_CONTRACTS[k].kind === 'token');
+    let discovered = [];
+    if (api.available) {
+      const d = await api.addressTokens(a).catch(() => null);
+      if (d && Array.isArray(d.tokens)) discovered = d.tokens.map((t) => String(t.token_address || '').toLowerCase());
+    }
+    const toks = [...new Set([...knownToks, ...discovered].filter(Boolean))];
+    if (!alive || !toks.length) return;
+    const data = '0x70a08231' + a.replace(/^0x/, '').padStart(64, '0');     // balanceOf(address)
+    const balances = await rpcBatch(toks.map((t) => ({ method: 'eth_call', params: [{ to: t, data }, 'latest'] })));
+    if (!alive) return;
+    const rows = toks.map((t, i) => {
+      const raw = balances[i];
+      let big = 0n; try { if (raw && raw !== '0x') big = BigInt(raw); } catch {}
+      return { token: t, big, meta: KNOWN_CONTRACTS[t] };
+    }).filter((r) => r.big > 0n || r.meta);     // keep known tokens even at zero
+    if (!rows.length) return;
+    rows.sort((x, y) => (y.big > 0n ? 1 : 0) - (x.big > 0n ? 1 : 0));
+    card.innerHTML = `
+      <div class="card">
+        <div class="card-title"><span>${icon('token', 16)} Token holdings</span><span class="badge neutral">${rows.length}</span></div>
+        <div class="holdings">${rows.map((r) => {
+          const sym = (r.meta && r.meta.symbol) || 'TOKEN';
+          const bal = (r.meta && r.meta.decimals != null) ? fmtUnits(r.big, r.meta.decimals) : fmtNum(r.big);
+          return `<a class="holding" href="#/address/${r.token}">
+            <span class="hsym">${esc(sym)}</span>
+            <span class="hbal mono">${bal}</span>
+            <span class="haddr mono">${shortHash(r.token, 6, 4)}</span>
+          </a>`;
+        }).join('')}</div>
+        ${!api.available ? `<div style="padding:11px 18px;border-top:1px solid var(--border-soft);color:var(--text-3);font-size:var(--fs-xs)">${icon('network', 11)} Showing known tokens only — connect the indexer to auto-discover every token held.</div>` : ''}
+      </div>`;
   }
 
   // tab click handling
@@ -198,14 +260,38 @@ export default async function address(params) {
   };
   tabs?.addEventListener('click', onTab);
 
+  // pager delegation (within the active tab body)
+  const tabBody = document.getElementById('tabBody');
+  const onPager = (e) => {
+    const b = e.target.closest('button[data-pg]');
+    if (!b || b.disabled || !alive) return;
+    const wrap = b.closest('.pager');
+    const pages = parseInt((wrap && wrap.dataset.pages) || '1', 10);
+    let p = pageState[activeTab];
+    const go = b.dataset.pg;
+    if (go === 'first') p = 1; else if (go === 'prev') p = Math.max(1, p - 1);
+    else if (go === 'next') p = Math.min(pages, p + 1); else if (go === 'last') p = pages;
+    pageState[activeTab] = p;
+    loadTab(activeTab);
+  };
+  tabBody?.addEventListener('click', onPager);
+
   loadTab('txs');
 
   function cleanup() {
     alive = false;
     watchBtn?.removeEventListener('click', onWatch);
     tabs?.removeEventListener('click', onTab);
+    tabBody?.removeEventListener('click', onPager);
   }
   return cleanup;
+}
+
+// token-transfer amount: known token -> scaled + symbol; unknown -> raw integer
+function tokenAmount(amount, meta) {
+  if (amount == null) return '—';
+  if (meta && meta.decimals != null) return `${fmtUnits(amount, meta.decimals)} <span style="color:var(--text-3)">${esc(meta.symbol)}</span>`;
+  try { return `<span title="raw units">${fmtNum(BigInt(amount))}</span>`; } catch { return '—'; }
 }
 
 // --- small view helpers ---

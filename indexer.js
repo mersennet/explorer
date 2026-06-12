@@ -595,6 +595,27 @@ const server = http.createServer(async (req, res) => {
             return sendJSON(res, 200, { total: total.rows[0].c, page, limit, transfers: data.rows });
         }
 
+        // ── Address token holdings (distinct tokens touched) ──
+        // Returns the set of tokens this address has sent/received, with counts and
+        // last-seen block. Live balances are resolved client-side via RPC balanceOf.
+        const addrTokensMatch = path.match(/^\/api\/address\/(0x[a-fA-F0-9]{40})\/tokens$/);
+        if (addrTokensMatch) {
+            const addr = addrTokensMatch[1].toLowerCase();
+            const data = await pool.query(`
+                SELECT token_address,
+                       count(*)::int AS transfers,
+                       count(*) FILTER (WHERE to_addr = $1)::int AS in_count,
+                       count(*) FILTER (WHERE from_addr = $1)::int AS out_count,
+                       max(block_number) AS last_block
+                FROM token_transfers
+                WHERE from_addr = $1 OR to_addr = $1
+                GROUP BY token_address
+                ORDER BY transfers DESC
+                LIMIT 200
+            `, [addr]);
+            return sendJSON(res, 200, { address: addr, tokens: data.rows });
+        }
+
         // ── Address summary ───────────────────────────
         const addrSummaryMatch = path.match(/^\/api\/address\/(0x[a-fA-F0-9]{40})$/);
         if (addrSummaryMatch) {
@@ -703,6 +724,72 @@ const server = http.createServer(async (req, res) => {
     }
 });
 
+// ─── Schema bootstrap ────────────────────────────────────────────────────────
+// Idempotent: safe to run on every start. Makes a fresh deploy turnkey — no
+// separate migration step. CREATE ... IF NOT EXISTS never touches existing data.
+const SCHEMA = `
+CREATE TABLE IF NOT EXISTS indexer_state (
+    key         text PRIMARY KEY,
+    value       text,
+    updated_at  timestamptz DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS blocks (
+    number      bigint PRIMARY KEY,
+    hash        text,
+    parent_hash text,
+    timestamp   bigint,
+    miner       text,
+    gas_used    bigint,
+    gas_limit   bigint,
+    tx_count    int,
+    size        bigint,
+    extra_data  text
+);
+CREATE TABLE IF NOT EXISTS transactions (
+    hash             text PRIMARY KEY,
+    block_number     bigint,
+    tx_index         int,
+    timestamp        bigint,
+    from_addr        text,
+    to_addr          text,
+    value            text,
+    gas              bigint,
+    gas_used         bigint,
+    gas_price        text,
+    input            text,
+    nonce            bigint,
+    method_id        text,
+    status           int,
+    contract_address text
+);
+CREATE TABLE IF NOT EXISTS token_transfers (
+    tx_hash       text,
+    log_index     int,
+    block_number  bigint,
+    token_address text,
+    from_addr     text,
+    to_addr       text,
+    amount        text,
+    PRIMARY KEY (tx_hash, log_index)
+);
+CREATE INDEX IF NOT EXISTS idx_blocks_miner       ON blocks (miner);
+CREATE INDEX IF NOT EXISTS idx_blocks_timestamp   ON blocks (timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_tx_block           ON transactions (block_number DESC, tx_index DESC);
+CREATE INDEX IF NOT EXISTS idx_tx_from            ON transactions (from_addr);
+CREATE INDEX IF NOT EXISTS idx_tx_to              ON transactions (to_addr);
+CREATE INDEX IF NOT EXISTS idx_tx_timestamp       ON transactions (timestamp);
+CREATE INDEX IF NOT EXISTS idx_tx_method          ON transactions (method_id);
+CREATE INDEX IF NOT EXISTS idx_tt_token           ON token_transfers (token_address);
+CREATE INDEX IF NOT EXISTS idx_tt_from            ON token_transfers (from_addr);
+CREATE INDEX IF NOT EXISTS idx_tt_to              ON token_transfers (to_addr);
+CREATE INDEX IF NOT EXISTS idx_tt_block           ON token_transfers (block_number DESC);
+`;
+
+async function initSchema() {
+    await pool.query(SCHEMA);
+    console.log('[db] Schema ready (tables + indexes verified)');
+}
+
 // ─── Startup ─────────────────────────────────────────────────────────────────
 async function start() {
     try {
@@ -710,6 +797,13 @@ async function start() {
         console.log('[db] PostgreSQL connected');
     } catch (e) {
         console.error('[db] Failed to connect:', e.message);
+        process.exit(1);
+    }
+
+    try {
+        await initSchema();
+    } catch (e) {
+        console.error('[db] Schema bootstrap failed:', e.message);
         process.exit(1);
     }
 

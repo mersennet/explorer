@@ -39,15 +39,25 @@ default-exports `async (params) => cleanup?`.
 ## Deploy
 
 Static files behind a reverse proxy that provides `/rpc` (required) and `/api`
-(optional). See **`Caddyfile`** for the `explorer.mersennet.com` vhost. The
-indexer backend is `indexer.js` (`PORT=3334 node indexer.js`, needs Postgres).
+(optional). See **`Caddyfile`** for the `explorer.mersennet.com` vhost.
 
 ```bash
 rsync -a --delete ./ root@server:/var/www/explorer/ \
-  --exclude .git --exclude indexer.js --exclude '*.bak'
+  --exclude .git --exclude node_modules --exclude indexer.js \
+  --exclude package.json --exclude package-lock.json \
+  --exclude '.env*' --exclude deploy --exclude '*.bak' \
+  --exclude .build-spec.md --exclude INDEXER.md
 # install the vhost (replace NODE_RPC) and reload Caddy
 ```
 
+### Indexer (optional `/api` backend)
+
+The indexer unlocks per-address history, token transfers/holdings, top accounts,
+full-text search, and chart stats. It self-bootstraps its Postgres schema and
+runs as a systemd service separate from the static tree. Full steps in
+**[`INDEXER.md`](INDEXER.md)**; artifacts: `indexer.js`, `package.json`,
+`.env.example`, `deploy/mersennet-indexer.service`.
+
 > Until `/api` is proxied to the indexer, indexer-backed features show an
 > "indexer offline" note and fall back to live RPC. The core explorer + the
-> Privacy/ZK, CLOB, and validators pages work without it.
+> Privacy/ZK, CLOB, validators, tokenomics, and network pages work without it.

@@ -281,3 +281,33 @@
 .sess-chip .l { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); font-weight: 600; }
 .sess-chip .v { font-family: var(--font-mono); font-size: var(--fs-md); font-weight: 700; }
 .sess-spark { margin-left: auto; width: 150px; max-width: 42vw; }
+
+/* ---- network: RPC playground + live activity (pages/network.js) ---- */
+.pg-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+.pg-input { background: var(--bg-elev); border: 1px solid var(--border-soft); border-radius: var(--radius);
+  color: var(--text); padding: 9px 11px; font-size: var(--fs-sm); }
+#pgMethod { min-width: 230px; cursor: pointer; }
+#pgParams { flex: 1; min-width: 180px; }
+.pg-input:focus { outline: none; border-color: var(--accent); }
+.pg-hint { color: var(--text-3); font-size: var(--fs-xs); margin: 9px 2px; font-family: var(--font-mono); word-break: break-all; }
+.pg-out { background: var(--bg-elev); border: 1px solid var(--border-soft); border-radius: var(--radius);
+  padding: 13px 15px; font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-2);
+  max-height: 360px; overflow: auto; white-space: pre-wrap; word-break: break-word; line-height: 1.5; margin: 0; }
+.pg-out.ok { border-color: rgba(125,255,155,.3); }
+.pg-out.err { border-color: rgba(255,82,64,.35); color: var(--down); }
+.act-legend { display: flex; justify-content: space-between; align-items: center; color: var(--text-3);
+  font-size: var(--fs-xs); margin-bottom: 8px; }
+.act-bars { display: flex; align-items: flex-end; gap: 2px; height: 56px; }
+.act-bar { flex: 1; min-width: 2px; background: var(--border); border-radius: 2px 2px 0 0;
+  transition: background .12s, transform .12s; }
+.act-bar.on { background: var(--grad-accent); }
+.act-bar:hover { background: var(--accent); transform: scaleY(1.05); }
+
+/* ---- address: token holdings (pages/address.js) ---- */
+.holdings { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; padding: 14px 18px; }
+.holding { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border: 1px solid var(--border-soft);
+  border-radius: var(--radius); background: var(--bg-card-2); transition: border-color .12s, transform .12s; }
+.holding:hover { border-color: var(--accent); transform: translateY(-2px); }
+.holding .hsym { font-weight: 700; font-size: var(--fs-sm); color: var(--accent); }
+.holding .hbal { font-size: var(--fs-lg); color: var(--text); }
+.holding .haddr { font-size: var(--fs-xs); color: var(--text-3); }

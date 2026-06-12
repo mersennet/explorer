@@ -1,0 +1,17 @@
+{
+  "name": "mersennet-explorer-indexer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Postgres indexer + REST API backing the Mersennet explorer (/api). The explorer frontend itself has no build step and no dependencies; this manifest is only for the indexer backend.",
+  "main": "indexer.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node indexer.js"
+  },
+  "dependencies": {
+    "pg": "^8.11.5"
+  }
+}
