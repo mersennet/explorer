@@ -2,7 +2,7 @@ const http = require('http');
 const { Pool } = require('pg');
 
 // ─── Config ──────────────────────────────────────────────────────────────────
-const RPC_URL = process.env.RPC_URL || 'http://46.225.183.192:8545';
+const RPC_URL = process.env.RPC_URL || 'https://rpc.mersennet.com';
 const PORT = parseInt(process.env.PORT) || 3334;
 const BATCH_SIZE = parseInt(process.env.BATCH_SIZE) || 50;
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL) || 3000;

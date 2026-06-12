@@ -2,7 +2,7 @@
 
 Block explorer for Mersennet (Chain ID 131071). Vanilla JavaScript SPA with no build step.
 
-**Live:** http://46.225.30.187/
+**Live:** https://explorer.mersennet.com/
 
 ## Features
 
@@ -29,15 +29,16 @@ Block explorer for Mersennet (Chain ID 131071). Vanilla JavaScript SPA with no b
 Edit the top of `app.js`:
 
 ```javascript
-var RPC_URL = 'http://46.225.30.187:8545';
-var CHAIN_ID = 131071;
-var BLOCK_TIME_SECS = 1;
+// RPC defaults to location.origin + '/rpc' (reverse-proxied to the node).
+// Canonical node endpoints: https://rpc.mersennet.com  /  wss://rpc.mersennet.com
+const CHAIN_ID        = 131071;
+const BLOCK_TIME_SECS = 1;
 ```
 
 ## Deploy
 
 ```bash
-scp index.html style.css app.js root@46.225.30.187:/var/www/explorer/
+scp index.html style.css app.js root@explorer.mersennet.com:/var/www/explorer/
 ```
 
 ## Development

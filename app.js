@@ -24,7 +24,7 @@
     const POLL_MS         = 3000;
     const ITEMS_PER_PAGE  = 25;
     const HOME_ITEMS      = 8;
-    const MAX_SUPPLY      = '1,000,000,000';
+    const MAX_SUPPLY      = '618,970,019.64';
 
     /* ===========================================
        KNOWN CONTRACTS
@@ -1094,8 +1094,13 @@
         var totalStake = 0n;
         for (var vi = 0; vi < validators.length; vi++) totalStake += hexToBigInt(validators[vi].stake);
 
-        var tps = blocks.length > 1
-            ? (totalTxCount / (blocks.length * BLOCK_TIME_SECS)).toFixed(2)
+        var recentTxCount = 0;
+        for (var wi = 0; wi < blocks.length; wi++) {
+            var wb = blocks[wi];
+            recentTxCount += Array.isArray(wb.transactions) ? wb.transactions.length : 0;
+        }
+        var tps = blocks.length > 0
+            ? (recentTxCount / (blocks.length * BLOCK_TIME_SECS)).toFixed(2)
             : '0.00';
 
         el.innerHTML = [
@@ -1148,7 +1153,7 @@
             '        <div class="home-stat-icon" style="background:var(--danger-bg);color:var(--danger)">' + ICONS.layers + '</div>',
             '        <div class="home-stat-content">',
             '          <div class="home-stat-label">Max Supply</div>',
-            '          <div class="home-stat-value">' + MAX_SUPPLY + '</div>',
+            '          <div class="home-stat-value">' + MAX_SUPPLY + ' MRSN</div>',
             '        </div>',
             '      </div>',
             '    </div>',
@@ -2374,10 +2379,10 @@
             '    <div class="detail-row"><div class="detail-label">Consensus</div><div class="detail-value">Proof-of-Stake (HotStuff-2 BFT)</div></div>',
             '    <div class="detail-row"><div class="detail-label">Min Stake</div><div class="detail-value mono">Direct staking — delegation not yet live</div></div>',
             '    <div class="detail-row"><div class="detail-label">Block Time</div><div class="detail-value">~' + BLOCK_TIME_SECS + ' second</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Block Reward</div><div class="detail-value mono">10 MRSN (halving every 35M blocks)</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Block Reward</div><div class="detail-value mono">2.3 MRSN (halving every 33,550,336 blocks, ~1.06 years)</div></div>',
             '    <div class="detail-row"><div class="detail-label">Total Staked</div><div class="detail-value mono">' + formatMRSN('0x' + totalStake.toString(16)) + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Staking APR (est.)</div><div class="detail-value mono">' + (totalStake > 0n ? (Number(10n * 365n * 86400n * 10000n * 1000000000000000000n / (totalStake * BigInt(BLOCK_TIME_SECS))) / 100).toFixed(2) + '%' : '—') + '</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Validator Dashboard</div><div class="detail-value"><a href="http://46.225.30.187:4001" target="_blank" class="hash-link">Open Dashboard →</a></div></div>',
+            '    <div class="detail-row"><div class="detail-label">Staking APR (est.)</div><div class="detail-value mono">' + (totalStake > 0n ? (function () { var rewardWei = 2305843009213693951n; var annualEmissionWei = rewardWei * (31536000n / BigInt(BLOCK_TIME_SECS || 1)); return (Number(annualEmissionWei * 10000n / totalStake) / 100).toFixed(2) + '%'; })() : '—') + '</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Validator Dashboard</div><div class="detail-value"><a href="https://dashboard.mersennet.com" target="_blank" class="hash-link">Open Dashboard →</a></div></div>',
             '  </div>',
             '</div></div>',
         ].join('\n');
@@ -2457,9 +2462,9 @@
             '',
             '  <div class="detail-card">',
             '    <div class="detail-card-title">Token Economics</div>',
-            '    <div class="detail-row"><div class="detail-label">Max Supply</div><div class="detail-value mono">1,000,000,000 MRSN</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Initial Block Reward</div><div class="detail-value mono">10 MRSN</div></div>',
-            '    <div class="detail-row"><div class="detail-label">Halving Interval</div><div class="detail-value mono">35,000,000 blocks (~2.22 years)</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Max Supply</div><div class="detail-value mono">' + MAX_SUPPLY + ' MRSN</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Initial Block Reward</div><div class="detail-value mono">2.3 MRSN</div></div>',
+            '    <div class="detail-row"><div class="detail-label">Halving Interval</div><div class="detail-value mono">33,550,336 blocks (~1.06 years)</div></div>',
             '    <div class="detail-row"><div class="detail-label">Block Rewards</div><div class="detail-value">70%</div></div>',
             '    <div class="detail-row"><div class="detail-label">Ecosystem &amp; Grants</div><div class="detail-value">10%</div></div>',
             '    <div class="detail-row"><div class="detail-label">Foundation Reserve</div><div class="detail-value">10%</div></div>',
@@ -2962,12 +2967,21 @@
         await fetchValidators();
 
         var addrSet = {};
-        var genesisAddrs = [
-            '0x1a09b94d7dd32cf1903d1745effffae23ce76bca',
-            '0x7F5Ce38FB2553E95dd8Ef9182A80Bc219C9a0D45',
-            '0x8B86E5bFD9E2c0e6F1F01DEc50A1F3C25c2e2E3c',
-            '0xC5feC93d03C6A39ae1c8f18f7FA72bEfA36f1354',
-        ];
+
+        // Fetch the most-active accounts from the indexer (graceful fallback if unavailable).
+        var topAccounts = [];
+        var topAccountsError = false;
+        try {
+            var taResp = await fetch('/api/top-accounts?limit=100');
+            if (taResp.ok) {
+                var taData = await taResp.json();
+                topAccounts = Array.isArray(taData.accounts) ? taData.accounts : [];
+            } else {
+                topAccountsError = true;
+            }
+        } catch (e) {
+            topAccountsError = true;
+        }
 
         var contractAddrs = Object.keys(KNOWN_CONTRACTS);
         for (var ci = 0; ci < contractAddrs.length; ci++) {
@@ -2982,10 +2996,12 @@
             }
         }
 
-        for (var gi = 0; gi < genesisAddrs.length; gi++) {
-            var ga = genesisAddrs[gi].toLowerCase();
+        for (var gi = 0; gi < topAccounts.length; gi++) {
+            var rawAddr = topAccounts[gi].addr;
+            if (!rawAddr) continue;
+            var ga = rawAddr.toLowerCase();
             if (!addrSet[ga]) {
-                addrSet[ga] = { addr: genesisAddrs[gi], type: 'EOA', name: 'Genesis Account' };
+                addrSet[ga] = { addr: rawAddr, type: 'EOA', name: '—' };
             }
         }
 
@@ -2995,7 +3011,7 @@
         });
         var balances = await Promise.all(balancePromises);
 
-        var maxSupplyWei = 1000000000n * 1000000000000000000n;
+        var maxSupplyWei = (2n ** 89n - 1n);
         for (var bi = 0; bi < entries.length; bi++) {
             entries[bi].balanceHex = balances[bi] || '0x0';
             entries[bi].balanceWei = hexToBigInt(balances[bi] || '0x0');
@@ -3030,6 +3046,7 @@
             '  <h1 class="page-title">Top Accounts</h1>',
             '  <p class="page-subtitle">Accounts ranked by MRSN balance</p>',
             '</div>',
+            topAccountsError ? '<div class="alert alert-warning" style="margin-bottom:1rem">Could not load most-active accounts from the indexer. Showing known contracts and validators only.</div>' : '',
             '<div class="overview-grid" style="grid-template-columns:repeat(3,1fr)">',
             '  <div class="stat-card"><div class="stat-card-label">Total Accounts Tracked</div><div class="stat-card-value">' + formatNum(entries.length) + '</div></div>',
             '  <div class="stat-card"><div class="stat-card-label">Known Contracts</div><div class="stat-card-value">' + formatNum(contractAddrs.length) + '</div></div>',
@@ -3041,7 +3058,7 @@
             '  </tr></thead><tbody>',
             rows,
             '  </tbody></table></div>',
-            entries.length === 0 ? '  <div class="table-empty">No accounts found</div>' : '',
+            entries.length === 0 ? '  <div class="table-empty">' + (topAccountsError ? 'Account data is currently unavailable.' : 'No accounts found') + '</div>' : '',
             '</div>',
             '</div></div>',
         ].join('\n');
@@ -3395,8 +3412,8 @@
     async function pageDApps(el) {
         var dapps = [
             { name: 'Mersennet Trade', desc: 'Perpetuals on the native on-chain order book', url: 'https://trade.mersennet.com', icon: '📈', category: 'DeFi' },
-            { name: 'Mersennet Swap DEX', desc: 'Swap tokens on Mersennet\'s native DEX', url: 'http://46.225.30.187:4000', icon: '🔄', category: 'DeFi' },
-            { name: 'Validator Dashboard', desc: 'Monitor and manage validator nodes', url: 'http://46.225.30.187:4001', icon: '🛡️', category: 'Staking' },
+            { name: 'Mersennet Swap DEX', desc: 'Swap tokens on Mersennet\'s native DEX', url: 'https://swap.mersennet.com', icon: '🔄', category: 'DeFi' },
+            { name: 'Validator Dashboard', desc: 'Monitor and manage validator nodes', url: 'https://dashboard.mersennet.com', icon: '🛡️', category: 'Staking' },
             { name: 'Faucet', desc: 'Get free testnet MRSN tokens', url: 'https://faucet.mersennet.com', icon: '💧', category: 'Tools' },
             { name: 'Documentation', desc: 'Mersennet developer documentation', url: 'https://docs.mersennet.com', icon: '📖', category: 'Docs' },
             { name: 'Project Site', desc: 'Mersennet — the zero-knowledge L1', url: 'https://mersennet.com', icon: '🌌', category: 'Docs' },
