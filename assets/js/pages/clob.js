@@ -7,8 +7,8 @@
 import { MARKETS } from '../config.js';
 import { getOrderBook, getDomainEvents, getBlockNumber } from '../rpc.js';
 import { ws } from '../ws.js';
-import { render, icon, emptyState } from '../ui.js';
-import { fmtNum, hexToNum, timeAgo, esc } from '../format.js';
+import { render, icon, emptyState, sparkline } from '../ui.js';
+import { fmtNum, compact, hexToNum, timeAgo, esc } from '../format.js';
 
 const DEPTH_ROWS = 12;     // levels shown per side
 const MAX_TRADES = 40;     // trades kept in the tape
@@ -33,6 +33,15 @@ export default async function clob(params = {}) {
       <span>Collateral is backed 1:1 by escrowed native MRSN — every resting order is fully funded on-chain.</span></div>
 
     <div class="grid cols-4" id="mktStats" style="margin-bottom:14px">${statSkeleton()}</div>
+
+    <div class="card" id="depthCard" style="margin-bottom:14px">
+      <div class="card-title">
+        <span>${icon('pulse',16)} Depth &amp; session — <span class="mono" style="color:var(--accent)">${esc(market.symbol)}</span></span>
+        <span class="badge neutral" id="depthMeta">cumulative</span>
+      </div>
+      <div class="sess-row" id="sessRow">${sessSkeleton()}</div>
+      <div class="pad" id="depthSvg"><div class="sk line" style="height:170px"></div></div>
+    </div>
 
     <div class="grid cols-2-1">
       <div class="card">
@@ -73,6 +82,7 @@ export default async function clob(params = {}) {
   await seedTrades(market);
   if (!alive) return;
   renderTrades(market);
+  fillSession(market);
 
   const unsub = ws.subscribe('MersennetOrdersTrades', [market.id], (r) => {
     if (!alive || !r) return;
@@ -84,6 +94,7 @@ export default async function clob(params = {}) {
     trades.unshift(t);
     if (trades.length > MAX_TRADES) trades.length = MAX_TRADES;
     prependTrade(t, market);
+    fillSession(market);
     pulseLive();
   });
 
@@ -107,6 +118,9 @@ export default async function clob(params = {}) {
     const bestBid = bids[0]?.price ?? null;
     const bestAsk = asks[0]?.price ?? null;
     renderStats(bestBid, bestAsk);
+    drawDepthChart(document.getElementById('depthSvg'), bids, asks, mkt);
+    const dm = document.getElementById('depthMeta');
+    if (dm) { dm.textContent = `${bids.length + asks.length} levels`; dm.className = 'badge accent'; }
 
     const body = document.getElementById('bookBody');
     if (!body) return;
@@ -140,6 +154,10 @@ export default async function clob(params = {}) {
   function renderGatedBook(mkt) {
     const meta = document.getElementById('bookMeta');
     if (meta) { meta.textContent = 'shielded'; meta.className = 'badge teal'; }
+    const dm = document.getElementById('depthMeta');
+    if (dm) { dm.textContent = 'shielded'; dm.className = 'badge teal'; }
+    const svg = document.getElementById('depthSvg');
+    if (svg) svg.innerHTML = `<div class="banner teal" style="margin:0">${icon('shield',15)}<span>Depth is private after the privacy hard fork — the cumulative book lives inside the shielded CLOB.</span></div>`;
     renderStats(null, null);
     const body = document.getElementById('bookBody');
     if (body) {
@@ -223,6 +241,106 @@ export default async function clob(params = {}) {
     const dot = document.getElementById('tradeDot');
     if (dot) dot.classList.remove('idle');
   }
+
+  // session summary from the trade tape (closure over `trades`, newest-first)
+  function fillSession(mkt) {
+    const host = document.getElementById('sessRow');
+    if (!host) return;
+    if (!trades.length) {
+      host.innerHTML = `<div class="sess-chip"><span class="l">Session</span><span class="v" style="color:var(--text-3)">awaiting trades…</span></div>`;
+      return;
+    }
+    const prices = trades.map((t) => t.price);
+    const last = prices[0];
+    const first = prices[prices.length - 1];
+    const hi = Math.max(...prices), lo = Math.min(...prices);
+    const vol = trades.reduce((a, t) => a + t.size, 0);
+    const chg = first > 0 ? ((last - first) / first) * 100 : 0;
+    const cls = chg > 0 ? 'up' : chg < 0 ? 'down' : '';
+    const chrono = prices.slice().reverse();
+    host.innerHTML = `
+      ${sessChip('Last', fmtNum(last), cls)}
+      ${sessChip('Change', (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', cls)}
+      ${sessChip('High', fmtNum(hi), 'up')}
+      ${sessChip('Low', fmtNum(lo), 'down')}
+      ${sessChip('Volume', fmtNum(vol))}
+      ${sessChip('Trades', fmtNum(trades.length))}
+      <div class="sess-spark">${sparkline(chrono, { w: 150, h: 34, color: chg >= 0 ? 'var(--up)' : 'var(--down)' })}</div>`;
+  }
+}
+
+// ---------- cumulative depth chart (pure SVG, no closure deps) ----------
+function drawDepthChart(host, bids, asks, market) {
+  if (!host) return;
+  // bids come in high→low, asks low→high; build cumulative size from the mid out
+  const bidPts = []; let cb = 0;
+  for (const l of bids) { cb += l.size; bidPts.push({ price: l.price, cum: cb }); }
+  const askPts = []; let ca = 0;
+  for (const l of asks) { ca += l.size; askPts.push({ price: l.price, cum: ca }); }
+  if (!bidPts.length && !askPts.length) {
+    host.innerHTML = `<div style="color:var(--text-3);font-size:var(--fs-sm);padding:6px 0">No resting depth to chart.</div>`;
+    return;
+  }
+
+  const prices = [...bidPts, ...askPts].map((p) => p.price);
+  let xMin = Math.min(...prices), xMax = Math.max(...prices);
+  if (xMin === xMax) { xMin -= 1; xMax += 1; }
+  const yMax = Math.max(
+    bidPts.length ? bidPts[bidPts.length - 1].cum : 0,
+    askPts.length ? askPts[askPts.length - 1].cum : 0, 1);
+  const bestBid = bids[0]?.price ?? null, bestAsk = asks[0]?.price ?? null;
+  const mid = (bestBid != null && bestAsk != null) ? (bestBid + bestAsk) / 2 : null;
+
+  const W = 720, H = 240, padL = 58, padR = 16, padT = 14, padB = 34;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const xFor = (p) => padL + ((p - xMin) / (xMax - xMin)) * plotW;
+  const yFor = (v) => padT + plotH - (v / yMax) * plotH;
+
+  const bidAsc = bidPts.slice().reverse();   // ascending price for plotting
+  const poly = (pts) => pts.map((p) => `${xFor(p.price).toFixed(1)},${yFor(p.cum).toFixed(1)}`).join(' ');
+  const area = (pts) => pts.length
+    ? `M ${xFor(pts[0].price).toFixed(1)},${yFor(0).toFixed(1)} ` + pts.map((p) => `L ${xFor(p.price).toFixed(1)},${yFor(p.cum).toFixed(1)}`).join(' ') + ` L ${xFor(pts[pts.length - 1].price).toFixed(1)},${yFor(0).toFixed(1)} Z`
+    : '';
+
+  let grid = ''; const yT = 4;
+  for (let i = 0; i <= yT; i++) {
+    const v = (yMax / yT) * i, y = yFor(v);
+    grid += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${(W - padR).toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--border-soft)"/>`
+      + `<text x="${padL - 7}" y="${(y + 4).toFixed(1)}" text-anchor="end" fill="var(--text-3)" font-size="10" font-family="ui-monospace,monospace">${compact(v)}</text>`;
+  }
+  let xT = '';
+  for (let i = 0; i <= 4; i++) {
+    const p = xMin + ((xMax - xMin) / 4) * i, x = xFor(p);
+    xT += `<text x="${x.toFixed(1)}" y="${(H - padB + 18).toFixed(1)}" text-anchor="middle" fill="var(--text-3)" font-size="10" font-family="ui-monospace,monospace">${fmtNum(Math.round(p))}</text>`;
+  }
+  const midLine = mid != null
+    ? `<line x1="${xFor(mid).toFixed(1)}" y1="${padT}" x2="${xFor(mid).toFixed(1)}" y2="${(H - padB).toFixed(1)}" stroke="var(--text-2)" stroke-dasharray="3 3" opacity=".55"/>`
+      + `<text x="${xFor(mid).toFixed(1)}" y="${(padT + 10).toFixed(1)}" text-anchor="middle" fill="var(--text-2)" font-size="10" font-family="ui-monospace,monospace">mid ${fmtNum(mid)}</text>`
+    : '';
+
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Cumulative order-book depth for ${esc(market.symbol)}">
+    <defs>
+      <linearGradient id="bidFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--up)" stop-opacity=".26"/><stop offset="100%" stop-color="var(--up)" stop-opacity=".02"/></linearGradient>
+      <linearGradient id="askFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--down)" stop-opacity=".26"/><stop offset="100%" stop-color="var(--down)" stop-opacity=".02"/></linearGradient>
+    </defs>
+    ${grid}
+    ${area(bidAsc) ? `<path d="${area(bidAsc)}" fill="url(#bidFill)"/>` : ''}
+    ${area(askPts) ? `<path d="${area(askPts)}" fill="url(#askFill)"/>` : ''}
+    ${bidAsc.length ? `<polyline points="${poly(bidAsc)}" fill="none" stroke="var(--up)" stroke-width="2" stroke-linejoin="round"/>` : ''}
+    ${askPts.length ? `<polyline points="${poly(askPts)}" fill="none" stroke="var(--down)" stroke-width="2" stroke-linejoin="round"/>` : ''}
+    ${midLine}
+    ${xT}
+    <text x="${padL}" y="${(H - 3).toFixed(1)}" fill="var(--text-3)" font-size="10">price (protocol units) →</text>
+  </svg>`;
+}
+
+function sessChip(label, value, cls = '') {
+  return `<div class="sess-chip"><span class="l">${esc(label)}</span><span class="v ${cls ? 'pct ' + cls : ''}">${value}</span></div>`;
+}
+function sessSkeleton() {
+  let s = '';
+  for (let i = 0; i < 6; i++) s += `<div class="sess-chip"><span class="sk line short" style="width:46px"></span><span class="sk line" style="width:64px"></span></div>`;
+  return s;
 }
 
 // ---------- pure render helpers (no closure deps) ----------

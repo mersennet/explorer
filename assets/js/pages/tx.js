@@ -5,13 +5,15 @@
 import { CONFIG, KNOWN_METHODS, KNOWN_CONTRACTS } from '../config.js';
 import { rpc, getReceipt, getBlock, RpcError } from '../rpc.js';
 import { render, icon, copyBtn, hashLink, addrLink, emptyState } from '../ui.js';
-import { fmtMrsn, fmtNum, hexToBig, hexToNum, fmtTime, timeAgo, shortHash, gasPct, esc } from '../format.js';
+import { fmtMrsn, fmtNum, fmtUnits, hexToBig, hexToNum, fmtTime, timeAgo, shortHash, shortAddr, gasPct, esc } from '../format.js';
+import { decodeInput, decodeLog, tokenMeta } from '../abi.js';
 
 function methodOf(input) {
-  if (!input || input === '0x' || input.length < 10) return { label: 'transfer', cls: 'method', sel: '0x' };
-  const sel = input.slice(0, 10).toLowerCase();
-  const known = KNOWN_METHODS[sel];
-  return { label: known || sel, cls: known ? 'accent' : 'method', sel };
+  if (!input || input === '0x' || input.length < 10) return { label: 'transfer', cls: 'method', sel: '0x', dec: null };
+  const dec = decodeInput(input);
+  const sel = dec ? dec.selector : input.slice(0, 10).toLowerCase();
+  const known = (dec && dec.name) || KNOWN_METHODS[sel];
+  return { label: known || sel, cls: known ? 'accent' : 'method', sel, dec: dec && dec.params ? dec : null };
 }
 
 const crumbs = `<div class="crumbs"><a class="link" href="#/">Home</a> ${icon('arrow',11)}
@@ -122,21 +124,37 @@ function renderTx(el, tx, receipt, block) {
     `<div class="k">${icon('gas',13)} Gas price</div><div class="v">${tx.gasPrice != null ? fmtNum(hexToNum(tx.gasPrice)) + ' wei' : '—'}${baseFee != null ? ` <span style="color:var(--text-3)">· base fee ${fmtNum(hexToNum(baseFee))} wei</span>` : ''}</div>`,
   ];
 
-  // tx fee = gasUsed * gasPrice (when both known)
+  // tx fee = gasUsed * gasPrice, split into burnt (base fee) + validator tip.
   if (gasUsed != null && tx.gasPrice != null) {
-    const fee = hexToBig(gasUsed) * hexToBig(tx.gasPrice);
-    rows.push(`<div class="k">${icon('coins',13)} Transaction fee</div><div class="v">${fmtMrsn('0x' + fee.toString(16), 10)} <span style="color:var(--text-3)">MRSN</span></div>`);
+    const gu = hexToBig(gasUsed), gp = hexToBig(tx.gasPrice);
+    const fee = gu * gp;
+    rows.push(`<div class="k">${icon('coins',13)} Transaction fee</div><div class="v">${fmtMrsn('0x' + fee.toString(16), 10)} <span style="color:var(--text-3)">MRSN · ${fmtNum(fee)} wei</span></div>`);
+    if (baseFee != null) {
+      const bf = hexToBig(baseFee);
+      const burnt = gu * bf;
+      const tip = gp > bf ? gu * (gp - bf) : 0n;
+      rows.push(`<div class="k">${icon('bolt',13)} Burnt / validator tip</div><div class="v">${fmtNum(burnt)} <span style="color:var(--text-3)">wei burnt</span> · ${fmtNum(tip)} <span style="color:var(--text-3)">wei tip</span></div>`);
+    }
   }
   if (tx.type != null) rows.push(`<div class="k">${icon('network',13)} Type</div><div class="v">${esc(tx.type)}</div>`);
 
   const hasInput = tx.input && tx.input !== '0x' && tx.input.length > 2;
   const logs = (receipt && Array.isArray(receipt.logs)) ? receipt.logs : [];
 
+  const decodedCard = (m.dec && m.dec.params && m.dec.params.length)
+    ? `<div class="card" style="margin-top:14px">
+        <div class="card-title"><span>${icon('bolt',15)} Decoded input</span><span class="badge accent">${esc(m.dec.name)}</span></div>
+        ${renderParams(m.dec, tx.to)}
+      </div>`
+    : '';
+
   el.innerHTML = `
     <div class="card">
       <div class="card-title"><span>Overview</span>${ok === false ? '<span class="badge fail">execution reverted</span>' : ''}</div>
       <div class="kv">${rows.join('')}</div>
     </div>
+
+    ${decodedCard}
 
     <div class="card" style="margin-top:14px">
       <div class="card-title"><span>${icon('tx',15)} Input data</span><span class="badge neutral">${hasInput ? fmtNum((tx.input.length - 2) / 2) + ' bytes' : 'empty'}</span></div>
@@ -171,28 +189,70 @@ function knownTag(addr) {
   return `<span class="badge ${cls}" style="margin-left:6px" title="${esc(k.note)}">${esc(k.name)}</span>`;
 }
 
+// render a single ABI param value: address→link, token amount→symbol-scaled, else raw
+function valueCell(type, value, ctxAddr) {
+  if (type === 'address') {
+    const v = String(value);
+    const zero = /^0x0{40}$/i.test(v);
+    return zero ? '<span class="badge neutral">0x0 · zero address</span>' : `${addrLink(v, { short: true })} ${knownTag(v)}`;
+  }
+  if (type === 'bool') return `<span class="badge ${value ? 'ok' : 'neutral'}">${value ? 'true' : 'false'}</span>`;
+  if (type.startsWith('uint') || type.startsWith('int')) {
+    const tk = tokenMeta(ctxAddr);
+    const big = typeof value === 'bigint' ? value : hexToBig(value);
+    if (tk) return `<span class="hash">${fmtUnits(big, tk.decimals)}</span> <span style="color:var(--text-3)">${esc(tk.symbol)}</span> <span style="color:var(--text-3)">· ${fmtNum(big)} raw</span>`;
+    return `<span class="hash">${fmtNum(big)}</span> <span style="color:var(--text-3)">· 0x${big.toString(16)}</span>`;
+  }
+  return `<span class="mono" style="word-break:break-all">${esc(shortHash(String(value), 14, 10))}</span>`;
+}
+
+function renderParams(dec, toAddr) {
+  return `<div class="kv">${dec.params.map((p) =>
+    `<div class="k mono">${esc(p.name)} <span style="color:var(--text-3)">${esc(p.type)}</span></div>
+     <div class="v">${valueCell(p.type, p.value, toAddr)}</div>`).join('')}</div>`;
+}
+
 function renderLogs(logs) {
   return `
-    <div style="overflow-x:auto">
-    <table class="tbl"><thead><tr>
-      <th style="width:60px">#</th><th>Address</th><th>Topic₀ (event signature)</th><th>Data</th>
-    </tr></thead><tbody>
+    <div class="loglist">
     ${logs.map((log) => {
-      const topic0 = (log.topics && log.topics[0]) || null;
-      const extraTopics = (log.topics || []).slice(1);
+      const dec = decodeLog(log);
+      const topics = log.topics || [];
+      const idx = fmtNum(hexToNum(log.logIndex));
+      const tk = tokenMeta(log.address);
+      if (dec) {
+        // decoded event: name + per-arg rows, token amounts scaled when we know the token
+        const argRows = dec.args.map((a) =>
+          `<div class="logarg"><span class="ln mono">${esc(a.name)}${a.indexed ? ' <span class="badge neutral" style="height:16px">indexed</span>' : ''}</span>
+            <span class="lv">${valueCell(a.type, a.value, log.address)}</span></div>`).join('');
+        return `<div class="logitem">
+          <div class="loghead">
+            <span class="badge accent">${esc(dec.name)}</span>
+            <span class="badge neutral">${esc(dec.standard)}</span>
+            <span style="font-size:var(--fs-xs)">${addrLink(log.address, { short: true })} ${tk ? `<span class="badge teal">${esc(tk.symbol)}</span>` : knownTag(log.address)}</span>
+            <span style="margin-left:auto;color:var(--text-3);font-size:var(--fs-xs)">log #${idx}</span>
+          </div>
+          <div class="mono" style="color:var(--text-3);font-size:var(--fs-xs);margin:2px 0 8px">${esc(dec.signature)}</div>
+          ${argRows}
+        </div>`;
+      }
+      // unknown event: honest raw view (topic₀ + indexed topics + data)
+      const topic0 = topics[0] || null;
+      const extra = topics.slice(1);
       const data = log.data && log.data !== '0x' ? log.data : null;
-      return `<tr>
-        <td style="color:var(--text-3)">${fmtNum(hexToNum(log.logIndex))}</td>
-        <td style="font-size:var(--fs-xs)">${addrLink(log.address)} ${knownTag(log.address)}</td>
-        <td class="mono" style="font-size:var(--fs-xs);word-break:break-all">
-          ${topic0 ? `${esc(shortHash(topic0, 12, 8))} ${copyBtn(topic0)}` : '<span style="color:var(--text-3)">anonymous</span>'}
-          ${extraTopics.length ? `<div style="color:var(--text-3);margin-top:4px">+${extraTopics.length} indexed topic${extraTopics.length > 1 ? 's' : ''}</div>` : ''}
-        </td>
-        <td class="mono" style="font-size:var(--fs-xs);word-break:break-all;max-width:280px">${data ? esc(shortHash(data, 18, 10)) : '<span style="color:var(--text-3)">—</span>'}</td>
-      </tr>`;
+      return `<div class="logitem">
+        <div class="loghead">
+          <span class="badge neutral">raw log</span>
+          <span style="font-size:var(--fs-xs)">${addrLink(log.address, { short: true })} ${knownTag(log.address)}</span>
+          <span style="margin-left:auto;color:var(--text-3);font-size:var(--fs-xs)">log #${idx}</span>
+        </div>
+        <div class="logarg"><span class="ln">topic₀</span><span class="lv mono" style="word-break:break-all">${topic0 ? `${esc(topic0)} ${copyBtn(topic0)}` : 'anonymous'}</span></div>
+        ${extra.map((t, i) => `<div class="logarg"><span class="ln">topic${i + 1}</span><span class="lv mono" style="word-break:break-all">${esc(shortHash(t, 18, 12))}</span></div>`).join('')}
+        ${data ? `<div class="logarg"><span class="ln">data</span><span class="lv mono" style="word-break:break-all">${esc(shortHash(data, 24, 14))}</span></div>` : ''}
+      </div>`;
     }).join('')}
-    </tbody></table></div>
+    </div>
     <div class="pad" style="border-top:1px solid var(--border-soft);color:var(--text-3);font-size:var(--fs-xs)">
-      ${icon('layers',11)} Topic₀ is the keccak256 event signature; remaining topics are indexed parameters. Decode against the emitting contract's ABI.
+      ${icon('layers',11)} Standard token events are decoded against their known signatures; unrecognised events show the raw topic₀ (keccak256 signature) and data.
     </div>`;
 }

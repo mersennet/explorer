@@ -27,6 +27,20 @@ export function fmtMrsn(wei, dp = 4) {
   return fmtNum(whole) + (fracStr ? '.' + fracStr : '');
 }
 
+// generic integer amount (bigint|hex|decimal string) -> decimal string with
+// `decimals` places, trimmed to `dp` significant fraction digits. Like fmtMrsn
+// but for arbitrary-decimal tokens (USDC=6, DAI=18, …).
+export function fmtUnits(value, decimals = 18, dp = 4) {
+  const w = hexToBig(value);
+  if (decimals <= 0) return fmtNum(w);
+  const base = 10n ** BigInt(decimals);
+  const whole = w / base;
+  const frac = w % base;
+  if (frac === 0n) return fmtNum(whole);
+  const fracStr = frac.toString().padStart(decimals, '0').slice(0, dp).replace(/0+$/, '');
+  return fmtNum(whole) + (fracStr ? '.' + fracStr : '');
+}
+
 // large number → compact (1.2M, 3.4K, 1.1B)
 export function compact(n) {
   const v = typeof n === 'bigint' ? Number(n) : Number(n || 0);

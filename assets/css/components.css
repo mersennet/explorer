@@ -242,3 +242,42 @@
   background: var(--bg-elev); color: var(--text-2); font-family: var(--font-mono); font-size: var(--fs-sm); font-weight: 700; }
 .rank-medal.top { background: var(--accent-bg); color: var(--accent); }
 .rank-bar { display: inline-block; height: 6px; border-radius: 3px; background: var(--accent); opacity: .5; min-width: 6px; flex: none; }
+.pct.warn-t { color: var(--warn); }
+
+/* ---- decoded tx input params + event logs (pages/tx.js) ---- */
+.loglist { padding: 6px 6px 0; }
+.logitem { border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 12px 14px; margin: 8px 6px; background: var(--bg-card-2); }
+.loghead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 2px; }
+.logarg { display: grid; grid-template-columns: 170px 1fr; gap: 10px; padding: 4px 0; font-size: var(--fs-sm); align-items: baseline; }
+.logarg .ln { color: var(--text-3); font-family: var(--font-mono); font-size: var(--fs-xs); }
+.logarg .lv { word-break: break-all; }
+@media (max-width:640px){ .logarg { grid-template-columns: 1fr; gap: 1px; } }
+
+/* ---- validator proposer strip + share bars (pages/validators.js) ---- */
+.prop-strip { display: flex; flex-wrap: wrap; gap: 4px; }
+.prop-cell { flex: none; width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: #04130a;
+  background: var(--c, var(--text-3)); opacity: .92; transition: transform .12s, opacity .12s; text-decoration: none; }
+.prop-cell:hover { transform: translateY(-2px); opacity: 1; }
+.prop-cell:first-child { box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 3px var(--c, var(--accent)); }
+.prop-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 14px; font-size: var(--fs-sm); }
+.prop-leg { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
+.prop-leg .sw { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+/* ---- tokenomics live emission status (pages/tokenomics.js) ---- */
+.es-track { position: relative; height: 30px; border-radius: var(--radius); background: var(--bg-elev);
+  overflow: hidden; border: 1px solid var(--border-soft); margin: 0 0 4px; }
+.es-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--grad-accent); opacity: .85;
+  transition: width .6s var(--ease); }
+.es-cap { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: var(--fs-xs);
+  color: var(--text); font-family: var(--font-mono); text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+.es-progress { height: 8px; border-radius: 5px; background: var(--bg-elev); overflow: hidden; margin-top: 14px; border: 1px solid var(--border-soft); }
+.es-progress-bar { height: 100%; background: var(--grad-accent); border-radius: 5px; transition: width .6s var(--ease); }
+
+/* ---- clob session summary strip (pages/clob.js) ---- */
+.sess-row { display: flex; align-items: center; gap: 10px 22px; flex-wrap: wrap; padding: 12px 18px;
+  border-bottom: 1px solid var(--border-soft); }
+.sess-chip { display: flex; flex-direction: column; gap: 3px; min-width: 56px; }
+.sess-chip .l { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); font-weight: 600; }
+.sess-chip .v { font-family: var(--font-mono); font-size: var(--fs-md); font-weight: 700; }
+.sess-spark { margin-left: auto; width: 150px; max-width: 42vw; }

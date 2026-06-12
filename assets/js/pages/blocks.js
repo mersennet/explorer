@@ -3,8 +3,9 @@
 // indexer (api.js) is optional: when available we use it for an exact total /
 // page count, but the page works fully on pure RPC alone.
 import { CONFIG } from '../config.js';
-import { rpcBatch, getBlockNumber } from '../rpc.js';
+import { rpcBatch, getBlockNumber, getBlock } from '../rpc.js';
 import { api } from '../api.js';
+import { ws } from '../ws.js';
 import { render, icon, hashLink, addrLink, skeletonRows, emptyState } from '../ui.js';
 import { fmtNum, hexToNum, hexToBig, timeAgo, gasPct } from '../format.js';
 
@@ -70,23 +71,45 @@ export default async function blocks(params = {}) {
     updateChips();
   }
 
+  function blockRow(bl) {
+    const num = hexToNum(bl.number);
+    const txs = Array.isArray(bl.transactions) ? bl.transactions.length : 0;
+    const pct = gasPct(bl.gasUsed, bl.gasLimit);
+    const proposer = bl.miner || bl.proposer;
+    const baseFee = bl.baseFeePerGas != null ? fmtNum(hexToNum(bl.baseFeePerGas)) + ' wei' : '—';
+    return `<tr data-bn="${num}">
+      <td>${icon('blocks', 14)} <a class="hash link" href="#/block/${num}">${fmtNum(num)}</a></td>
+      <td style="color:var(--text-3)">${timeAgo(bl.timestamp)}</td>
+      <td class="num">${txs ? fmtNum(txs) : '<span style="color:var(--text-3)">0</span>'}</td>
+      <td style="font-size:var(--fs-xs)">${proposer ? addrLink(proposer, { short: true }) : '—'}</td>
+      <td>${gasBar(pct, bl.gasUsed)}</td>
+      <td class="num" style="color:var(--text-2)">${baseFee}</td>
+    </tr>`;
+  }
+
   function renderRows(blocks) {
     const body = document.getElementById('blocksBody'); if (!body) return;
-    body.innerHTML = blocks.map((bl) => {
-      const num = hexToNum(bl.number);
-      const txs = Array.isArray(bl.transactions) ? bl.transactions.length : 0;
-      const pct = gasPct(bl.gasUsed, bl.gasLimit);
-      const proposer = bl.miner || bl.proposer;
-      const baseFee = bl.baseFeePerGas != null ? fmtNum(hexToNum(bl.baseFeePerGas)) + ' wei' : '—';
-      return `<tr>
-        <td>${icon('blocks', 14)} <a class="hash link" href="#/block/${num}">${fmtNum(num)}</a></td>
-        <td style="color:var(--text-3)">${timeAgo(bl.timestamp)}</td>
-        <td class="num">${txs ? fmtNum(txs) : '<span style="color:var(--text-3)">0</span>'}</td>
-        <td style="font-size:var(--fs-xs)">${proposer ? addrLink(proposer, { short: true }) : '—'}</td>
-        <td>${gasBar(pct, bl.gasUsed)}</td>
-        <td class="num" style="color:var(--text-2)">${baseFee}</td>
-      </tr>`;
-    }).join('');
+    body.innerHTML = blocks.map(blockRow).join('');
+  }
+
+  // live: prepend new blocks while viewing page 1 (newest)
+  async function onNewHead(h) {
+    if (!alive || !h) return;
+    const num = hexToNum(h.number);
+    if (!num || num <= latest) return;
+    latest = num;
+    updateChips();
+    if (page !== 1) return;
+    const body = document.getElementById('blocksBody');
+    if (!body || body.querySelector(`tr[data-bn="${num}"]`)) return;
+    let bl = null;
+    try { bl = await getBlock('0x' + num.toString(16), false); } catch {}
+    if (!alive || !bl || !body.isConnected) return;
+    if (body.querySelector(`tr[data-bn="${num}"]`)) return;
+    body.insertAdjacentHTML('afterbegin', blockRow(bl));
+    const first = body.querySelector('tr'); if (first) first.classList.add('row-enter');
+    const trs = body.querySelectorAll('tr');
+    for (let i = trs.length - 1; i >= PER; i--) trs[i].remove();
   }
 
   function gasBar(pct, used) {
@@ -151,7 +174,8 @@ export default async function blocks(params = {}) {
   }
 
   await load();
-  return () => { alive = false; };
+  const unsub = ws.subscribe('newHeads', onNewHead);
+  return () => { alive = false; try { unsub(); } catch {} };
 }
 
 // keep ?page= in the hash query so pagination is shareable / survives back-nav

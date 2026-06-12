@@ -6,6 +6,7 @@ import { KNOWN_METHODS, KNOWN_CONTRACTS, MARKETS } from '../config.js';
 import { getBlock, getBlockByHash, getBlockNumber, numToTag } from '../rpc.js';
 import { render, icon, hashLink, addrLink, copyBtn, skeletonRows, emptyState } from '../ui.js';
 import { fmtNum, fmtMrsn, hexToNum, hexToBig, shortHash, timeAgo, fmtTime, gasPct, esc } from '../format.js';
+import { decodeInput } from '../abi.js';
 
 export default async function block(params = {}) {
   let alive = true;
@@ -138,16 +139,18 @@ function txRow(tx) {
   </tr>`;
 }
 
-// label a tx by its 4-byte selector, with a hint for the native CLOB precompile.
+// label a tx by its decoded method name (falls back to 4-byte selector), with a
+// hint for the native CLOB precompile / known contracts.
 function methodLabel(input, to) {
   const known = to && KNOWN_CONTRACTS[String(to).toLowerCase()];
-  const sel = input && input.length >= 10 ? input.slice(0, 10).toLowerCase() : '0x';
   if (!input || input === '0x' || input.length < 10) {
     return `<span class="badge method">transfer</span>`;
   }
-  const name = KNOWN_METHODS[sel];
-  if (name) return `<span class="badge method">${esc(name)}</span>`;
-  if (known) return `<span class="badge teal">${esc(known.tag || known.name)}</span>`;
+  const dec = decodeInput(input);
+  const sel = (dec && dec.selector) || input.slice(0, 10).toLowerCase();
+  const name = (dec && dec.name) || KNOWN_METHODS[sel];
+  if (name) return `<span class="badge accent">${esc(name)}</span>`;
+  if (known && known.kind === 'precompile') return `<span class="badge ${known.tag === 'privacy' ? 'teal' : 'accent'}">${esc(known.tag || known.name)}</span>`;
   return `<span class="badge method" title="${esc(sel)}">${esc(sel)}</span>`;
 }
 

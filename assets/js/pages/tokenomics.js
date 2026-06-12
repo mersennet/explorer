@@ -4,8 +4,9 @@
 // and the allocation note (emission-over-time + genesis allocations).
 // Brand surface = GREEN (--accent). No live data here — purely deterministic.
 import { CONFIG } from '../config.js';
+import { getBlockNumber } from '../rpc.js';
 import { render, icon } from '../ui.js';
-import { fmtNum, compact, esc } from '../format.js';
+import { fmtNum, compact, hexToNum, esc } from '../format.js';
 
 const ERAS = 10;                                  // halving eras to chart
 const YEARS_PER_ERA = CONFIG.halvingInterval / (365.25 * 24 * 3600); // ~1.06 yr at 1s blocks
@@ -50,6 +51,11 @@ export default async function tokenomics() {
       ${stat('bolt', 'Initial block reward', fmtNum(initRewardMrsn, 4), '2⁶¹−1 wei ≈ 2.31 MRSN · Mersenne prime', 'M61')}
       ${stat('clock', 'Halving interval', compact(CONFIG.halvingInterval) + ' blk', '5th perfect number · ~' + YEARS_PER_ERA.toFixed(2) + ' yr/era', 'P5')}
       ${stat('layers', 'Total emission', compact(totalMrsn), '2·R₀·H — converges, never reaches cap', '∞→')}
+    </div>
+
+    <div class="card" id="emissionStatus" style="margin-bottom:14px">
+      <div class="card-title"><span>${icon('clock', 16)} Live emission status</span><span class="badge neutral" id="esBadge">reading chain…</span></div>
+      <div class="pad" id="esBody"><div class="sk line"></div><div class="sk line short"></div></div>
     </div>
 
     <div class="card" style="margin-bottom:14px">
@@ -117,7 +123,89 @@ export default async function tokenomics() {
   // paint the responsive SVG curve after the view exists
   drawCurve(document.getElementById('chart'), cumByEra, totalMrsn, capMrsn, YEARS_PER_ERA);
 
-  // no intervals / subscriptions — nothing to clean up
+  // live emission status — derive era / countdown / emitted-to-date from height
+  let height = null;
+  try { height = hexToNum(await getBlockNumber()); } catch {}
+  fillEmissionStatus({ height, R0wei, Hbig, totalWei, capMrsn, totalMrsn, yearsPerEra: YEARS_PER_ERA });
+}
+
+// Compute live emission facts from the current height and paint the status card.
+// All token math is exact BigInt wei; only the final display values go to floats.
+function fillEmissionStatus({ height, R0wei, Hbig, totalWei, capMrsn, totalMrsn, yearsPerEra }) {
+  const badge = document.getElementById('esBadge');
+  const body = document.getElementById('esBody');
+  if (!body) return;
+  if (height == null) {
+    if (badge) { badge.textContent = 'offline'; badge.className = 'badge warn'; }
+    body.innerHTML = `<div style="color:var(--text-3);font-size:var(--fs-sm)">Could not read the current block height — emission is still deterministic from the schedule above.</div>`;
+    return;
+  }
+
+  const H = Number(Hbig);
+  const era = Math.floor(height / H);
+  const blocksIntoEra = height - era * H;
+  const blocksToHalving = H - blocksIntoEra;
+
+  // current reward = R0 / 2^era  (exact)
+  const rewardWei = R0wei >> BigInt(era);
+  // emitted = Σ completed eras (R0>>k)*H  +  current reward * blocksIntoEra
+  let emittedWei = 0n;
+  for (let k = 0; k < era; k++) emittedWei += (R0wei >> BigInt(k)) * Hbig;
+  emittedWei += rewardWei * BigInt(blocksIntoEra);
+
+  const fracEmit = Number(emittedWei) / Number(totalWei);
+  const eraProgress = blocksIntoEra / H;
+  const secsToHalving = blocksToHalving * CONFIG.blockTimeSecs;
+  const emittedMrsn = Number(emittedWei) / 1e18;
+  const rewardMrsn = Number(rewardWei) / 1e18;
+
+  if (badge) { badge.textContent = `era ${era} · block #${fmtNum(height)}`; badge.className = 'badge accent'; }
+
+  body.innerHTML = `
+    <div class="grid cols-3" style="margin-bottom:16px">
+      ${mini('Current era', `Era ${era}`, `${(eraProgress * 100).toFixed(2)}% through this era`)}
+      ${mini('Block reward now', `${rewardMrsn.toFixed(4)} MRSN`, `2⁶¹−1 ÷ 2^${era} per block`)}
+      ${mini('Next halving in', `${fmtNum(blocksToHalving)} blk`, `≈ ${humanDuration(secsToHalving)}`)}
+    </div>
+
+    <div class="es-track" title="${(eraProgress * 100).toFixed(2)}% through era ${era}">
+      <div class="es-fill" style="width:${(eraProgress * 100).toFixed(2)}%"></div>
+      <span class="es-cap">halving at block #${fmtNum((era + 1) * H)}</span>
+    </div>
+
+    <div class="kv" style="border-top:1px solid var(--border-soft);margin-top:4px">
+      <div class="k">${icon('coins', 13)} Emitted to date</div>
+      <div class="v">${fmtNum(emittedMrsn, 2)} MRSN
+        <span style="color:var(--text-3)">· ${(fracEmit * 100).toFixed(2)}% of total emission · ${(emittedMrsn / capMrsn * 100).toFixed(3)}% of the cap</span></div>
+      <div class="k">${icon('pulse', 13)} Remaining to emit</div>
+      <div class="v">${fmtNum(totalMrsn - emittedMrsn, 2)} MRSN <span style="color:var(--text-3)">until convergence (~${compact(totalMrsn)} MRSN)</span></div>
+    </div>
+
+    <div class="es-progress">
+      <div class="es-progress-bar" style="width:${Math.min(100, fracEmit * 100).toFixed(2)}%"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;color:var(--text-3);font-size:var(--fs-xs);margin-top:6px">
+      <span>genesis</span><span>${(fracEmit * 100).toFixed(1)}% of lifetime emission minted</span><span>convergence</span>
+    </div>`;
+}
+
+function mini(label, value, meta) {
+  return `<div style="border:1px solid var(--border-soft);border-radius:var(--radius);padding:13px 15px">
+    <div style="font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.07em;color:var(--text-3);font-weight:600">${esc(label)}</div>
+    <div style="font-family:var(--font-mono);font-size:var(--fs-xl);font-weight:700;margin-top:6px;color:var(--accent)">${value}</div>
+    <div style="font-size:var(--fs-xs);color:var(--text-2);margin-top:4px">${meta}</div>
+  </div>`;
+}
+
+function humanDuration(secs) {
+  if (!isFinite(secs) || secs <= 0) return 'imminent';
+  const yr = secs / (365.25 * 24 * 3600);
+  if (yr >= 1) return `${yr.toFixed(2)} years`;
+  const d = secs / 86400;
+  if (d >= 1) return `${d.toFixed(0)} days`;
+  const h = secs / 3600;
+  if (h >= 1) return `${h.toFixed(0)} hours`;
+  return `${Math.max(1, Math.round(secs / 60))} min`;
 }
 
 function stat(ic, label, value, meta, tag) {
