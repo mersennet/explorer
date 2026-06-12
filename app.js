@@ -3412,7 +3412,6 @@
     async function pageDApps(el) {
         var dapps = [
             { name: 'Mersennet Trade', desc: 'Perpetuals on the native on-chain order book', url: 'https://trade.mersennet.com', icon: '📈', category: 'DeFi' },
-            { name: 'Mersennet Swap DEX', desc: 'Swap tokens on Mersennet\'s native DEX', url: 'https://swap.mersennet.com', icon: '🔄', category: 'DeFi' },
             { name: 'Validator Dashboard', desc: 'Monitor and manage validator nodes', url: 'https://dashboard.mersennet.com', icon: '🛡️', category: 'Staking' },
             { name: 'Faucet', desc: 'Get free testnet MRSN tokens', url: 'https://faucet.mersennet.com', icon: '💧', category: 'Tools' },
             { name: 'Documentation', desc: 'Mersennet developer documentation', url: 'https://docs.mersennet.com', icon: '📖', category: 'Docs' },
