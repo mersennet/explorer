@@ -47,9 +47,14 @@ export const CONFIG = {
 };
 
 // Native precompiles + known contracts. Privacy precompile is teal-flagged.
+// Mock ERC-20s are the faucet's test tokens — registering them here lets the
+// explorer render their Transfer/Approval amounts with the right symbol+decimals.
 export const KNOWN_CONTRACTS = {
   '0x0000000000000000000000000000000000000100': { name: 'MersennetOrders', kind: 'precompile', tag: 'CLOB', note: 'Native order-book precompile (collateral escrow)' },
   '0x0000000000000000000000000000000000000200': { name: 'ShieldBridge', kind: 'precompile', tag: 'privacy', note: 'Shield / unshield bridge precompile' },
+  '0x2e06b6e7479ddf54b46458b5a61f302d962957ea': { name: 'USDC', kind: 'token', tag: 'ERC-20', symbol: 'USDC', decimals: 6, note: 'Mock USD Coin · faucet test token' },
+  '0x7cfd9b3e373c3f4fd34aed80d7ae083fc0b20eb7': { name: 'USDT', kind: 'token', tag: 'ERC-20', symbol: 'USDT', decimals: 6, note: 'Mock Tether USD · faucet test token' },
+  '0x4359446ffb3e262294923ec61f35769ce62fa5ad': { name: 'DAI', kind: 'token', tag: 'ERC-20', symbol: 'DAI', decimals: 18, note: 'Mock Dai · faucet test token' },
 };
 
 // 4-byte selector → display. Used to label tx "method".
