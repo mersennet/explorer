@@ -41,7 +41,7 @@ export function icon(name, size = 18, cls = '') {
 // brand 5-bar M logo (binary 11111 = 31 = 2^5-1)
 export function logoSvg(size = 30) {
   const bars = [[8, 68], [25, 30], [42, 46], [59, 30], [76, 68]];
-  const rects = bars.map(([x, h]) => `<rect x="${x}" y="${14 + (68 - h)}" width="12" height="${h}" rx="6"/>`).join('');
+  const rects = bars.map(([x, h]) => `<rect x="${x}" y="14" width="12" height="${h}" rx="6"/>`).join('');
   return `<svg width="${size}" height="${size}" viewBox="0 0 96 96"><g fill="var(--accent)">${rects}</g></svg>`;
 }
 
