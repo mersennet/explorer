@@ -41,7 +41,6 @@ export const CONFIG = {
     docs: 'https://docs.mersennet.com',
     trade: 'https://trade.mersennet.com',
     faucet: 'https://faucet.mersennet.com',
-    dashboard: 'https://dashboard.mersennet.com',
     github: 'https://github.com/mersennet',
   },
 };

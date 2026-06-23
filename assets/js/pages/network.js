@@ -1,6 +1,6 @@
 // Network: chain facts, RPC/WS endpoints, native precompiles & known contracts,
 // a live node-status probe (web3_clientVersion + net_peerCount), an "Add to wallet"
-// button (wallet_addEthereumChain), and quick links to docs/trade/faucet/dashboard.
+// button (wallet_addEthereumChain), and quick links to docs/trade/faucet.
 // Pure-RPC; no indexer dependency.
 import { CONFIG, KNOWN_CONTRACTS } from '../config.js';
 import { rpcSafe, rpcBatch, getBlockNumber } from '../rpc.js';
@@ -121,7 +121,6 @@ export default async function network() {
     ['docs', 'Documentation', CONFIG.links.docs, 'home'],
     ['trade', 'Trade (CLOB)', CONFIG.links.trade, 'clob'],
     ['faucet', 'Testnet faucet', CONFIG.links.faucet, 'coins'],
-    ['dashboard', 'Dashboard', CONFIG.links.dashboard, 'pulse'],
   ].map(([, label, href, ic]) => `<a class="btn" style="justify-content:space-between" href="${esc(href)}" target="_blank" rel="noopener">
       <span style="display:inline-flex;align-items:center;gap:8px">${icon(ic, 15)} ${esc(label)}</span>${icon('ext', 14)}</a>`).join('');
 
