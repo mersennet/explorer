@@ -135,13 +135,18 @@ export default async function verify(params = {}) {
 
     const ph = hexToNum(proof.blockHeight);
     const proofBytes = byteLen(proof.proofBincodeHex);
-    const isMock = (proof.proofType || '').toLowerCase().includes('mock');
+    // Honest provenance: "development" prover mode = deterministic,
+    // hash-committing proof (not a zk proof yet); "sp1" = real zkVM.
+    const dev = (proof.proverMode || '').toLowerCase() === 'development'
+      || (proof.proofType || '').toLowerCase().includes('mock');
+    const proofLabel = dev ? 'Development proof' : (proof.proofType || 'SP1');
     el.innerHTML = `
       <div class="card glow-teal">
         <div class="card-title">
           <span>${icon('proof', 16)} State proof · block <a class="hash link" href="/block/${ph}">#${fmtNum(ph)}</a></span>
-          <span class="badge ${isMock ? 'warn' : 'teal'}">${esc(proof.proofType || 'SP1')}</span>
+          <span class="badge ${dev ? 'warn' : 'teal'}" title="${dev ? 'Deterministic development prover — verifiable + content-committing, but not yet a zero-knowledge proof. Real SP1 zkVM proving runs on a dedicated prover host (sp1 feature build).' : 'Real SP1 zkVM proof'}">${esc(proofLabel)}</span>
         </div>
+        ${dev ? `<div class="banner warn" style="margin:0 0 12px">${icon('bolt',14)} Development prover: this proof is deterministic and commits to the full block content, but is not yet a zero-knowledge SP1 proof. Real SP1 proving runs on a dedicated prover host.</div>` : ''}
         <div class="pad">
           <div class="vfy-transition">
             <div class="root from">
