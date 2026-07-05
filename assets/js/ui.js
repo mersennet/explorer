@@ -69,11 +69,11 @@ export function copyBtn(text) {
 
 export function hashLink(hash, type = 'tx', { short = true, lead = 10, tail = 8 } = {}) {
   const disp = short ? shortHash(hash, lead, tail) : hash;
-  return `<a class="hash link" href="#/${type}/${esc(hash)}">${esc(disp)}</a>`;
+  return `<a class="hash link" href="/${type}/${esc(hash)}">${esc(disp)}</a>`;
 }
 export function addrLink(addr, { withAvatar = true, short = true } = {}) {
   const disp = short ? shortAddr(addr) : addr;
-  return `${withAvatar ? avatar(addr) : ''}<a class="hash link" href="#/address/${esc(addr)}">${esc(disp)}</a>`;
+  return `${withAvatar ? avatar(addr) : ''}<a class="hash link" href="/address/${esc(addr)}">${esc(disp)}</a>`;
 }
 
 export function skeletonRows(n = 6, cols = 4) {

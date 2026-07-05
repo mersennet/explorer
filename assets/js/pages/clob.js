@@ -21,7 +21,7 @@ export default async function clob(params = {}) {
 
   render(`
     <div class="page-head">
-      <div class="crumbs"><a href="#/">Home</a> ${icon('arrow',12)} <span>Order book</span></div>
+      <div class="crumbs"><a href="/">Home</a> ${icon('arrow',12)} <span>Order book</span></div>
       <h1 style="display:flex;align-items:center;gap:12px">${icon('clob',26)} Native order book
         <span class="badge accent">${MARKETS.length} markets</span></h1>
       <div class="sub">On-chain central-limit order book — matched in the protocol, no AMM. Sizes &amp; prices are protocol integer units.</div>
@@ -165,7 +165,7 @@ export default async function clob(params = {}) {
         <div style="padding:20px 18px">
           <div class="banner teal" style="margin-bottom:0">${icon('shield',16)}
             <span>The transparent order book is disabled after the privacy hard fork — depth now lives inside the shielded CLOB.
-            View shielded market aggregates on <a class="hash link" style="color:var(--teal)" href="#/privacy">the privacy hub →</a></span></div>
+            View shielded market aggregates on <a class="hash link" style="color:var(--teal)" href="/privacy">the privacy hub →</a></span></div>
           <div style="margin-top:14px">${emptyState('Transparent depth unavailable', 'Order sizes and prices are private post-fork.', 'lock')}</div>
         </div>`;
     }
@@ -411,7 +411,7 @@ function tradeRow(t) {
 
 function tabsHtml(active) {
   return MARKETS.map((m) =>
-    `<a class="tab ${m.id === active.id ? 'active' : ''}" href="#/clob/${m.id}">${esc(m.symbol)}</a>`
+    `<a class="tab ${m.id === active.id ? 'active' : ''}" href="/clob/${m.id}">${esc(m.symbol)}</a>`
   ).join('');
 }
 

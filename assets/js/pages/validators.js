@@ -195,7 +195,7 @@ export default async function validators() {
       const rk = rankByAddr.has(b.proposer) ? rankByAddr.get(b.proposer) : -1;
       const col = rk >= 0 ? hueFor(rk, count) : 'var(--text-3)';
       const lbl = rk >= 0 ? `#${rk + 1}` : '?';
-      return `<a class="prop-cell" href="#/block/${b.num}" title="Block #${fmtNum(b.num)} · validator ${lbl}" style="--c:${col}">${lbl === '?' ? '·' : lbl}</a>`;
+      return `<a class="prop-cell" href="/block/${b.num}" title="Block #${fmtNum(b.num)} · validator ${lbl}" style="--c:${col}">${lbl === '?' ? '·' : lbl}</a>`;
     }).join('');
     const legend = rows.map((r, i) =>
       `<span class="prop-leg"><span class="sw" style="background:${hueFor(i, count)}"></span>#${i + 1} ${addrLink(r.address, { short: true, withAvatar: false })} <span style="color:var(--text-3)">${fmtNum(proposed.get(r.address) || 0)}</span></span>`).join('');

@@ -22,7 +22,7 @@ export default async function address(params) {
   const known = KNOWN_CONTRACTS[addr];
 
   render(`
-    <div class="crumbs"><a href="#/">Home</a> <span>/</span> <a href="#/accounts">Accounts</a> <span>/</span> <span>Address</span></div>
+    <div class="crumbs"><a href="/">Home</a> <span>/</span> <a href="/accounts">Accounts</a> <span>/</span> <span>Address</span></div>
     <div class="card pad" style="margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
         ${avatar(addr, 40)}
@@ -110,7 +110,7 @@ export default async function address(params) {
             <div class="k">${icon('account',13)} Deployer</div><div class="v">${att.deployer ? addrLink(att.deployer, { short: false }) : '—'}</div>
             <div class="k">${icon('proof',13)} Code hash</div><div class="v">${att.codeHash ? `${shortHash(att.codeHash, 12, 10)} ${copyBtn(att.codeHash)}` : '—'}</div>
             <div class="k">${icon('ext',13)} Metadata URI</div><div class="v">${att.metadataUri ? `<a class="link" href="${esc(att.metadataUri)}" target="_blank" rel="noopener">${esc(att.metadataUri)}</a>` : '—'}</div>
-            <div class="k">${icon('blocks',13)} Published at</div><div class="v">${att.publishedAtBlock != null ? `<a class="hash link" href="#/block/${hexToNum(att.publishedAtBlock)}">#${fmtNum(hexToNum(att.publishedAtBlock))}</a>` : '—'}</div>
+            <div class="k">${icon('blocks',13)} Published at</div><div class="v">${att.publishedAtBlock != null ? `<a class="hash link" href="/block/${hexToNum(att.publishedAtBlock)}">#${fmtNum(hexToNum(att.publishedAtBlock))}</a>` : '—'}</div>
           </div>
         </div>`;
     }
@@ -167,7 +167,7 @@ export default async function address(params) {
       const method = KNOWN_METHODS[sel];
       return `<tr class="row-enter">
         <td>${hashLink(t.hash, 'tx')}${method ? ` <span class="badge method">${esc(method)}</span>` : ''}</td>
-        <td><a class="hash link" href="#/block/${hexToNum(t.block_number)}">#${fmtNum(hexToNum(t.block_number))}</a></td>
+        <td><a class="hash link" href="/block/${hexToNum(t.block_number)}">#${fmtNum(hexToNum(t.block_number))}</a></td>
         <td style="font-size:var(--fs-xs)"><span class="badge ${out ? 'warn' : 'ok'}" style="margin-right:6px">${out ? 'OUT' : 'IN'}</span>${counter ? addrLink(counter) : '<span class="badge neutral">create</span>'}</td>
         <td class="num">${fmtMrsn(t.value)} <span style="color:var(--text-3)">MRSN</span></td>
         <td class="num" style="color:var(--text-3)">${timeAgo(t.timestamp)}</td>
@@ -237,7 +237,7 @@ export default async function address(params) {
         <div class="holdings">${rows.map((r) => {
           const sym = (r.meta && r.meta.symbol) || 'TOKEN';
           const bal = (r.meta && r.meta.decimals != null) ? fmtUnits(r.big, r.meta.decimals) : fmtNum(r.big);
-          return `<a class="holding" href="#/address/${r.token}">
+          return `<a class="holding" href="/address/${r.token}">
             <span class="hsym">${esc(sym)}</span>
             <span class="hbal mono">${bal}</span>
             <span class="haddr mono">${shortHash(r.token, 6, 4)}</span>

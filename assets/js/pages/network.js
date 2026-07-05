@@ -234,7 +234,7 @@ async function buildActivity() {
   const bars = document.getElementById('actBars');
   if (bars) bars.innerHTML = chrono.map((s) => {
     const pct = Math.max(3, (s.gas / maxGas) * 100);
-    return `<a class="act-bar${s.gas ? ' on' : ''}" href="#/block/${s.num}" title="block #${fmtNum(s.num)} · gas ${fmtNum(s.gas)} · ${s.txs} tx" style="height:${pct.toFixed(0)}%"></a>`;
+    return `<a class="act-bar${s.gas ? ' on' : ''}" href="/block/${s.num}" title="block #${fmtNum(s.num)} · gas ${fmtNum(s.gas)} · ${s.txs} tx" style="height:${pct.toFixed(0)}%"></a>`;
   }).join('');
   const spark = document.getElementById('actSpark');
   if (spark) spark.innerHTML = sparkline(chrono.map((s) => s.bf), { w: 120, h: 24 });

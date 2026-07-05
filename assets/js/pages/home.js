@@ -2,6 +2,7 @@
 // and real-time block/tx feeds (WS newHeads, polling fallback).
 import { CONFIG } from '../config.js';
 import { rpc, rpcBatch, getBlockNumber, getGasPrice, getValidators, getShieldedRoot, getLatestStateProof } from '../rpc.js';
+import { api } from '../api.js';
 import { ws } from '../ws.js';
 import { render, icon, logoSvg, hashLink, addrLink, sparkline, skeletonRows, emptyState } from '../ui.js';
 import { fmtNum, fmtMrsn, compact, hexToNum, hexToBig, timeAgo, fmtMrsn as mrsn, gasPct, shortHash } from '../format.js';
@@ -19,22 +20,22 @@ export default async function home() {
     </section>
     <div class="grid cols-4" id="kpis">${kpiSkeleton()}</div>
     <div class="grid cols-2" style="margin-top:14px">
-      <a class="card pad glow-teal" href="#/verify" style="display:block">
+      <a class="card pad glow-teal" href="/verify" style="display:block">
         <div class="card-title" style="padding:0 0 12px;border:none"><span>${icon('verify',16)} Verifiable chain</span><span class="badge teal" id="proofChip">checking…</span></div>
         <div id="verifyHome" style="color:var(--text-2);font-size:var(--fs-sm)">Every block is provable with a succinct SP1 state-transition proof.</div>
       </a>
-      <a class="card pad glow-teal" href="#/privacy" style="display:block">
+      <a class="card pad glow-teal" href="/privacy" style="display:block">
         <div class="card-title" style="padding:0 0 12px;border:none"><span>${icon('privacy',16)} Shielded pool</span><span class="badge teal" id="poolChip">checking…</span></div>
         <div id="poolHome" style="color:var(--text-2);font-size:var(--fs-sm)">Account-level privacy with an anonymity set that grows every block.</div>
       </a>
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       <div class="card">
-        <div class="card-title"><span>Latest blocks</span><a class="link" href="#/blocks">View all →</a></div>
+        <div class="card-title"><span>Latest blocks</span><a class="link" href="/blocks">View all →</a></div>
         <table class="tbl"><tbody id="blocksBody">${skeletonRows(8, 3)}</tbody></table>
       </div>
       <div class="card">
-        <div class="card-title"><span>Latest transactions</span><a class="link" href="#/txs">View all →</a></div>
+        <div class="card-title"><span>Latest transactions</span><a class="link" href="/txs">View all →</a></div>
         <table class="tbl"><tbody id="txsBody">${skeletonRows(8, 3)}</tbody></table>
       </div>
     </div>`);
@@ -72,7 +73,8 @@ export default async function home() {
     t.innerHTML = txs.slice(0, 8).map((tx) => `
       <tr><td>${hashLink(tx.hash, 'tx')}</td>
       <td style="color:var(--text-2);font-size:var(--fs-xs)">${addrLink(tx.from)} ${icon('arrow',11)} ${tx.to ? addrLink(tx.to) : '<span class="badge neutral">create</span>'}</td>
-      <td class="num">${fmtMrsn(tx.value)} <span style="color:var(--text-3)">MRSN</span></td></tr>`).join('') || skeletonRows(6,3);
+      <td class="num">${fmtMrsn(tx.value)} <span style="color:var(--text-3)">MRSN</span></td></tr>`).join('')
+      || `<tr><td colspan="3">${emptyState('No transactions yet', 'CLOB trading happens via native order-book events, not EVM transactions — see a block\u2019s on-chain activity.', 'tx')}</td></tr>`;
   }
 
   function ingestBlock(bl, prepend) {
@@ -100,6 +102,19 @@ export default async function home() {
   const full = await rpcBatch(nums.map((n) => ({ method: 'eth_getBlockByNumber', params: ['0x' + n.toString(16), true] })));
   if (!alive) return;
   full.filter(Boolean).forEach((bl) => ingestBlock(bl, false));
+  // Recent blocks are usually empty of EVM txs (CLOB trades are domain events,
+  // not transactions) — backfill the tx feed from the indexer archive so the
+  // widget shows the latest real transactions instead of loading forever.
+  if (txs.length < 8) {
+    const idxTxs = await api.txs(1, 8);
+    if (idxTxs && Array.isArray(idxTxs.transactions)) {
+      for (const t of idxTxs.transactions) {
+        if (txs.some((x) => x.hash === t.hash)) continue;
+        txs.push({ hash: t.hash, from: t.from_addr, to: t.to_addr, value: t.value, block: Number(t.block_number) });
+      }
+    }
+  }
+  if (!alive) return;
   const tpsSeries = blocks.map((b) => b.txCount).reverse();
   kpis(latest, gas, vals, shielded, tpsSeries);
   renderBlocks(); renderTxs();

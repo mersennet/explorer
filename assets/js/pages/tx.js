@@ -4,6 +4,7 @@
 // with clear, honest messaging.
 import { CONFIG, KNOWN_METHODS, KNOWN_CONTRACTS } from '../config.js';
 import { rpc, getReceipt, getBlock, RpcError } from '../rpc.js';
+import { api } from '../api.js';
 import { render, icon, copyBtn, hashLink, addrLink, emptyState } from '../ui.js';
 import { fmtMrsn, fmtNum, fmtUnits, hexToBig, hexToNum, fmtTime, timeAgo, shortHash, shortAddr, gasPct, esc } from '../format.js';
 import { decodeInput, decodeLog, tokenMeta } from '../abi.js';
@@ -16,8 +17,8 @@ function methodOf(input) {
   return { label: known || sel, cls: known ? 'accent' : 'method', sel, dec: dec && dec.params ? dec : null };
 }
 
-const crumbs = `<div class="crumbs"><a class="link" href="#/">Home</a> ${icon('arrow',11)}
-  <a class="link" href="#/txs">Transactions</a> ${icon('arrow',11)} <span>Detail</span></div>`;
+const crumbs = `<div class="crumbs"><a class="link" href="/">Home</a> ${icon('arrow',11)}
+  <a class="link" href="/txs">Transactions</a> ${icon('arrow',11)} <span>Detail</span></div>`;
 
 export default async function tx(params) {
   const hash = (params && params.hash) || '';
@@ -52,7 +53,18 @@ export default async function tx(params) {
     return;
   }
 
-  if (!txData) { renderNotFound(content(), hash); return; }
+  if (!txData) {
+    // The node prunes old blocks/txs from its RPC window — fall back to the
+    // indexer archive before declaring the tx missing.
+    const idx = await api.tx(hash);
+    if (idx && idx.transaction) {
+      const { tx: itx, receipt: irc, block: ibl } = indexerToRpcTx(idx.transaction);
+      renderTx(content(), itx, irc, ibl);
+      return;
+    }
+    renderNotFound(content(), hash);
+    return;
+  }
 
   const [receipt, block] = await Promise.all([
     getReceipt(hash),
@@ -62,13 +74,45 @@ export default async function tx(params) {
   renderTx(content(), txData, receipt, block);
 }
 
+// Map an indexer transactions row (snake_case, mixed dec/hex) to the RPC
+// tx/receipt/block shapes renderTx expects.
+function indexerToRpcTx(t) {
+  const toHex = (v) => {
+    if (v == null || v === '') return null;
+    const s = String(v);
+    if (s.startsWith('0x')) return s;
+    try { return '0x' + BigInt(s).toString(16); } catch { return null; }
+  };
+  return {
+    tx: {
+      hash: t.hash,
+      blockNumber: toHex(t.block_number),
+      transactionIndex: toHex(t.tx_index),
+      from: t.from_addr,
+      to: t.to_addr,
+      value: toHex(t.value) || '0x0',
+      input: t.input || '0x',
+      nonce: toHex(t.nonce) || '0x0',
+      gas: toHex(t.gas) || '0x0',
+      gasPrice: toHex(t.gas_price),
+    },
+    receipt: {
+      status: Number(t.status) === 1 ? '0x1' : '0x0',
+      gasUsed: toHex(t.gas_used),
+      contractAddress: t.contract_address || null,
+      logs: [],
+    },
+    block: t.timestamp ? { timestamp: toHex(t.timestamp), baseFeePerGas: null } : null,
+  };
+}
+
 function renderNotFound(el, hash) {
   el.innerHTML = `<div class="card pad">${emptyState(
     'Transaction not found',
     'It may be pending, dropped, or not yet propagated to this node. Double-check the hash.',
     'tx')}
     <div class="mono" style="text-align:center;color:var(--text-3);font-size:var(--fs-sm);margin-top:6px;word-break:break-all">${esc(hash)}</div>
-    <div style="text-align:center;margin-top:14px"><a class="btn" href="#/txs">${icon('tx',16)} All transactions</a></div></div>`;
+    <div style="text-align:center;margin-top:14px"><a class="btn" href="/txs">${icon('tx',16)} All transactions</a></div></div>`;
 }
 
 function renderGated(el, hash) {
@@ -112,7 +156,7 @@ function renderTx(el, tx, receipt, block) {
   const rows = [
     `<div class="k">${icon('tx',13)} Tx hash</div><div class="v">${esc(tx.hash)} ${copyBtn(tx.hash)}</div>`,
     `<div class="k">${icon('blocks',13)} Block</div><div class="v">${blockNum != null
-        ? `<a class="hash link" href="#/block/${blockNum}">${fmtNum(blockNum)}</a>` + (tx.transactionIndex != null ? ` <span style="color:var(--text-3)">· position ${hexToNum(tx.transactionIndex)}</span>` : '')
+        ? `<a class="hash link" href="/block/${blockNum}">${fmtNum(blockNum)}</a>` + (tx.transactionIndex != null ? ` <span style="color:var(--text-3)">· position ${hexToNum(tx.transactionIndex)}</span>` : '')
         : '<span style="color:var(--text-3)">pending</span>'}</div>`,
     `<div class="k">${icon('clock',13)} Timestamp</div><div class="v">${ts ? `${fmtTime(ts)} <span style="color:var(--text-3)">(${timeAgo(ts)})</span>` : '—'}</div>`,
     `<div class="k">${icon('account',13)} From</div><div class="v">${addrLink(tx.from, { short: false })} ${copyBtn(tx.from)}</div>`,

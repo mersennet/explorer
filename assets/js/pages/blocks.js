@@ -48,10 +48,19 @@ export default async function blocks(params = {}) {
     catch { if (alive) renderError(); return; }
     if (!alive) return;
 
-    // optional indexer total (does not gate the RPC path)
-    if (api.available) {
-      const meta = await api.blocks(1, 1).catch(() => null);
-      if (meta && typeof meta.total === 'number') total = meta.total;
+    // Indexer-first: the node prunes old blocks from its RPC window, so the
+    // indexer archive is the only source that can serve every page. RPC is the
+    // fallback when the indexer is down (recent blocks only).
+    if (await api.probe()) {
+      const idx = await api.blocks(page, PER).catch(() => null);
+      if (idx && Array.isArray(idx.blocks) && idx.blocks.length) {
+        if (typeof idx.total === 'number') total = idx.total;
+        if (!alive) return;
+        renderRows(idx.blocks.map(indexerToRpcHeader));
+        renderPager();
+        updateChips();
+        return;
+      }
     }
 
     const top = latest - (page - 1) * PER;            // highest block on this page
@@ -71,14 +80,28 @@ export default async function blocks(params = {}) {
     updateChips();
   }
 
+  // indexer row (snake_case decimal strings) -> RPC header shape blockRow reads
+  function indexerToRpcHeader(b) {
+    const toHex = (v) => { try { return '0x' + BigInt(String(v)).toString(16); } catch { return null; } };
+    return {
+      number: toHex(b.number),
+      timestamp: toHex(b.timestamp),
+      miner: b.miner || null,
+      gasUsed: toHex(b.gas_used) || '0x0',
+      gasLimit: toHex(b.gas_limit) || '0x0',
+      baseFeePerGas: null,
+      txCount: Number(b.tx_count) || 0,
+    };
+  }
+
   function blockRow(bl) {
     const num = hexToNum(bl.number);
-    const txs = Array.isArray(bl.transactions) ? bl.transactions.length : 0;
+    const txs = Array.isArray(bl.transactions) ? bl.transactions.length : (bl.txCount || 0);
     const pct = gasPct(bl.gasUsed, bl.gasLimit);
     const proposer = bl.miner || bl.proposer;
     const baseFee = bl.baseFeePerGas != null ? fmtNum(hexToNum(bl.baseFeePerGas)) + ' wei' : '—';
     return `<tr data-bn="${num}">
-      <td>${icon('blocks', 14)} <a class="hash link" href="#/block/${num}">${fmtNum(num)}</a></td>
+      <td>${icon('blocks', 14)} <a class="hash link" href="/block/${num}">${fmtNum(num)}</a></td>
       <td style="color:var(--text-3)">${timeAgo(bl.timestamp)}</td>
       <td class="num">${txs ? fmtNum(txs) : '<span style="color:var(--text-3)">0</span>'}</td>
       <td style="font-size:var(--fs-xs)">${proposer ? addrLink(proposer, { short: true }) : '—'}</td>
@@ -178,13 +201,12 @@ export default async function blocks(params = {}) {
   return () => { alive = false; try { unsub(); } catch {} };
 }
 
-// keep ?page= in the hash query so pagination is shareable / survives back-nav
+// keep ?page= in the URL query so pagination is shareable / survives back-nav
 function pageFromHash() {
-  const m = location.hash.match(/[?&]page=(\d+)/);
+  const m = location.search.match(/[?&]page=(\d+)/);
   return m ? m[1] : '1';
 }
 function setHashPage(p) {
-  const base = location.hash.replace(/^#\/?/, '').split('?')[0];
-  const next = '#/' + base + (p > 1 ? `?page=${p}` : '');
-  if (location.hash !== next) history.replaceState(null, '', next);
+  const next = location.pathname + (p > 1 ? `?page=${p}` : '');
+  if (location.pathname + location.search !== next) history.replaceState(null, '', next);
 }

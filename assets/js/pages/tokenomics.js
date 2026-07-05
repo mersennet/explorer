@@ -41,7 +41,7 @@ export default async function tokenomics() {
 
   render(`
     <div class="page-head">
-      <div class="crumbs"><a href="#/">Home</a> ${icon('arrow', 12)} <span>Tokenomics</span></div>
+      <div class="crumbs"><a href="/">Home</a> ${icon('arrow', 12)} <span>Tokenomics</span></div>
       <h1>${icon('coins', 24)} Tokenomics</h1>
       <div class="sub">A monetary policy built entirely from <span style="color:var(--accent)">Mersenne primes</span> and <span style="color:var(--accent)">perfect numbers</span> — a hard, finite, fast-converging emission.</div>
     </div>

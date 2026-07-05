@@ -29,6 +29,8 @@ export const api = {
   status: () => api.safe('/status'),
   stats: () => api.safe('/stats'),
   blocks: (page = 1, limit = 25) => api.safe(`/blocks?page=${page}&limit=${limit}`),
+  block: (num) => api.safe(`/block/${num}`),
+  tx: (hash) => api.safe(`/tx/${hash}`),
   txs: (page = 1, limit = 25) => api.safe(`/txs?page=${page}&limit=${limit}`),
   address: (a) => api.safe(`/address/${a}`),
   addressTxs: (a, page = 1, limit = 25) => api.safe(`/address/${a}/txs?page=${page}&limit=${limit}`),

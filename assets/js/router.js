@@ -1,6 +1,7 @@
-// Hash router. Routes map a pattern (with :params) to a lazy page module under
-// ./pages/. Each page module default-exports async (params) => (cleanupFn|void).
-// The router runs the previous page's cleanup before rendering the next.
+// Path router (History API). Routes map a pattern (with :params) to a lazy page
+// module under ./pages/. Each page module default-exports async (params) =>
+// (cleanupFn|void). The router runs the previous page's cleanup before
+// rendering the next. Legacy "#/x" URLs are redirected to clean "/x" paths.
 
 const ROUTES = [
   { p: '', mod: 'home' },
@@ -31,14 +32,13 @@ const COMPILED = ROUTES.map((r) => ({ ...r, ...compile(r.p) }));
 let _cleanup = null;
 let _token = 0;
 
-function parseHash() {
-  let h = location.hash.replace(/^#\/?/, '');
-  h = h.split('?')[0];
-  return decodeURIComponent(h);
+function parsePath() {
+  let p = location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+  return decodeURIComponent(p);
 }
 
 async function dispatch() {
-  const path = parseHash();
+  const path = parsePath();
   const my = ++_token;
   let matched = null, params = {};
   for (const r of COMPILED) {
@@ -68,10 +68,41 @@ async function dispatch() {
   }
 }
 
-export function startRouter() {
-  window.addEventListener('hashchange', dispatch);
+// Intercept same-origin link clicks so navigation stays client-side (no full
+// page reload). External links, downloads, new-tab clicks pass through.
+function onLinkClick(e) {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const a = e.target.closest('a');
+  if (!a || a.target === '_blank' || a.hasAttribute('download') || a.getAttribute('rel') === 'external') return;
+  const href = a.getAttribute('href') || '';
+  // Legacy hash links ("#/x") — normalize to a clean path.
+  if (href.startsWith('#/')) {
+    e.preventDefault();
+    history.pushState(null, '', href.slice(1) || '/');
+    dispatch();
+    return;
+  }
+  if (!href.startsWith('/')) return; // external / protocol links
+  if (a.origin && a.origin !== location.origin) return;
+  e.preventDefault();
+  if (a.pathname + a.search !== location.pathname + location.search) {
+    history.pushState(null, '', a.pathname + a.search);
+  }
   dispatch();
 }
+
+export function startRouter() {
+  // Back-compat: redirect "#/block/5" style URLs to "/block/5".
+  if (location.hash.startsWith('#/')) {
+    history.replaceState(null, '', location.hash.slice(1) || '/');
+  }
+  window.addEventListener('popstate', dispatch);
+  document.addEventListener('click', onLinkClick);
+  dispatch();
+}
+
 export function navigate(path) {
-  location.hash = '#/' + path.replace(/^#?\/?/, '');
+  const clean = '/' + String(path || '').replace(/^#?\/?/, '');
+  if (clean !== location.pathname + location.search) history.pushState(null, '', clean);
+  dispatch();
 }

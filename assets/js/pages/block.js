@@ -4,6 +4,7 @@
 // link, and prev/next navigation. RPC-first; no indexer dependency.
 import { KNOWN_METHODS, KNOWN_CONTRACTS, MARKETS } from '../config.js';
 import { getBlock, getBlockByHash, getBlockNumber, numToTag } from '../rpc.js';
+import { api } from '../api.js';
 import { render, icon, hashLink, addrLink, copyBtn, skeletonRows, emptyState } from '../ui.js';
 import { fmtNum, fmtMrsn, hexToNum, hexToBig, shortHash, timeAgo, fmtTime, gasPct, esc } from '../format.js';
 import { decodeInput } from '../abi.js';
@@ -15,8 +16,8 @@ export default async function block(params = {}) {
 
   render(`
     <div class="crumbs">
-      <a href="#/">${icon('home', 13)}</a><span>/</span>
-      <a href="#/blocks">Blocks</a><span>/</span>
+      <a href="/">${icon('home', 13)}</a><span>/</span>
+      <a href="/blocks">Blocks</a><span>/</span>
       <span id="crumbId">${esc(looksHash ? shortHash(id, 8, 6) : id)}</span>
     </div>
     <div class="page-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
@@ -29,23 +30,28 @@ export default async function block(params = {}) {
     </div>`);
 
   let bl = null;
+  let fromIndexer = false;
+  const heightOf = (s) => (/^\d+$/.test(s) ? s : (s.startsWith('0x') ? hexToBig(s).toString() : s));
   try {
     if (looksHash) bl = await getBlockByHash(id, true);
-    else {
-      const n = /^\d+$/.test(id) ? id : (id.startsWith('0x') ? hexToBig(id).toString() : id);
-      bl = await getBlock(numToTag(n), true);
-    }
+    else bl = await getBlock(numToTag(heightOf(id)), true);
   } catch (e) {
     bl = null;
+  }
+  // The node prunes old blocks (only a recent window is served over RPC), so
+  // fall back to the indexer archive for anything older.
+  if (!bl && !looksHash) {
+    const idxBl = await api.block(heightOf(id));
+    if (idxBl && idxBl.block) { bl = indexerToRpcBlock(idxBl); fromIndexer = true; }
   }
   if (!alive) return;
 
   if (!bl) {
     render(`
-      <div class="crumbs"><a href="#/">${icon('home', 13)}</a><span>/</span><a href="#/blocks">Blocks</a></div>
+      <div class="crumbs"><a href="/">${icon('home', 13)}</a><span>/</span><a href="/blocks">Blocks</a></div>
       <div class="card pad" style="margin-top:10px">
         ${emptyState('Block not found', looksHash ? 'No block with that hash.' : 'No block at that height yet — it may not be mined.', 'blocks')}
-        <div style="text-align:center;margin-top:14px"><a class="btn primary" href="#/blocks">${icon('blocks', 16)} All blocks</a></div>
+        <div style="text-align:center;margin-top:14px"><a class="btn primary" href="/blocks">${icon('blocks', 16)} All blocks</a></div>
       </div>`);
     return () => { alive = false; };
   }
@@ -63,32 +69,32 @@ export default async function block(params = {}) {
 
   render(`
     <div class="crumbs">
-      <a href="#/">${icon('home', 13)}</a><span>/</span>
-      <a href="#/blocks">Blocks</a><span>/</span>
+      <a href="/">${icon('home', 13)}</a><span>/</span>
+      <a href="/blocks">Blocks</a><span>/</span>
       <span>#${fmtNum(num)}</span>
     </div>
     <div class="page-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <h1>${icon('blocks', 24)} Block #${fmtNum(num)}</h1>
       <div style="display:flex;gap:8px">
-        <a class="btn" href="#/block/${num - 1}" ${num > 0 ? '' : 'aria-disabled="true" style="opacity:.5;pointer-events:none"'}>‹ Prev</a>
-        <a class="btn" href="#/block/${num + 1}" ${num < latest ? '' : 'aria-disabled="true" style="opacity:.5;pointer-events:none"'}>Next ›</a>
+        <a class="btn" href="/block/${num - 1}" ${num > 0 ? '' : 'aria-disabled="true" style="opacity:.5;pointer-events:none"'}>‹ Prev</a>
+        <a class="btn" href="/block/${num + 1}" ${num < latest ? '' : 'aria-disabled="true" style="opacity:.5;pointer-events:none"'}>Next ›</a>
       </div>
     </div>
 
-    <a class="banner teal" href="#/verify/${num}" style="margin-bottom:14px;cursor:pointer">
+    <a class="banner teal" href="/verify/${num}" style="margin-bottom:14px;cursor:pointer">
       ${icon('verify', 16)} View ZK proof for this block →
       <span style="margin-left:auto;color:var(--text-3);font-size:var(--fs-xs)">SP1 state-transition proof</span>
     </a>
 
     <div class="card" style="margin-bottom:14px">
       <div class="card-title"><span>Block header</span>
-        <span class="badge neutral">${fmtNum(txCount)} ${txCount === 1 ? 'txn' : 'txns'}</span></div>
+        <span style="display:inline-flex;gap:6px">${fromIndexer ? '<span class="badge teal" title="Served from the indexer archive — the node has pruned this block from its RPC window">archive</span>' : ''}<span class="badge neutral">${fmtNum(txCount)} ${txCount === 1 ? 'txn' : 'txns'}</span></span></div>
       <div class="kv">
         ${kv('blocks', 'Height', `${fmtNum(num)} ${copyBtn(String(num))}`)}
         ${kv('clock', 'Timestamp', `${fmtTime(bl.timestamp)} <span style="color:var(--text-3)">(${timeAgo(bl.timestamp)})</span>`)}
         ${kv('layers', 'Hash', `<span class="hash">${esc(bl.hash || '—')}</span> ${bl.hash ? copyBtn(bl.hash) : ''}`)}
         ${kv('arrow', 'Parent hash', bl.parentHash && hexToBig(bl.parentHash) !== 0n
-          ? `<a class="hash link" href="#/block/${esc(bl.parentHash)}">${esc(bl.parentHash)}</a> ${copyBtn(bl.parentHash)}`
+          ? `<a class="hash link" href="/block/${esc(bl.parentHash)}">${esc(bl.parentHash)}</a> ${copyBtn(bl.parentHash)}`
           : '<span style="color:var(--text-3)">genesis</span>')}
         ${kv('validators', 'Proposer', proposer ? `${addrLink(proposer, { short: false })}` : '—')}
         ${kv('gas', 'Gas used', `${fmtNum(hexToNum(bl.gasUsed))} <span style="color:var(--text-3)">/ ${fmtNum(hexToNum(bl.gasLimit))}</span> ${gasMeter(pct)}`)}
@@ -256,3 +262,34 @@ function kvSkeleton(n) {
 }
 
 const MARKET_BY_ID = Object.fromEntries((MARKETS || []).map((m) => [m.id, m.symbol]));
+
+// Map an indexer /api/block/:num response (snake_case, decimal strings) to the
+// eth_getBlockByNumber shape the renderer expects (camelCase, hex strings).
+function indexerToRpcBlock(resp) {
+  const b = resp.block || {};
+  const toHex = (v) => {
+    if (v == null || v === '') return null;
+    const s = String(v);
+    if (s.startsWith('0x')) return s;
+    try { return '0x' + BigInt(s).toString(16); } catch { return null; }
+  };
+  return {
+    number: toHex(b.number),
+    hash: b.hash || null,
+    parentHash: b.parent_hash || null,
+    timestamp: toHex(b.timestamp),
+    miner: b.miner || null,
+    gasUsed: toHex(b.gas_used) || '0x0',
+    gasLimit: toHex(b.gas_limit) || '0x0',
+    baseFeePerGas: null,
+    stateRoot: b.state_root || null,
+    size: toHex(b.size),
+    transactions: (resp.transactions || []).map((t) => ({
+      hash: t.hash,
+      from: t.from_addr,
+      to: t.to_addr,
+      value: String(t.value || '0x0').startsWith('0x') ? t.value : toHex(t.value),
+      input: t.input || '0x',
+    })),
+  };
+}

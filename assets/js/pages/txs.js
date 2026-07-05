@@ -104,7 +104,7 @@ export default async function txs() {
       b.innerHTML = `<tr><td colspan="8">${emptyState(
         'No recent EVM transactions',
         "Mersennet activity is mostly on the native order book. Browse live trading on the CLOB.",
-        'tx')}<div style="text-align:center;margin-top:12px"><a class="btn primary" href="#/clob">${icon('clob',16)} Open order books</a></div></td></tr>`;
+        'tx')}<div style="text-align:center;margin-top:12px"><a class="btn primary" href="/clob">${icon('clob',16)} Open order books</a></div></td></tr>`;
       return;
     }
     b.innerHTML = rows.map((tx) => {
@@ -117,7 +117,7 @@ export default async function txs() {
       return `<tr>
         <td>${hashLink(tx.hash, 'tx')}</td>
         <td><span class="badge ${m.cls}">${esc(m.label)}</span></td>
-        <td class="num"><a class="hash link" href="#/block/${tx.block}">${fmtNum(tx.block)}</a></td>
+        <td class="num"><a class="hash link" href="/block/${tx.block}">${fmtNum(tx.block)}</a></td>
         <td style="color:var(--text-3);white-space:nowrap">${timeAgo(tx.timestamp)}</td>
         <td style="font-size:var(--fs-xs)">${addrLink(tx.from)}</td>
         <td style="color:var(--text-3)">${icon('arrow',12)}</td>

@@ -26,14 +26,14 @@ const NAV = [
 function buildShell() {
   const nav = NAV.map((n) => {
     if (n.section) return `<div class="nav-section-label">${n.section}</div>`;
-    return `<a class="nav-item ${n.privacy ? 'privacy' : ''}" data-route="${n.mod}" href="#/${n.route}">
+    return `<a class="nav-item ${n.privacy ? 'privacy' : ''}" data-route="${n.mod}" href="/${n.route}">
       ${icon(n.ico)}<span class="nav-label">${n.label}</span></a>`;
   }).join('');
 
   document.getElementById('app').innerHTML = `
     <div class="shell" id="shell">
       <aside class="sidebar" id="sidebar">
-        <a class="brand" href="#/">${logoSvg(30)}<span class="wordmark">Mersennet</span></a>
+        <a class="brand" href="/">${logoSvg(30)}<span class="wordmark">Mersennet</span></a>
         ${nav}
         <div style="margin-top:auto;padding:12px 8px" class="nav-foot">
           <a class="nav-item" href="${CONFIG.links.docs}" target="_blank">${icon('ext')}<span class="nav-label">Docs</span></a>

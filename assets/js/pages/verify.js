@@ -4,6 +4,7 @@
 // (walks recent proofs and asserts prev.newStateRoot == next.prevStateRoot), and a
 // forward-looking pre-fork state when proofs aren't active yet. Teal throughout (ZK surface).
 import { getBlockNumber, getStateProof, getLatestStateProof, verifyStateProof, numToTag } from '../rpc.js';
+import { navigate } from '../router.js';
 import { ws } from '../ws.js';
 import { render, icon, hashLink, copyBtn, skeletonRows, emptyState } from '../ui.js';
 import { hexToNum, fmtNum, shortHash, esc } from '../format.js';
@@ -17,7 +18,7 @@ export default async function verify(params = {}) {
   const requested = params.block != null ? String(params.block).trim() : null;
 
   render(`
-    <div class="crumbs"><a href="#/">Home</a> ${icon('arrow', 12)} <span>Verifiable Chain</span></div>
+    <div class="crumbs"><a href="/">Home</a> ${icon('arrow', 12)} <span>Verifiable Chain</span></div>
     <div class="page-head">
       <h1>${icon('verify', 26)} Verifiable Chain</h1>
       <div class="sub">Every block is provable. A single succinct proof attests the whole state transition — no full node required.</div>
@@ -74,7 +75,7 @@ export default async function verify(params = {}) {
       </div>`;
     const go = (n) => {
       if (n == null || isNaN(n) || n < 0) return;
-      location.hash = '#/verify/' + n;
+      navigate('verify/' + n);
     };
     const input = document.getElementById('vfyHeight');
     document.getElementById('vfyGo').onclick = () => { const v = input.value.trim(); go(v === '' ? latest : Number(v)); };
@@ -138,7 +139,7 @@ export default async function verify(params = {}) {
     el.innerHTML = `
       <div class="card glow-teal">
         <div class="card-title">
-          <span>${icon('proof', 16)} State proof · block <a class="hash link" href="#/block/${ph}">#${fmtNum(ph)}</a></span>
+          <span>${icon('proof', 16)} State proof · block <a class="hash link" href="/block/${ph}">#${fmtNum(ph)}</a></span>
           <span class="badge ${isMock ? 'warn' : 'teal'}">${esc(proof.proofType || 'SP1')}</span>
         </div>
         <div class="pad">
@@ -278,7 +279,7 @@ export default async function verify(params = {}) {
       const title = n.proof
         ? `Block #${n.height} · ${esc(n.proof.proofType || 'SP1')} · root ${shortHash(n.proof.newStateRoot, 8, 6)}`
         : `Block #${n.height} · no proof`;
-      html += `<a class="node ${active ? 'active' : ''}" href="#/verify/${n.height}" title="${title}"
+      html += `<a class="node ${active ? 'active' : ''}" href="/verify/${n.height}" title="${title}"
         style="${n.proof ? '' : 'opacity:.4'}">${label}</a>`;
     }
     el.innerHTML = html;

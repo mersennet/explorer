@@ -14,7 +14,7 @@ export default async function search(params) {
 
   render(`
     <div class="page-head">
-      <div class="crumbs"><a href="#/">Home</a> ${icon('arrow', 12)} <span>Search</span></div>
+      <div class="crumbs"><a href="/">Home</a> ${icon('arrow', 12)} <span>Search</span></div>
       <h1>${icon('search', 24)} Search</h1>
       <div class="sub">Results for <span class="mono" style="color:var(--accent)">${esc(q)}</span></div>
     </div>
@@ -119,7 +119,7 @@ function buildCard(f) {
     const txCount = Array.isArray(b.transactions) ? b.transactions.length : 0;
     wrap.innerHTML = `
       <div class="card-title"><span>${icon('blocks', 16)} Block found</span><span class="badge accent">block</span></div>
-      <a class="pad" href="#/block/${num}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none">
+      <a class="pad" href="/block/${num}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none">
         <div>
           <div style="font-size:var(--fs-xl);font-weight:700;font-family:var(--font-mono);color:var(--accent)">#${fmtNum(num)}</div>
           <div style="color:var(--text-2);font-size:var(--fs-sm);margin-top:4px">${txCount} transaction${txCount === 1 ? '' : 's'}</div>
@@ -136,7 +136,7 @@ function buildCard(f) {
     const t = f.tx;
     wrap.innerHTML = `
       <div class="card-title"><span>${icon('tx', 16)} Transaction found</span><span class="badge accent">tx</span></div>
-      <a class="pad" href="#/tx/${esc(t.hash)}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none">
+      <a class="pad" href="/tx/${esc(t.hash)}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none">
         <div style="min-width:0">
           <div class="mono" style="color:var(--accent);word-break:break-all">${shortHash(t.hash, 16, 12)}</div>
           <div style="color:var(--text-2);font-size:var(--fs-sm);margin-top:4px">${fmtMrsn(t.value)} MRSN${t.blockNumber ? ' · block #' + fmtNum(hexToNum(t.blockNumber)) : ' · pending'}</div>
@@ -155,7 +155,7 @@ function buildCard(f) {
   const kindBadge = f.isContract ? '<span class="badge teal">contract</span>' : '<span class="badge accent">account</span>';
   wrap.innerHTML = `
     <div class="card-title"><span>${icon(f.isContract ? 'token' : 'account', 16)} ${f.isContract ? 'Contract' : 'Address'} found</span>${kindBadge}</div>
-    <a class="pad" href="#/address/${esc(a)}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none">
+    <a class="pad" href="/address/${esc(a)}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none">
       <div style="min-width:0">
         <div class="mono" style="color:var(--accent);word-break:break-all">${shortHash(a, 16, 12)}</div>
         <div style="color:var(--text-2);font-size:var(--fs-sm);margin-top:4px">${fmtMrsn(f.balance)} MRSN${f.nonce != null ? ' · nonce ' + fmtNum(hexToNum(f.nonce)) : ''}</div>
