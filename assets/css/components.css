@@ -37,7 +37,7 @@
 /* tables */
 .tbl { width: 100%; border-collapse: collapse; font-size: var(--fs-base); }
 .tbl th { text-align: left; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em;
-  color: var(--text-3); font-weight: 600; padding: 11px 18px; border-bottom: 1px solid var(--border-soft); white-space: nowrap; }
+  color: var(--text-2); font-weight: 700; padding: 11px 18px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .tbl td { padding: 12px 18px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
 .tbl tr:last-child td, .tbl tbody tr:last-child td { border-bottom: none; }
 .tbl tbody tr { transition: background .12s; }
@@ -48,8 +48,9 @@
 
 /* hash / address chips */
 .hash { font-family: var(--font-mono); color: var(--text); }
-.hash.link { color: var(--accent); }
-.hash.link:hover { text-decoration: underline; }
+.hash.link { color: var(--accent); border-radius: 4px; padding: 1px 3px; margin: 0 -3px;
+  transition: background .12s, color .12s; }
+.hash.link:hover { background: var(--accent-bg); color: var(--accent); text-decoration: none; }
 .copy { cursor: pointer; color: var(--text-3); padding: 2px; border-radius: 4px; vertical-align: middle; }
 .copy:hover { color: var(--accent); background: var(--bg-hover); }
 .avatar { width: 20px; height: 20px; border-radius: 5px; vertical-align: middle; margin-right: 7px; flex: none; }

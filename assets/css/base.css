@@ -41,8 +41,10 @@ a.link:hover { text-decoration: underline; }
   color: var(--text-2); font-size: var(--fs-md); font-weight: 500; cursor: pointer; transition: all .15s var(--ease);
   white-space: nowrap; }
 .nav-item:hover { background: var(--bg-hover); color: var(--text); }
-.nav-item.active { background: var(--accent-bg); color: var(--accent); }
-.nav-item.active.privacy { background: var(--teal-bg); color: var(--teal); }
+.nav-item.active { background: var(--accent-bg); color: var(--accent); font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--accent); }
+.nav-item.active.privacy { background: var(--teal-bg); color: var(--teal);
+  box-shadow: inset 2px 0 0 var(--teal); }
 .nav-item .ico { width: 18px; height: 18px; flex: none; opacity: .9; }
 .collapsed .nav-item { justify-content: center; padding: 9px; }
 
