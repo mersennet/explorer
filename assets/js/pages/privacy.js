@@ -9,7 +9,7 @@
 import { MARKETS } from '../config.js';
 import { getShieldedRoot, getShieldedBalance, getShieldedMarketAggregates } from '../rpc.js';
 import { ws } from '../ws.js';
-import { render, icon, skeletonRows, emptyState } from '../ui.js';
+import { render, icon, skeletonRows, emptyState, copyBtn } from '../ui.js';
 import { fmtNum, compact, hexToNum, hexToBig, timeAgo, esc } from '../format.js';
 
 const TREE_DEPTH = 32; // Poseidon / BN254 commitment tree depth
@@ -143,7 +143,8 @@ export default async function privacy() {
     const cardEl = document.getElementById('rootCard');
     if (!hashEl || !blkEl) return;
     const root = pool.root && hexToBig(pool.root) !== 0n ? pool.root : null;
-    hashEl.textContent = root ? root : '0x' + '0'.repeat(64);
+    const shown = root ? root : '0x' + '0'.repeat(64);
+    hashEl.innerHTML = `${esc(shown)} ${root ? copyBtn(root) : ''}`;
     if (!root) hashEl.style.color = 'var(--text-3)';
     blkEl.textContent = pool.block ? 'block #' + fmtNum(pool.block) : 'block —';
     if (bump && cardEl) { cardEl.classList.remove('heartbeat'); void cardEl.offsetWidth; cardEl.classList.add('heartbeat'); }

@@ -98,7 +98,7 @@ export default async function block(params = {}) {
           : '<span style="color:var(--text-3)">genesis</span>')}
         ${kv('validators', 'Proposer', proposer ? `${addrLink(proposer, { short: false })}` : '—')}
         ${kv('gas', 'Gas used', `${fmtNum(hexToNum(bl.gasUsed))} <span style="color:var(--text-3)">/ ${fmtNum(hexToNum(bl.gasLimit))}</span> ${gasMeter(pct)}`)}
-        ${kv('bolt', 'Base fee', bl.baseFeePerGas != null ? `${fmtNum(hexToNum(bl.baseFeePerGas))} wei` : '—')}
+        ${kv('bolt', 'Base fee', bl.baseFeePerGas != null ? fmtBaseFee(hexToNum(bl.baseFeePerGas)) : '—')}
         ${kv('tree', 'State root', `<span class="hash">${esc(bl.stateRoot || '—')}</span> ${bl.stateRoot ? copyBtn(bl.stateRoot) : ''}`)}
         ${kv('coins', 'Size', bl.size != null ? `${fmtNum(hexToNum(bl.size))} bytes` : '—')}
       </div>
@@ -120,7 +120,10 @@ export default async function block(params = {}) {
   const txBody = document.getElementById('txBody');
   if (txBody) {
     if (!txCount) {
-      txBody.innerHTML = `<tr><td colspan="6">${emptyState('No transactions in this block', '', 'tx')}</td></tr>`;
+      txBody.innerHTML = `<tr><td colspan="6">${emptyState('No EVM transactions in this block',
+        events.length
+          ? 'This block carries native order-book activity instead — see the on-chain activity section below.'
+          : 'Empty blocks keep the chain ticking at a steady cadence even when no one is transacting.', 'tx')}</td></tr>`;
     } else if (typeof txList[0] === 'object') {
       txBody.innerHTML = txList.map((tx) => txRow(tx)).join('');
     } else {
@@ -254,6 +257,17 @@ function gasMeter(pct) {
 
 function kv(ic, k, v) {
   return `<div class="k">${icon(ic, 13)} ${esc(k)}</div><div class="v">${v}</div>`;
+}
+
+// Base fee in the most readable unit: gwei once it's >= 0.001 gwei, raw wei below.
+function fmtBaseFee(wei) {
+  if (!Number.isFinite(wei) || wei <= 0) return `${fmtNum(wei || 0)} wei`;
+  const gwei = wei / 1e9;
+  if (gwei >= 0.001) {
+    const s = gwei >= 10 ? fmtNum(Math.round(gwei)) : String(+gwei.toFixed(3));
+    return `${s} gwei <span style="color:var(--text-3)" title="${fmtNum(wei)} wei">(${fmtNum(wei)} wei)</span>`;
+  }
+  return `${fmtNum(wei)} wei`;
 }
 function kvSkeleton(n) {
   let s = '';

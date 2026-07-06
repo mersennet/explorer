@@ -51,7 +51,7 @@ export default async function home() {
     document.getElementById('kpis').innerHTML = `
       ${stat('blocks', 'Latest block', '#' + fmtNum(latest), timeAgo(blocks[0]?.timestamp), sparkline(tpsSeries.map(x=>x+0.2)))}
       ${stat('pulse', 'Throughput', tps.toFixed(2) + ' tps', RECENT + '-block avg')}
-      ${stat('gas', 'Base fee', gas != null ? fmtNum(hexToNum(gas)) + ' wei' : '—', 'EIP-1559')}
+      ${stat('gas', 'Base fee', gas != null ? fmtGwei(hexToNum(gas)) : '—', 'EIP-1559')}
       ${stat('validators', 'Validators', fmtNum((vals || []).length), compact(Number(totalStake / (10n ** 18n))) + ' MRSN staked')}
       ${stat('coins', 'Supply cap', '618.97M', '2⁸⁹−1 · Mersenne prime')}
       ${stat('clock', 'Block time', '~' + CONFIG.blockTimeSecs + 's', 'HotStuff-2 BFT')}
@@ -156,3 +156,11 @@ export default async function home() {
 }
 
 function kpiSkeleton() { let s = ''; for (let i = 0; i < 8; i++) s += `<div class="stat"><div class="sk line short"></div><div class="sk line" style="height:24px;margin-top:10px"></div></div>`; return s; }
+
+// Base fee in gwei when readable, wei otherwise (matches the block detail page).
+function fmtGwei(wei) {
+  if (!Number.isFinite(wei) || wei <= 0) return `${fmtNum(wei || 0)} wei`;
+  const gwei = wei / 1e9;
+  if (gwei >= 0.001) return (gwei >= 10 ? fmtNum(Math.round(gwei)) : String(+gwei.toFixed(3))) + ' gwei';
+  return `${fmtNum(wei)} wei`;
+}
