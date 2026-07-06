@@ -51,9 +51,11 @@ export const CONFIG = {
 export const KNOWN_CONTRACTS = {
   '0x0000000000000000000000000000000000000100': { name: 'MersennetOrders', kind: 'precompile', tag: 'CLOB', note: 'Native order-book precompile (collateral escrow)' },
   '0x0000000000000000000000000000000000000200': { name: 'ShieldBridge', kind: 'precompile', tag: 'privacy', note: 'Shield / unshield bridge precompile' },
-  '0x2e06b6e7479ddf54b46458b5a61f302d962957ea': { name: 'USDC', kind: 'token', tag: 'ERC-20', symbol: 'USDC', decimals: 6, note: 'Mock USD Coin · faucet test token' },
-  '0x7cfd9b3e373c3f4fd34aed80d7ae083fc0b20eb7': { name: 'USDT', kind: 'token', tag: 'ERC-20', symbol: 'USDT', decimals: 6, note: 'Mock Tether USD · faucet test token' },
-  '0x4359446ffb3e262294923ec61f35769ce62fa5ad': { name: 'DAI', kind: 'token', tag: 'ERC-20', symbol: 'DAI', decimals: 18, note: 'Mock Dai · faucet test token' },
+  '0x8f4e0bee0fe201f10419947a7c043003f16bfd73': { name: 'USDC', kind: 'token', tag: 'ERC-20', symbol: 'USDC', decimals: 6, note: 'Mock USD Coin · faucet test token' },
+  '0x6fbe796caa747d84e3ac7611ffc2dc6d11124ed4': { name: 'USDT', kind: 'token', tag: 'ERC-20', symbol: 'USDT', decimals: 6, note: 'Mock Tether USD · faucet test token' },
+  '0x04833e1be9c451a89fc6cd1e5e698e2d4936d7f9': { name: 'DAI', kind: 'token', tag: 'ERC-20', symbol: 'DAI', decimals: 18, note: 'Mock Dai · faucet test token' },
+  '0xbb012e05c1b42c1f0efa4509317fdb31a31ad640': { name: 'WMRSN', kind: 'token', tag: 'ERC-20', symbol: 'WMRSN', decimals: 18, note: 'Wrapped MRSN' },
+  '0xcbf3bbcc74d851cc896aa128f61557df65e420fc': { name: 'Multicall3', kind: 'contract', tag: 'infra', note: 'Batched RPC reads' },
 };
 
 // 4-byte selector → display. Used to label tx "method".
