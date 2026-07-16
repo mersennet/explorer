@@ -18,7 +18,7 @@ export const CONFIG = {
   chainName: 'Mersennet Testnet',
   symbol: 'MRSN',
   decimals: 18,
-  blockTimeSecs: 1,
+  blockTimeSecs: 2,
   rpcUrl: _rpc.url,
   rpcCustom: _rpc.custom,
   // canonical node WS is always wss (cross-origin WS needs no CORS)
