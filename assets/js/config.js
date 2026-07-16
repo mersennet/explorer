@@ -68,9 +68,9 @@ export const KNOWN_METHODS = {
 
 // CLOB markets (ids match the trade api / on-chain add order). base/quote labels only.
 export const MARKETS = [
-  { id: 1, symbol: 'MRSN/USDC', base: 'MRSN' },
-  { id: 2, symbol: 'BTC/USDC', base: 'BTC' },
-  { id: 3, symbol: 'ETH/USDC', base: 'ETH' },
-  { id: 4, symbol: 'SOL/USDC', base: 'SOL' },
-  { id: 5, symbol: 'ARB/USDC', base: 'ARB' },
+  { id: 1, symbol: 'MRSN/USD', base: 'MRSN' },
+  { id: 2, symbol: 'BTC/USD', base: 'BTC' },
+  { id: 3, symbol: 'ETH/USD', base: 'ETH' },
+  { id: 4, symbol: 'SOL/USD', base: 'SOL' },
+  { id: 5, symbol: 'ARB/USD', base: 'ARB' },
 ];
