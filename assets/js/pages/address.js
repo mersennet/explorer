@@ -120,8 +120,25 @@ export default async function address(params) {
   const cache = {};
   await api.probe();
   let activeTab = 'txs';
-  const pageState = { txs: 1, tokens: 1 };
+  const pageState = { txs: 1, tokens: 1, contract: 1 };
   const LIMIT = CONFIG.itemsPerPage;
+
+  // Contracts get a source-verification tab. Fetch status up front so the tab
+  // label can carry a "verified" checkmark and the source-code badge can light up.
+  let verifiedContract = null;
+  if (isContract) {
+    verifiedContract = await api.contract(addr);
+    if (alive && verifiedContract && verifiedContract.verified) {
+      const badge = document.getElementById('attestBadge');
+      if (badge) badge.innerHTML = `<span class="badge teal">${icon('verify',12)} Verified · source</span>`;
+    }
+    const tabsEl = document.getElementById('tabs');
+    if (tabsEl) {
+      const isV = verifiedContract && verifiedContract.verified;
+      tabsEl.insertAdjacentHTML('beforeend',
+        `<div class="tab" data-tab="contract">${icon('proof',14)} Contract${isV ? ` <span class="badge teal" style="margin-left:4px">${icon('verify',10)}</span>` : ''}</div>`);
+    }
+  }
 
   async function loadTab(tab) {
     const body = document.getElementById('tabBody');
@@ -130,10 +147,16 @@ export default async function address(params) {
     const ck = `${tab}:${page}`;
     if (cache[ck]) { body.innerHTML = cache[ck]; return; }
     body.innerHTML = `<table class="tbl"><tbody>${skeletonRows(8, 4)}</tbody></table>`;
-    const html = tab === 'txs' ? await buildTxs(page) : await buildTokens(page);
+    const html = tab === 'txs' ? await buildTxs(page)
+      : tab === 'tokens' ? await buildTokens(page)
+      : await buildContract();
     if (!alive) return;
-    cache[ck] = html;
-    if (activeTab === tab && pageState[tab] === page) body.innerHTML = html;
+    // The verify form is interactive; don't cache it so a resubmit re-renders.
+    if (tab !== 'contract') cache[ck] = html;
+    if (activeTab === tab && pageState[tab] === page) {
+      body.innerHTML = html;
+      if (tab === 'contract') wireVerifyForm();
+    }
   }
 
   function pager(page, total) {
@@ -245,6 +268,110 @@ export default async function address(params) {
         }).join('')}</div>
         ${!api.available ? `<div style="padding:11px 18px;border-top:1px solid var(--border-soft);color:var(--text-3);font-size:var(--fs-xs)">${icon('network', 11)} Showing known tokens only — connect the indexer to auto-discover every token held.</div>` : ''}
       </div>`;
+  }
+
+  // --- contract tab: verified source + ABI, or a verify form ---
+  function abiList(abi) {
+    if (!Array.isArray(abi) || !abi.length) return '';
+    const sig = (e) => `${e.name}(${(e.inputs || []).map((i) => i.type).join(',')})`;
+    const fns = abi.filter((e) => e.type === 'function');
+    const evs = abi.filter((e) => e.type === 'event');
+    const grp = (title, items, badge) => items.length ? `
+      <div style="margin-top:10px"><div style="font-size:var(--fs-xs);color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">${title}</div>
+      ${items.map((e) => `<div class="mono" style="font-size:var(--fs-sm);padding:3px 0;color:var(--text-2)">
+        <span class="badge ${badge}" style="margin-right:6px">${e.stateMutability || e.type}</span>${esc(sig(e))}</div>`).join('')}</div>` : '';
+    return grp('Functions', fns, 'neutral') + grp('Events', evs, 'accent');
+  }
+
+  async function buildContract() {
+    const v = verifiedContract || await api.contract(addr);
+    if (v && v.verified) {
+      const settings = [
+        v.compilerVersion ? `solc ${esc(v.compilerVersion.split('+')[0])}` : null,
+        v.optimizer ? `optimizer ${v.runs || 200} runs` : 'optimizer off',
+        v.viaIR ? 'via-IR' : null,
+        v.evmVersion ? esc(v.evmVersion) : null,
+      ].filter(Boolean).join(' · ');
+      const matchNote = v.matchType === 'full'
+        ? 'Exact match — runtime bytecode and metadata are identical to this source.'
+        : 'Runtime-bytecode match — the deployed code matches this source (metadata differs, e.g. compiler build). Constructor-only differences are not distinguishable by a runtime match.';
+      return `<div style="padding:16px 18px">
+        <div class="banner" style="background:var(--teal-soft,rgba(45,212,191,.08));border:1px solid var(--teal);color:var(--teal);display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px">
+          ${icon('verify',16)} <strong>Source verified</strong>
+          <span class="badge teal" style="margin-left:auto">${v.matchType === 'full' ? 'Full match' : 'Bytecode match'}</span>
+        </div>
+        <div class="kv" style="margin-top:12px">
+          <div class="k">${icon('proof',13)} Contract</div><div class="v mono">${esc(v.contractName || '—')}</div>
+          <div class="k">${icon('blocks',13)} Compiler</div><div class="v" style="font-size:var(--fs-sm)">${settings || '—'}</div>
+          <div class="k">${icon('network',13)} Match</div><div class="v" style="font-size:var(--fs-sm);color:var(--text-2)">${matchNote}</div>
+        </div>
+        <div style="margin-top:16px"><div class="card-title" style="padding:0 0 8px"><span>${icon('token',15)} ABI</span></div>${abiList(v.abi)}</div>
+        <div style="margin-top:16px">
+          <div class="card-title" style="padding:0 0 8px"><span>${icon('proof',15)} Source</span><span class="badge neutral">${fmtNum((v.source || '').split('\n').length)} lines</span></div>
+          <pre class="mono" style="background:var(--bg-1,#0c0f0d);border:1px solid var(--border-soft);border-radius:8px;padding:14px;overflow:auto;max-height:520px;font-size:var(--fs-sm);line-height:1.5;white-space:pre">${esc(v.source || '')}</pre>
+        </div>
+      </div>`;
+    }
+    // not verified — offer the form
+    return `<div style="padding:16px 18px" id="verifyWrap">
+      <div style="font-size:var(--fs-sm);color:var(--text-2);margin-bottom:12px">
+        ${icon('proof',14)} This contract's source is <strong>not verified</strong>. Paste the Solidity source and its
+        exact compiler settings; the indexer compiles it and checks the runtime bytecode against the on-chain code.
+      </div>
+      ${!api.available ? `<div class="banner info">${icon('network',15)} The indexer is offline, so verification is unavailable on this deployment.</div>` : `
+      <textarea id="vSource" placeholder="// SPDX-License-Identifier: MIT&#10;pragma solidity ^0.8.20;&#10;contract MyContract { ... }" spellcheck="false"
+        style="width:100%;height:220px;background:var(--bg-1,#0c0f0d);border:1px solid var(--border-soft);border-radius:8px;padding:12px;color:var(--text-1);font-family:var(--mono,monospace);font-size:var(--fs-sm);resize:vertical"></textarea>
+      <div class="grid cols-3" style="gap:10px;margin-top:10px">
+        <label style="font-size:var(--fs-xs);color:var(--text-3)">Contract name (optional)
+          <input id="vName" placeholder="auto-detect" style="width:100%;margin-top:4px;background:var(--bg-1,#0c0f0d);border:1px solid var(--border-soft);border-radius:6px;padding:7px;color:var(--text-1);font-size:var(--fs-sm)"></label>
+        <label style="font-size:var(--fs-xs);color:var(--text-3)">Optimizer runs
+          <input id="vRuns" type="number" value="200" style="width:100%;margin-top:4px;background:var(--bg-1,#0c0f0d);border:1px solid var(--border-soft);border-radius:6px;padding:7px;color:var(--text-1);font-size:var(--fs-sm)"></label>
+        <label style="font-size:var(--fs-xs);color:var(--text-3)">EVM version
+          <input id="vEvm" value="shanghai" style="width:100%;margin-top:4px;background:var(--bg-1,#0c0f0d);border:1px solid var(--border-soft);border-radius:6px;padding:7px;color:var(--text-1);font-size:var(--fs-sm)"></label>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;margin-top:10px;font-size:var(--fs-sm);color:var(--text-2)">
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vOpt" checked> Optimizer enabled</label>
+        <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vIr" checked> via-IR</label>
+        <button class="btn primary" id="vSubmit" style="margin-left:auto">${icon('verify',14)} Verify</button>
+      </div>
+      <div id="vResult" style="margin-top:12px"></div>`}
+    </div>`;
+  }
+
+  function wireVerifyForm() {
+    const btn = document.getElementById('vSubmit');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      const source = (document.getElementById('vSource') || {}).value || '';
+      const out = document.getElementById('vResult');
+      if (!source.trim()) { if (out) out.innerHTML = `<div class="banner warn">${icon('search',14)} Paste the contract source first.</div>`; return; }
+      btn.disabled = true; btn.innerHTML = 'Compiling…';
+      if (out) out.innerHTML = '';
+      try {
+        const payload = {
+          address: addr,
+          source,
+          contractName: (document.getElementById('vName') || {}).value || undefined,
+          optimizer: (document.getElementById('vOpt') || {}).checked,
+          viaIR: (document.getElementById('vIr') || {}).checked,
+          runs: parseInt((document.getElementById('vRuns') || {}).value) || 200,
+          evmVersion: (document.getElementById('vEvm') || {}).value || 'shanghai',
+        };
+        const r = await api.verifyContract(payload);
+        if (r && r.verified) {
+          verifiedContract = null; cache['contract:1'] = null;
+          if (out) out.innerHTML = `<div class="banner" style="background:rgba(45,212,191,.08);border:1px solid var(--teal);color:var(--teal);padding:10px 14px;border-radius:8px">${icon('verify',15)} Verified (${esc(r.matchType)} match) as <strong>${esc(r.contractName)}</strong>. Reloading…</div>`;
+          setTimeout(() => loadTab('contract'), 900);
+        } else {
+          const detail = r && r.details ? `<pre class="mono" style="margin-top:8px;font-size:var(--fs-xs);white-space:pre-wrap;color:var(--text-3)">${esc((r.details || []).join('\n'))}</pre>` : '';
+          if (out) out.innerHTML = `<div class="banner warn" style="padding:10px 14px">${icon('search',15)} ${esc((r && r.error) || 'verification failed')}${detail}</div>`;
+        }
+      } catch (e) {
+        if (out) out.innerHTML = `<div class="banner warn">${icon('search',14)} ${esc(e.message)}</div>`;
+      } finally {
+        btn.disabled = false; btn.innerHTML = `${icon('verify',14)} Verify`;
+      }
+    });
   }
 
   // tab click handling

@@ -1,5 +1,6 @@
 const http = require('http');
 const { Pool } = require('pg');
+const contractVerify = require('./contract-verify');
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 const RPC_URL = process.env.RPC_URL || 'https://rpc.mersennet.com';
@@ -437,11 +438,33 @@ function parsePagination(url) {
     return { page, limit, offset };
 }
 
+// Read a JSON POST body with a hard size cap (the verify endpoint accepts source).
+function readJsonBody(req, maxBytes = 600 * 1024) {
+    return new Promise((resolve, reject) => {
+        let size = 0;
+        const chunks = [];
+        req.on('data', (c) => {
+            size += c.length;
+            if (size > maxBytes) { reject(new Error('request body too large')); req.destroy(); return; }
+            chunks.push(c);
+        });
+        req.on('end', () => {
+            try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); }
+            catch (e) { reject(new Error('invalid JSON body')); }
+        });
+        req.on('error', reject);
+    });
+}
+
+function isAddress(s) {
+    return typeof s === 'string' && /^0x[0-9a-fA-F]{40}$/.test(s.trim());
+}
+
 const server = http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') {
         res.writeHead(204, {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type',
         });
         return res.end();
@@ -450,6 +473,73 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://localhost:${PORT}`);
     const path = url.pathname;
     try {
+        // ── Contract source verification (POST) ───────
+        if (req.method === 'POST' && path === '/api/verify-contract') {
+            let body;
+            try { body = await readJsonBody(req); }
+            catch (e) { return sendJSON(res, 400, { error: e.message }); }
+
+            const address = (body.address || '').trim().toLowerCase();
+            if (!isAddress(address)) return sendJSON(res, 400, { error: 'valid address is required' });
+
+            let code;
+            try { code = await rpc('eth_getCode', [address, 'latest']); }
+            catch (e) { return sendJSON(res, 502, { error: `could not fetch on-chain code: ${e.message}` }); }
+            if (!code || code === '0x') return sendJSON(res, 400, { error: 'address has no deployed bytecode (not a contract)' });
+
+            const result = contractVerify.verify({
+                source: body.source,
+                contractName: body.contractName,
+                settings: {
+                    optimizer: body.optimizer,
+                    runs: body.runs,
+                    viaIR: body.viaIR,
+                    evmVersion: body.evmVersion,
+                },
+            }, code);
+
+            if (!result.ok) {
+                return sendJSON(res, 400, { verified: false, error: result.error, details: result.details, triedContracts: result.triedContracts });
+            }
+            await pool.query(
+                `INSERT INTO verified_contracts
+                   (address, contract_name, compiler_version, optimizer, runs, evm_version, via_ir, match_type, source, abi, verified_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, now())
+                 ON CONFLICT (address) DO UPDATE SET
+                   contract_name=EXCLUDED.contract_name, compiler_version=EXCLUDED.compiler_version,
+                   optimizer=EXCLUDED.optimizer, runs=EXCLUDED.runs, evm_version=EXCLUDED.evm_version,
+                   via_ir=EXCLUDED.via_ir, match_type=EXCLUDED.match_type, source=EXCLUDED.source,
+                   abi=EXCLUDED.abi, verified_at=now()`,
+                [address, result.contractName, result.compilerVersion,
+                 body.optimizer !== false, body.runs || 200, body.evmVersion || 'shanghai', body.viaIR === true,
+                 result.matchType, body.source, JSON.stringify(result.abi)]
+            );
+            return sendJSON(res, 200, { verified: true, matchType: result.matchType, contractName: result.contractName, compilerVersion: result.compilerVersion });
+        }
+
+        // ── Verified-contract lookup ──────────────────
+        if (path === '/api/contract') {
+            const address = (url.searchParams.get('address') || '').trim().toLowerCase();
+            if (!isAddress(address)) return sendJSON(res, 400, { error: 'valid address query param is required' });
+            const r = await pool.query('SELECT * FROM verified_contracts WHERE address = $1', [address]);
+            if (!r.rows.length) return sendJSON(res, 200, { verified: false });
+            const row = r.rows[0];
+            return sendJSON(res, 200, {
+                verified: true,
+                address: row.address,
+                contractName: row.contract_name,
+                compilerVersion: row.compiler_version,
+                optimizer: row.optimizer,
+                runs: row.runs,
+                evmVersion: row.evm_version,
+                viaIR: row.via_ir,
+                matchType: row.match_type,
+                source: row.source,
+                abi: row.abi,
+                verifiedAt: row.verified_at,
+            });
+        }
+
         // ── Status ────────────────────────────────────
         if (path === '/api/status') {
             const [txCount, blockCount, ttCount] = await Promise.all([
@@ -779,6 +869,19 @@ CREATE INDEX IF NOT EXISTS idx_tx_from            ON transactions (from_addr);
 CREATE INDEX IF NOT EXISTS idx_tx_to              ON transactions (to_addr);
 CREATE INDEX IF NOT EXISTS idx_tx_timestamp       ON transactions (timestamp);
 CREATE INDEX IF NOT EXISTS idx_tx_method          ON transactions (method_id);
+CREATE TABLE IF NOT EXISTS verified_contracts (
+    address          text PRIMARY KEY,
+    contract_name    text NOT NULL,
+    compiler_version text,
+    optimizer        boolean,
+    runs             int,
+    evm_version      text,
+    via_ir           boolean,
+    match_type       text,
+    source           text NOT NULL,
+    abi              jsonb,
+    verified_at      timestamptz DEFAULT now()
+);
 CREATE INDEX IF NOT EXISTS idx_tt_token           ON token_transfers (token_address);
 CREATE INDEX IF NOT EXISTS idx_tt_from            ON token_transfers (from_addr);
 CREATE INDEX IF NOT EXISTS idx_tt_to              ON token_transfers (to_addr);

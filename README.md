@@ -46,7 +46,8 @@ rsync -a --delete ./ root@server:/var/www/explorer/ \
   --exclude .git --exclude node_modules --exclude indexer.js \
   --exclude package.json --exclude package-lock.json \
   --exclude '.env*' --exclude deploy --exclude '*.bak' \
-  --exclude .build-spec.md --exclude INDEXER.md
+  --exclude .build-spec.md --exclude INDEXER.md \
+  --exclude contract-verify.js --exclude seed-verified.js --exclude known-contracts
 # install the vhost (replace NODE_RPC) and reload Caddy
 ```
 

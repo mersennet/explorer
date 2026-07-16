@@ -73,7 +73,8 @@ rsync -a --delete ./ root@server:/var/www/explorer/ \
   --exclude .git --exclude node_modules --exclude indexer.js \
   --exclude package.json --exclude package-lock.json \
   --exclude '.env*' --exclude deploy --exclude '*.bak' \
-  --exclude .build-spec.md --exclude INDEXER.md
+  --exclude .build-spec.md --exclude INDEXER.md \
+  --exclude contract-verify.js --exclude seed-verified.js --exclude known-contracts
 ```
 
 ## REST API (consumed by `assets/js/api.js`)
@@ -94,6 +95,27 @@ rsync -a --delete ./ root@server:/var/www/explorer/ \
 | `GET /api/daily-stats?days` | per-day tx counts / unique senders |
 | `GET /api/miner-stats` | blocks produced per validator |
 | `GET /api/search?q` | resolve a hash / block / address |
+| `GET /api/contract?address` | verified-source record (name, compiler, ABI, source) or `{verified:false}` |
+| `POST /api/verify-contract` | compile submitted Solidity and match its runtime bytecode against the on-chain code |
+
+## Contract source verification
+
+`POST /api/verify-contract` accepts `{ address, source, contractName?, optimizer?,
+runs?, viaIR?, evmVersion? }`, compiles the source with `solc` (the bundled
+0.8.x; the contracts repo uses 0.8.20 + optimizer/200 + via-IR + shanghai), and
+compares the compiled runtime bytecode to `eth_getCode(address)`. Immutable byte
+ranges reported by the compiler are masked before comparing; a match including
+metadata is a `full` match, a match after trimming the trailing CBOR metadata is
+a `partial` (bytecode) match. Verified records land in the `verified_contracts`
+table and drive the **Contract** tab on the address page. Requires the `solc`
+dependency (`npm install`), which now bundles a Solidity compiler.
+
+Seed the canonical contracts (from `known-contracts/manifest.json`, verified
+against the chain) so they show verified out of the box:
+
+```bash
+DB_PASS=… node seed-verified.js   # idempotent; re-run after a redeploy
+```
 
 ## Configuration
 

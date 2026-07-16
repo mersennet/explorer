@@ -40,4 +40,16 @@ export const api = {
   dailyStats: (days = 30) => api.safe(`/daily-stats?days=${days}`),
   minerStats: () => api.safe('/miner-stats'),
   search: (q) => api.safe(`/search?q=${encodeURIComponent(q)}`),
+  contract: (a) => api.safe(`/contract?address=${a}`),
+  // POST source for verification; returns the parsed JSON (200 or 4xx) or throws.
+  async verifyContract(payload) {
+    await api.probe();
+    if (!_available) throw new Error('indexer offline — verification needs the indexer');
+    const res = await fetch(CONFIG.apiBase + '/verify-contract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return res.json();
+  },
 };

@@ -1,0 +1,11 @@
+{
+  "_comment": "Official Mersennet contracts (contracts/deployments.json, 2026-07-06 redeploy). The seed script compiles each source with these settings and verifies the runtime bytecode against the on-chain code before inserting into verified_contracts, so the canonical contracts show as verified out of the box. Settings mirror the contracts repo foundry.toml.",
+  "settings": { "optimizer": true, "runs": 200, "viaIR": true, "evmVersion": "shanghai" },
+  "contracts": [
+    { "address": "0x8F4E0beE0fE201f10419947A7C043003F16BfD73", "name": "MockERC20", "sourceFile": "MockERC20.sol", "label": "MockUSDC" },
+    { "address": "0x6fbE796cAA747D84E3aC7611fFc2dC6D11124eD4", "name": "MockERC20", "sourceFile": "MockERC20.sol", "label": "MockUSDT" },
+    { "address": "0x04833e1Be9c451A89fC6cD1e5E698E2D4936d7F9", "name": "MockERC20", "sourceFile": "MockERC20.sol", "label": "MockDAI" },
+    { "address": "0xbB012E05C1b42c1F0Efa4509317fdB31A31aD640", "name": "WMRSN", "sourceFile": "WMRSN.sol", "label": "WMRSN" },
+    { "address": "0xcBF3BBCc74D851cc896Aa128F61557DF65e420Fc", "name": "Multicall3", "sourceFile": "Multicall3.sol", "label": "Multicall3" }
+  ]
+}

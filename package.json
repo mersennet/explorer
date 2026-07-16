@@ -12,6 +12,7 @@
     "start": "node indexer.js"
   },
   "dependencies": {
-    "pg": "^8.11.5"
+    "pg": "^8.11.5",
+    "solc": "^0.8.20"
   }
 }
