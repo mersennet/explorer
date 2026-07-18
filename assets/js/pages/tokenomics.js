@@ -54,7 +54,7 @@ export default async function tokenomics() {
     </div>
 
     <div class="card" id="emissionStatus" style="margin-bottom:14px">
-      <div class="card-title"><span>${icon('clock', 16)} Live emission status</span><span class="badge neutral" id="esBadge">reading chain…</span></div>
+      <div class="card-title"><span>${icon('clock', 16)} Emission status — target schedule at live height</span><span class="badge neutral" id="esBadge">reading chain…</span></div>
       <div class="pad" id="esBody"><div class="sk line"></div><div class="sk line short"></div></div>
     </div>
 
@@ -116,7 +116,7 @@ export default async function tokenomics() {
             <div style="font-size:var(--fs-sm)">Ecosystem, foundation, team, and public sales — proportions finalized at genesis. Combined with emission, total issuance stays well under the 2⁸⁹−1 cap.</div>
           </div>
         </div>
-        <div class="banner info" style="margin-top:14px">${icon('verify', 15)} The cap (2⁸⁹−1) is a provable ceiling enforced by consensus; emission converges to ~${compact(totalMrsn)} MRSN, so roughly ${fmtNum(capMrsn - totalMrsn, 0)} MRSN is mathematically unreachable.</div>
+        <div class="banner info" style="margin-top:14px">${icon('verify', 15)} The cap (2⁸⁹−1) is a provable ceiling fixed in the node's genesis config; emission converges to ~${compact(totalMrsn)} MRSN, so roughly ${fmtNum(capMrsn - totalMrsn, 0)} MRSN is mathematically unreachable.</div>
       </div>
     </div>`);
 
@@ -186,7 +186,8 @@ function fillEmissionStatus({ height, R0wei, Hbig, totalWei, capMrsn, totalMrsn,
     </div>
     <div style="display:flex;justify-content:space-between;color:var(--text-3);font-size:var(--fs-xs);margin-top:6px">
       <span>genesis</span><span>${(fracEmit * 100).toFixed(1)}% of lifetime emission minted</span><span>convergence</span>
-    </div>`;
+    </div>
+    <div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:10px">Height is live; era, reward, and emission figures follow the target schedule fixed in the node's genesis config. The current testnet was bootstrapped with legacy emission parameters, so on-chain rewards differ until the next network upgrade.</div>`;
 }
 
 function mini(label, value, meta) {
