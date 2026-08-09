@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://explorer.mersennet.com/</loc><changefreq>always</changefreq><priority>1.0</priority></url>
+  <url><loc>https://explorer.mersennet.com/blocks</loc><changefreq>always</changefreq></url>
+  <url><loc>https://explorer.mersennet.com/txs</loc><changefreq>always</changefreq></url>
+  <url><loc>https://explorer.mersennet.com/accounts</loc><changefreq>hourly</changefreq></url>
+  <url><loc>https://explorer.mersennet.com/validators</loc><changefreq>hourly</changefreq></url>
+  <url><loc>https://explorer.mersennet.com/clob</loc><changefreq>always</changefreq></url>
+  <url><loc>https://explorer.mersennet.com/tokenomics</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://explorer.mersennet.com/network</loc><changefreq>hourly</changefreq></url>
+  <url><loc>https://explorer.mersennet.com/privacy</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://explorer.mersennet.com/verify</loc><changefreq>daily</changefreq></url>
+</urlset>
