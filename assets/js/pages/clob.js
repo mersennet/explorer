@@ -4,8 +4,7 @@
 // events). CLOB units are PLAIN INTEGERS (hexToNum) — NOT 18-dec wei. Collateral
 // is escrowed native MRSN, backed 1:1. If the book read is privacy-gated/null
 // (transparent CLOB disabled post-fork) we say so honestly and point to #/privacy.
-import { MARKETS } from '../config.js';
-import { getOrderBook, getDomainEvents, getBlockNumber } from '../rpc.js';
+import { getOrderBook, getDomainEvents, getBlockNumber, getMarkets } from '../rpc.js';
 import { ws } from '../ws.js';
 import { render, icon, emptyState, sparkline } from '../ui.js';
 import { fmtNum, compact, hexToNum, timeAgo, esc } from '../format.js';
@@ -15,22 +14,27 @@ const MAX_TRADES = 40;     // trades kept in the tape
 const TRADE_LOOKBACK = 4000; // blocks to seed the trade tape from
 
 export default async function clob(params = {}) {
+  // live market list (permissionless — new markets appear automatically)
+  const MARKETS = await getMarkets();
   // resolve selected market (param is the numeric id as a string)
   const wanted = params.market != null ? Number(params.market) : NaN;
   const market = MARKETS.find((m) => m.id === wanted) || MARKETS[0];
+  const halted = market.status && market.status !== 'active';
 
   render(`
     <div class="page-head">
       <div class="crumbs"><a href="/">Home</a> ${icon('arrow',12)} <span>Order book</span></div>
       <h1 style="display:flex;align-items:center;gap:12px">${icon('clob',26)} Native order book
-        <span class="badge accent">${MARKETS.length} markets</span></h1>
-      <div class="sub">On-chain central-limit order book — matched in the protocol, no AMM. Sizes &amp; prices are protocol integer units.</div>
+        <span class="badge accent">${MARKETS.length} markets</span>
+        ${halted ? `<span class="badge warn">${esc(market.status)}</span>` : ''}</h1>
+      <div class="sub">On-chain central-limit order book — matched in the protocol, no AMM. Sizes &amp; prices are protocol integer units.
+        Markets are permissionless — anyone can <a href="https://trade.mersennet.com/create-market" target="_blank" style="color:var(--accent)">list one</a> for a 100 MRSN fee.</div>
     </div>
 
-    <div class="tabs" id="mktTabs">${tabsHtml(market)}</div>
+    <div class="tabs" id="mktTabs">${tabsHtml(MARKETS, market)}</div>
 
     <div class="banner teal" style="margin-bottom:14px">${icon('lock',15)}
-      <span>Collateral is backed 1:1 by escrowed native MRSN — every resting order is fully funded on-chain.</span></div>
+      <span>Every resting order is fully funded on-chain — margin accepts native MRSN plus registered token collateral (e.g. USDC at a risk-weighted haircut).</span></div>
 
     <div class="grid cols-4" id="mktStats" style="margin-bottom:14px">${statSkeleton()}</div>
 
@@ -409,9 +413,9 @@ function tradeRow(t) {
   </div>`;
 }
 
-function tabsHtml(active) {
-  return MARKETS.map((m) =>
-    `<a class="tab ${m.id === active.id ? 'active' : ''}" href="/clob/${m.id}">${esc(m.symbol)}</a>`
+function tabsHtml(markets, active) {
+  return markets.map((m) =>
+    `<a class="tab ${m.id === active.id ? 'active' : ''}" href="/clob/${m.id}">${esc(m.symbol)}${m.status && m.status !== 'active' ? ' ⏸' : ''}</a>`
   ).join('');
 }
 

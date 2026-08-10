@@ -3,7 +3,7 @@
 // activity card decoding domain events, the tx list, a teal "View ZK proof"
 // link, and prev/next navigation. RPC-first; no indexer dependency.
 import { KNOWN_METHODS, KNOWN_CONTRACTS, MARKETS } from '../config.js';
-import { getBlock, getBlockByHash, getBlockNumber, numToTag } from '../rpc.js';
+import { getBlock, getBlockByHash, getBlockNumber, numToTag, getMarkets } from '../rpc.js';
 import { api } from '../api.js';
 import { render, icon, hashLink, addrLink, copyBtn, skeletonRows, emptyState } from '../ui.js';
 import { fmtNum, fmtMrsn, hexToNum, hexToBig, shortHash, timeAgo, fmtTime, gasPct, esc } from '../format.js';
@@ -275,7 +275,9 @@ function kvSkeleton(n) {
   return s;
 }
 
-const MARKET_BY_ID = Object.fromEntries((MARKETS || []).map((m) => [m.id, m.symbol]));
+// Static fallback, refreshed from the live (permissionless) market list.
+let MARKET_BY_ID = Object.fromEntries((MARKETS || []).map((m) => [m.id, m.symbol]));
+getMarkets().then((ms) => { MARKET_BY_ID = Object.fromEntries(ms.map((m) => [m.id, m.symbol])); }).catch(() => {});
 
 // Map an indexer /api/block/:num response (snake_case, decimal strings) to the
 // eth_getBlockByNumber shape the renderer expects (camelCase, hex strings).

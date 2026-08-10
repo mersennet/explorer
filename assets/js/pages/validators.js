@@ -5,7 +5,7 @@
 // shows blocks-proposed, proposal share, and last-seen — and a live strip streams
 // new proposers as blocks arrive (WS newHeads). Pure-RPC, no indexer dependency.
 import { CONFIG } from '../config.js';
-import { getValidators, getBlockNumber, rpcBatch } from '../rpc.js';
+import { getValidators, getStakingValidators, getBlockNumber, rpcBatch } from '../rpc.js';
 import { ws } from '../ws.js';
 import { render, icon, addrLink, copyBtn, skeletonRows, emptyState } from '../ui.js';
 import { fmtNum, fmtMrsn, compact, hexToBig, hexToNum, timeAgo } from '../format.js';
@@ -27,7 +27,8 @@ export default async function validators() {
     </div>
     <div class="grid cols-4" id="vkpis">${kpiSkeleton(4)}</div>
     <div class="banner teal" style="margin-top:14px">${icon('shield', 16)}
-      <span>Consensus is <strong>HotStuff-2 BFT PoS</strong>: validators stake MRSN to propose and vote.
+      <span>Consensus is <strong>HotStuff-2 BFT PoS</strong>: validators stake MRSN to propose and vote, and anyone can
+      <a href="https://trade.mersennet.com/staking" target="_blank" style="color:var(--teal)"><strong>delegate MRSN</strong></a> to a validator to share block rewards (minus commission).
       Equivocation and liveness faults are punished by <strong>escalating slashing</strong> — repeat offences burn a growing share of stake.</span>
     </div>
 
@@ -46,15 +47,27 @@ export default async function validators() {
           <th style="width:54px">Rank</th>
           <th>Validator</th>
           <th class="num">Stake (MRSN)</th>
+          <th class="num">Delegated</th>
           <th>Proposed (last ${SAMPLE})</th>
           <th class="num">Network share</th>
         </tr></thead>
-        <tbody id="vbody">${skeletonRows(8, 5)}</tbody>
+        <tbody id="vbody">${skeletonRows(8, 6)}</tbody>
       </table></div>
     </div>`);
 
-  const vals = await getValidators();
+  const [vals, stakingVals] = await Promise.all([getValidators(), getStakingValidators()]);
   if (!alive) return () => { alive = false; };
+
+  // delegated staking info by validator address (null on older nodes)
+  const stakingByAddr = new Map();
+  if (Array.isArray(stakingVals)) {
+    for (const s of stakingVals) {
+      stakingByAddr.set(String(s.address).toLowerCase(), {
+        delegated: hexToBig(s.delegatedTotal),
+        commissionBps: Number(s.commissionBps || 0),
+      });
+    }
+  }
 
   // mersennet_validators unavailable (older node / privacy gate) → honest empty state
   if (!Array.isArray(vals)) {
@@ -62,7 +75,7 @@ export default async function validators() {
     if (k) k.innerHTML = stat('coins', 'Total staked', '—') + stat('validators', 'Validators', '—')
       + stat('pulse', 'Est. staking APR', '—') + stat('clock', 'Block time', '—');
     const b = document.getElementById('vbody');
-    if (b) b.innerHTML = `<tr><td colspan="5">${emptyState('Validator set unavailable', 'The node did not return mersennet_validators. Try again shortly.', 'validators')}</td></tr>`;
+    if (b) b.innerHTML = `<tr><td colspan="6">${emptyState('Validator set unavailable', 'The node did not return mersennet_validators. Try again shortly.', 'validators')}</td></tr>`;
     const c = document.getElementById('vcount'); if (c) { c.textContent = 'n/a'; c.className = 'badge neutral'; }
     const sm = document.getElementById('stripMeta'); if (sm) { sm.textContent = 'n/a'; }
     const sb = document.getElementById('stripBody'); if (sb) sb.innerHTML = `<div style="color:var(--text-3);font-size:var(--fs-sm)">Proposer history needs the validator set.</div>`;
@@ -115,8 +128,13 @@ export default async function validators() {
 
   const sampled = recent.length;
 
+  const totalDelegatedWei = rows.reduce((acc, r) => acc + (stakingByAddr.get(r.address)?.delegated ?? 0n), 0n);
+
   document.getElementById('vkpis').innerHTML =
-    stat('coins', 'Total staked', compact(Number(totalStakeWei / WEI)) + ' MRSN', fmtMrsn(totalStakeWei, 2) + ' MRSN exact')
+    stat('coins', 'Total staked', compact(Number((totalStakeWei + totalDelegatedWei) / WEI)) + ' MRSN',
+      totalDelegatedWei > 0n
+        ? `${compact(Number(totalStakeWei / WEI))} self · ${compact(Number(totalDelegatedWei / WEI))} delegated`
+        : fmtMrsn(totalStakeWei, 2) + ' MRSN exact')
     + stat('validators', 'Validators', fmtNum(count), 'BFT quorum: ⅔+ by stake')
     + stat('pulse', 'Est. staking APR', aprPct == null ? '—' : aprPct.toFixed(2) + '%', '~' + compact(Number(annualEmissionWei / WEI)) + ' MRSN/yr emitted')
     + stat('clock', 'Block time', measuredBt != null ? measuredBt.toFixed(2) + 's' : '~' + CONFIG.blockTimeSecs + 's', measuredBt != null ? `measured over ${fmtNum(sampled)} blocks` : 'target cadence');
@@ -132,7 +150,7 @@ export default async function validators() {
   const maxProp = Math.max(1, ...rows.map((r) => proposed.get(r.address) || 0));
   const body = document.getElementById('vbody');
   if (!count) {
-    body.innerHTML = `<tr><td colspan="5">${emptyState('No validators reported', 'The active set is empty right now.', 'validators')}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="6">${emptyState('No validators reported', 'The active set is empty right now.', 'validators')}</td></tr>`;
   } else {
     body.innerHTML = rows.map((r, i) => {
       const shareBp = totalStakeWei > 0n ? Number((r.stakeWei * 10000n) / totalStakeWei) / 100 : 0;
@@ -151,6 +169,7 @@ export default async function validators() {
           <div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:3px">${ls ? `last proposed #${fmtNum(ls.num)} · ${timeAgo(ls.ts)}` : 'no recent proposals'}</div>
         </td>
         <td class="num">${fmtMrsn(r.stakeWei, 2)}</td>
+        <td class="num">${delegatedCell(stakingByAddr.get(r.address))}</td>
         <td>
           <div style="display:flex;align-items:center;gap:9px">
             <div style="flex:1;height:7px;border-radius:5px;background:var(--bg-elev);overflow:hidden;min-width:60px">
@@ -202,6 +221,14 @@ export default async function validators() {
     host.innerHTML = `<div class="prop-strip">${cells}</div>
       <div class="prop-legend">${legend}</div>`;
   }
+}
+
+// Delegated stake + commission for one validator (— on nodes without staking RPC)
+function delegatedCell(s) {
+  if (!s) return `<span style="color:var(--text-3)">—</span>`;
+  const amt = s.delegated > 0n ? fmtMrsn(s.delegated, 2) : '0';
+  return `<span class="mono">${amt}</span>
+    <div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:3px">${(s.commissionBps / 100).toFixed(1)}% commission</div>`;
 }
 
 const stat = (ic, label, val, meta = '') => `<div class="stat">

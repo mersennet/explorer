@@ -69,6 +69,38 @@ export const getDomainEvents = (filter) => rpcSafe('mersennet_getDomainEvents', 
 // CLOB
 export const getOrderBook = (mkt) => rpcSafe('mersennet_orders_getOrderBook', [mkt]);
 export const getOpenOrders = (owner) => rpcSafe('mersennet_orders_getOpenOrders', [owner]);
+export const getCollateralAssets = () => rpcSafe('mersennet_orders_getCollateralAssets');
+export const getOrdersAccount = (owner) => rpcSafe('mersennet_orders_getAccount', [owner]);
+// staking (delegated PoS)
+export const getStakingValidators = () => rpcSafe('mersennet_staking_getValidators');
+export const getStakingDelegation = (delegator, validator) => rpcSafe('mersennet_staking_getDelegation', [delegator, validator]);
+export const getStakingUnbonding = (delegator) => rpcSafe('mersennet_staking_getUnbonding', [delegator]);
+
+// Live market list (markets are permissionless — created via the CLOB
+// precompile). Falls back to the static config list on older nodes.
+// Cached for the session; call getMarkets(true) to force a refetch.
+let _markets = null;
+export async function getMarkets(force = false) {
+  if (_markets && !force) return _markets;
+  const live = await rpcSafe('mersennet_orders_getMarkets');
+  if (Array.isArray(live) && live.length) {
+    _markets = live.map((m) => {
+      const raw = String(m.symbol || `MKT-${m.id}`);
+      return {
+        id: Number(m.id),
+        // chain symbols are bare base names; markets are USD-quoted
+        symbol: raw.includes('/') ? raw : raw + '/USD',
+        base: raw.split('/')[0],
+        tickSize: m.tickSize, lotSize: m.lotSize, lastPrice: m.lastPrice,
+        status: m.status || 'active',
+      };
+    });
+  } else {
+    const { MARKETS } = await import('./config.js');
+    _markets = MARKETS.map((m) => ({ ...m, status: 'active' }));
+  }
+  return _markets;
+}
 // privacy / ZK
 export const getShieldedRoot = () => rpcSafe('mersennet_getShieldedRoot');
 export const getShieldedBalance = () => rpcSafe('mersennet_getShieldedBalance');

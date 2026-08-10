@@ -71,6 +71,15 @@ function wire() {
     if (window.innerWidth <= 900) document.getElementById('sidebar').classList.toggle('open');
     else document.getElementById('shell').classList.toggle('collapsed');
   };
+  // mobile: close the drawer when a nav link is tapped or the page behind it is
+  // touched, so navigation never leaves the sidebar covering the new content
+  document.addEventListener('click', (e) => {
+    if (window.innerWidth > 900) return;
+    const sb = document.getElementById('sidebar');
+    if (!sb || !sb.classList.contains('open')) return;
+    if (e.target.closest('#menuBtn')) return;
+    if (e.target.closest('.nav-item') || !e.target.closest('#sidebar')) sb.classList.remove('open');
+  });
 
   // search
   const s = document.getElementById('search');

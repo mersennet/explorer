@@ -2,7 +2,7 @@
 // and tabbed history (Transactions + Token transfers via indexer, RPC-aware
 // fallbacks). RPC-first; the indexer (api.js) is progressive enhancement.
 import { CONFIG, KNOWN_CONTRACTS, KNOWN_METHODS } from '../config.js';
-import { rpcBatch, getBalance, getNonce, getCode, getCodeAttestation } from '../rpc.js';
+import { rpcBatch, getBalance, getNonce, getCode, getCodeAttestation, getOrdersAccount, getMarkets, getStakingValidators, getStakingDelegation, getStakingUnbonding } from '../rpc.js';
 import { api } from '../api.js';
 import { render, icon, avatar, copyBtn, hashLink, addrLink, skeletonRows, emptyState } from '../ui.js';
 import { fmtMrsn, fmtNum, fmtUnits, hexToNum, shortHash, timeAgo, esc } from '../format.js';
@@ -46,6 +46,10 @@ export default async function address(params) {
     </div>
 
     <div id="holdingsCard" style="margin-top:14px"></div>
+
+    <div id="marginCard" style="margin-top:14px"></div>
+
+    <div id="stakingCard" style="margin-top:14px"></div>
 
     <div id="attestCard" style="margin-top:14px"></div>
 
@@ -95,6 +99,9 @@ export default async function address(params) {
 
   // --- token holdings (RPC balanceOf for known tokens; indexer auto-discovers more) ---
   buildHoldings(addr);
+
+  // --- CLOB margin account + staking position (new-chain features; safe no-ops on old nodes) ---
+  if (!isContract) { buildMargin(addr); buildStaking(addr); }
 
   // --- code attestation (contracts only) ---
   if (isContract) {
@@ -267,6 +274,89 @@ export default async function address(params) {
           </a>`;
         }).join('')}</div>
         ${!api.available ? `<div style="padding:11px 18px;border-top:1px solid var(--border-soft);color:var(--text-3);font-size:var(--fs-xs)">${icon('network', 11)} Showing known tokens only — connect the indexer to auto-discover every token held.</div>` : ''}
+      </div>`;
+  }
+
+  // --- CLOB margin account: native + token collateral, open positions ---
+  async function buildMargin(a) {
+    const card = document.getElementById('marginCard');
+    if (!card) return;
+    const acct = await getOrdersAccount(a);
+    if (!alive || !acct) return;
+    let coll = 0n; try { coll = BigInt(acct.collateral || '0x0'); } catch {}
+    const toks = Array.isArray(acct.tokenCollateral) ? acct.tokenCollateral : [];
+    const positions = Array.isArray(acct.positions) ? acct.positions : [];
+    const hasToks = toks.some((t) => { try { return BigInt(t.amount) > 0n; } catch { return false; } });
+    if (coll === 0n && !hasToks && !positions.length && !(acct.openOrders > 0)) return; // no margin activity — keep the page clean
+    const markets = await getMarkets().catch(() => []);
+    if (!alive) return;
+    const symFor = (id) => (markets.find((m) => m.id === Number(id)) || {}).symbol || `Market ${id}`;
+    const tokRows = toks.map((t) => {
+      const meta = KNOWN_CONTRACTS[String(t.token || '').toLowerCase()];
+      let amt = 0n; try { amt = BigInt(t.amount); } catch {}
+      if (amt === 0n) return '';
+      const val = meta && meta.decimals != null ? fmtUnits(amt, meta.decimals) : fmtNum(amt);
+      return `<div class="kv-line" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:var(--fs-sm)">
+        <span>${addrLink(t.token, { short: true })} ${meta ? `<span class="badge accent">${esc(meta.symbol)}</span>` : ''}</span>
+        <span class="mono">${val}</span></div>`;
+    }).join('');
+    const posRows = positions.map((p) => {
+      const size = BigInt(p.size || '0');
+      const side = size > 0n ? 'long' : size < 0n ? 'short' : 'flat';
+      const cls = size > 0n ? 'ok' : size < 0n ? 'warn' : 'neutral';
+      return `<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:var(--fs-sm)">
+        <span><a class="hash link" href="/clob/${p.marketId}">${esc(symFor(p.marketId))}</a> <span class="badge ${cls}">${side}</span></span>
+        <span class="mono">${fmtNum(size < 0n ? -size : size)} @ ${fmtNum(hexToNum(p.entryPrice))}</span></div>`;
+    }).join('');
+    card.innerHTML = `
+      <div class="card">
+        <div class="card-title"><span>${icon('clob', 16)} CLOB margin account</span>
+          <span class="badge neutral">${fmtNum(acct.openOrders || 0)} open orders</span></div>
+        <div class="pad" style="padding-top:10px">
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:var(--fs-sm)">
+            <span style="color:var(--text-2)">Native collateral</span>
+            <span class="mono">${fmtMrsn(acct.collateral)} <span style="color:var(--text-3)">MRSN</span></span></div>
+          ${tokRows}
+          ${posRows ? `<div style="color:var(--text-3);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 4px">Open positions</div>${posRows}` : ''}
+        </div>
+      </div>`;
+  }
+
+  // --- staking: delegations to each validator + unbonding queue ---
+  async function buildStaking(a) {
+    const card = document.getElementById('stakingCard');
+    if (!card) return;
+    const vals = await getStakingValidators();
+    if (!alive || !Array.isArray(vals) || !vals.length) return;
+    const dels = await Promise.all(vals.map((v) => getStakingDelegation(a, v.address)));
+    const unbonding = await getStakingUnbonding(a);
+    if (!alive) return;
+    const rows = [];
+    vals.forEach((v, i) => {
+      const d = dels[i]; if (!d) return;
+      let amt = 0n, rew = 0n;
+      try { amt = BigInt(d.amount || '0x0'); rew = BigInt(d.pendingRewards || '0x0'); } catch {}
+      if (amt === 0n && rew === 0n) return;
+      rows.push(`<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:var(--fs-sm)">
+        <span>${addrLink(v.address, { short: true })}</span>
+        <span class="mono">${fmtMrsn(amt)} <span style="color:var(--text-3)">MRSN</span>
+          ${rew > 0n ? `<span class="badge ok" style="margin-left:6px">+${fmtMrsn(rew)} rewards</span>` : ''}</span></div>`);
+    });
+    const unb = Array.isArray(unbonding) ? unbonding : (unbonding && Array.isArray(unbonding.entries) ? unbonding.entries : []);
+    const unbRows = unb.map((u) => {
+      let amt = 0n; try { amt = BigInt(u.amount || '0x0'); } catch {}
+      if (amt === 0n) return '';
+      const h = u.unlockAtBlock != null ? hexToNum(u.unlockAtBlock) : null;
+      return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:var(--fs-sm)">
+        <span style="color:var(--text-2)">Unbonding</span>
+        <span class="mono">${fmtMrsn(amt)} <span style="color:var(--text-3)">MRSN${h != null ? ` · unlocks #${fmtNum(h)}` : ''}</span></span></div>`;
+    }).join('');
+    if (!rows.length && !unbRows) return; // no staking activity
+    card.innerHTML = `
+      <div class="card">
+        <div class="card-title"><span>${icon('validators', 16)} Staking</span>
+          <span class="badge accent">${rows.length} delegation${rows.length === 1 ? '' : 's'}</span></div>
+        <div class="pad" style="padding-top:10px">${rows.join('')}${unbRows}</div>
       </div>`;
   }
 

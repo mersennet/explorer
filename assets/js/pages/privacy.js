@@ -6,8 +6,7 @@
 // Regime-aware: the privacy hard fork may be PENDING on testnet — shielded/proof
 // reads succeed but return empty (noteCount 0). We render the live machinery and
 // frame the empty state as a forward-looking capability, not an error.
-import { MARKETS } from '../config.js';
-import { getShieldedRoot, getShieldedBalance, getShieldedMarketAggregates } from '../rpc.js';
+import { getShieldedRoot, getShieldedBalance, getShieldedMarketAggregates, getMarkets } from '../rpc.js';
 import { ws } from '../ws.js';
 import { render, icon, skeletonRows, emptyState, copyBtn } from '../ui.js';
 import { fmtNum, compact, hexToNum, hexToBig, timeAgo, esc } from '../format.js';
@@ -15,6 +14,8 @@ import { fmtNum, compact, hexToNum, hexToBig, timeAgo, esc } from '../format.js'
 const TREE_DEPTH = 32; // Poseidon / BN254 commitment tree depth
 
 export default async function privacy() {
+  // live (permissionless) market list for symbol lookups
+  const MARKETS = await getMarkets();
   render(`
     <!-- 1) HERO -->
     <section class="hero">

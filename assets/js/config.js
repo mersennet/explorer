@@ -50,6 +50,7 @@ export const CONFIG = {
 // explorer render their Transfer/Approval amounts with the right symbol+decimals.
 export const KNOWN_CONTRACTS = {
   '0x0000000000000000000000000000000000000100': { name: 'MersennetOrders', kind: 'precompile', tag: 'CLOB', note: 'Native order-book precompile (collateral escrow)' },
+  '0x0000000000000000000000000000000000000400': { name: 'MersennetStaking', kind: 'precompile', tag: 'staking', note: 'Delegated staking precompile (principal + reward escrow)' },
   '0x0000000000000000000000000000000000000200': { name: 'ShieldBridge', kind: 'precompile', tag: 'privacy', note: 'Shield / unshield bridge precompile' },
   '0xa44b23d1d0c0133da71dece399d5d5ade6dd22d1': { name: 'USDC', kind: 'token', tag: 'ERC-20', symbol: 'USDC', decimals: 6, note: 'Mock USD Coin · faucet test token' },
   '0x3923578a19d0e9b35cef08b7eba0cb6d4b9c28f6': { name: 'USDT', kind: 'token', tag: 'ERC-20', symbol: 'USDT', decimals: 6, note: 'Mock Tether USD · faucet test token' },
@@ -63,10 +64,20 @@ export const KNOWN_METHODS = {
   '0xa9059cbb': 'transfer', '0x095ea7b3': 'approve', '0x23b872dd': 'transferFrom',
   '0x40c10f19': 'mint', '0xd0e30db0': 'deposit', '0x2e1a7d4d': 'withdraw',
   '0x70a08231': 'balanceOf', '0x18160ddd': 'totalSupply',
-  '0xbad4a01f': 'depositCollateral', '0x' : 'transfer',
+  '0xde5f72fd': 'faucet', '0x': 'transfer',
+  // MersennetOrders precompile (CLOB)
+  '0x4c570d73': 'placeOrder', '0x2c700c15': 'placeOrderExt', '0x514fcac7': 'cancelOrder',
+  '0x83e0341c': 'createMarket',
+  '0xbad4a01f': 'depositCollateral', '0x6112fe2e': 'withdrawCollateral',
+  '0x31e087b1': 'depositTokenCollateral', '0xc4708bdd': 'withdrawTokenCollateral',
+  // MersennetStaking precompile
+  '0x026e402b': 'delegate', '0x4d99dd16': 'undelegate',
+  '0xef5cfb8c': 'claimRewards', '0x6e373bef': 'withdrawUnbonded',
 };
 
-// CLOB markets (ids match the trade api / on-chain add order). base/quote labels only.
+// CLOB markets — static fallback only. The live list comes from the
+// mersennet_orders_getMarkets RPC (markets are permissionless); see
+// rpc.js getMarkets(). Kept so the CLOB page still renders against older nodes.
 export const MARKETS = [
   { id: 1, symbol: 'MRSN/USD', base: 'MRSN' },
   { id: 2, symbol: 'BTC/USD', base: 'BTC' },
