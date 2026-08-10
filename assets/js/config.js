@@ -51,11 +51,11 @@ export const CONFIG = {
 export const KNOWN_CONTRACTS = {
   '0x0000000000000000000000000000000000000100': { name: 'MersennetOrders', kind: 'precompile', tag: 'CLOB', note: 'Native order-book precompile (collateral escrow)' },
   '0x0000000000000000000000000000000000000200': { name: 'ShieldBridge', kind: 'precompile', tag: 'privacy', note: 'Shield / unshield bridge precompile' },
-  '0x8f4e0bee0fe201f10419947a7c043003f16bfd73': { name: 'USDC', kind: 'token', tag: 'ERC-20', symbol: 'USDC', decimals: 6, note: 'Mock USD Coin · faucet test token' },
-  '0x6fbe796caa747d84e3ac7611ffc2dc6d11124ed4': { name: 'USDT', kind: 'token', tag: 'ERC-20', symbol: 'USDT', decimals: 6, note: 'Mock Tether USD · faucet test token' },
-  '0x04833e1be9c451a89fc6cd1e5e698e2d4936d7f9': { name: 'DAI', kind: 'token', tag: 'ERC-20', symbol: 'DAI', decimals: 18, note: 'Mock Dai · faucet test token' },
-  '0xbb012e05c1b42c1f0efa4509317fdb31a31ad640': { name: 'WMRSN', kind: 'token', tag: 'ERC-20', symbol: 'WMRSN', decimals: 18, note: 'Wrapped MRSN' },
-  '0xcbf3bbcc74d851cc896aa128f61557df65e420fc': { name: 'Multicall3', kind: 'contract', tag: 'infra', note: 'Batched RPC reads' },
+  '0xa44b23d1d0c0133da71dece399d5d5ade6dd22d1': { name: 'USDC', kind: 'token', tag: 'ERC-20', symbol: 'USDC', decimals: 6, note: 'Mock USD Coin · faucet test token' },
+  '0x3923578a19d0e9b35cef08b7eba0cb6d4b9c28f6': { name: 'USDT', kind: 'token', tag: 'ERC-20', symbol: 'USDT', decimals: 6, note: 'Mock Tether USD · faucet test token' },
+  '0x27942c2cee3e0e02377d01bfe6e74cefc9a9fd45': { name: 'DAI', kind: 'token', tag: 'ERC-20', symbol: 'DAI', decimals: 18, note: 'Mock Dai · faucet test token' },
+  '0x5bbf04528469591280d36d46209c7ccd5a68a798': { name: 'WMRSN', kind: 'token', tag: 'ERC-20', symbol: 'WMRSN', decimals: 18, note: 'Wrapped MRSN' },
+  '0xdc27e8f5f77721f5930b8c90fade391e28331da6': { name: 'Multicall3', kind: 'contract', tag: 'infra', note: 'Batched RPC reads' },
 };
 
 // 4-byte selector → display. Used to label tx "method".
