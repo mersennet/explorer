@@ -1,6 +1,6 @@
 /* Mersennet Explorer — design tokens
  * Brand: phosphor green (#7dff9b) + teal (#40e0b4) on near-black. JetBrains Mono
- * for data, Sora for UI. Privacy/ZK surfaces use teal (NOT violet — the legacy
+ * for data, Schibsted Grotesk for UI. Privacy/ZK surfaces use teal (NOT violet — the legacy
  * violet #b07cff is intentionally gone). Mersenne-prime / perfect-number theme.
  */
 :root {
@@ -18,7 +18,7 @@
   /* brand */
   --accent: #7dff9b;          /* phosphor green */
   --accent-dim: #2bd96a;
-  --accent-deep: #0a8f50;
+  --accent-deep: #0c8f43;
   --teal: #40e0b4;            /* privacy/ZK accent */
   --teal-dim: #1fb894;
 
@@ -46,7 +46,7 @@
   --grad-teal: linear-gradient(90deg, #40e0b4 0%, #1fb894 100%);
 
   /* type */
-  --font-ui: 'Sora', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-ui: 'Schibsted Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --fs-xs: 11px; --fs-sm: 12px; --fs-base: 13px; --fs-md: 14px;
   --fs-lg: 16px; --fs-xl: 20px; --fs-2xl: 26px; --fs-3xl: 34px; --fs-hero: 46px;
@@ -77,14 +77,14 @@ html.light {
   --bg-hover: #e9efe9;
   --border: #dde6dd;
   --border-soft: #e8eee8;
-  --accent: #0a8f50;
+  --accent: #0c8f43;
   --accent-dim: #0fae62;
   --teal: #0f9b86;
   --text: #14201a;
   --text-2: #5a6b60;
   --text-3: #8aa090;
   --text-inverse: #ffffff;
-  --up: #0a8f50; --down: #c5283d; --warn: #b3650a; --info: #2563c7;
+  --up: #0c8f43; --down: #c5283d; --warn: #b3650a; --info: #2563c7;
   --grad-hero: radial-gradient(120% 120% at 0% 0%, rgba(15,174,98,0.10) 0%, rgba(15,155,134,0.04) 40%, rgba(0,0,0,0) 70%);
   --shadow: 0 6px 24px rgba(20,40,28,.08);
   --shadow-glow: 0 0 0 1px rgba(10,143,80,.18), 0 8px 30px rgba(10,143,80,.06);
