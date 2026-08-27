@@ -37,6 +37,7 @@ function buildShell() {
         ${nav}
         <div style="margin-top:auto;padding:12px 8px" class="nav-foot">
           <a class="nav-item" href="${CONFIG.links.docs}" target="_blank">${icon('ext')}<span class="nav-label">Docs</span></a>
+          <a class="nav-item" href="https://status.mersennet.com" target="_blank">${icon('ext')}<span class="nav-label">Status</span></a>
         </div>
       </aside>
       <div class="main">

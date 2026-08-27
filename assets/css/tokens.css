@@ -1,61 +1,65 @@
 /* Mersennet Explorer — design tokens
- * Brand: phosphor green (#7dff9b) + teal (#40e0b4) on near-black. JetBrains Mono
- * for data, Schibsted Grotesk for UI. Privacy/ZK surfaces use teal (NOT violet — the legacy
- * violet #b07cff is intentionally gone). Mersenne-prime / perfect-number theme.
+ * PHOSPHOR TERMINAL: the shared Mersennet design language (see trade.mersennet.com).
+ * Monospace-first, zero border radius, green-cast surfaces just above true black,
+ * solid dark-green hairlines. Teal remains the privacy/ZK accent so shielded
+ * surfaces read as a distinct subsystem.
  */
 :root {
-  /* surfaces (dark, default) */
-  --bg: #000000;
-  --bg-surface: #050706;
-  --bg-card: #0a0d0b;
-  --bg-card-2: #10140f;
-  --bg-elev: #161b15;
-  --bg-hover: #1a2018;
-  --border: #1d241c;
+  /* surfaces (dark, default) — green-cast stack, matches trade terminal */
+  --bg: #030604;
+  --bg-surface: #060b07;
+  --bg-card: #080f0a;
+  --bg-card-2: #0a130c;
+  --bg-elev: #0d1f12;
+  --bg-hover: #102616;
+  --border: #1b3322;
   --border-strong: #2a342700;
-  --border-soft: #161b15;
+  --border-soft: #12241a;
 
   /* brand */
-  --accent: #7dff9b;          /* phosphor green */
+  --accent: #2bd96a;          /* phosphor green (brand mid) */
+  --accent-bright: #8dffb0;   /* hero numbers, wordmark */
   --accent-dim: #2bd96a;
   --accent-deep: #0c8f43;
+  --accent-block: #17512c;    /* inverted section-header block */
   --teal: #40e0b4;            /* privacy/ZK accent */
   --teal-dim: #1fb894;
 
   /* text */
-  --text: #eef2ee;
-  --text-2: #9aa69d;
-  --text-3: #5f6b62;
-  --text-inverse: #04130a;
+  --text: #d6e4d6;
+  --text-2: #9db3a0;
+  --text-3: #5c6f60;
+  --text-inverse: #02120a;
 
   /* status */
-  --up: #1ad598;
-  --down: #ff5240;
-  --warn: #ffb23c;
+  --up: #2bd96a;
+  --down: #ff4d3d;
+  --warn: #ffb02e;
   --info: #5b8cff;
-  --up-bg: rgba(26, 213, 152, 0.12);
-  --down-bg: rgba(255, 82, 64, 0.12);
-  --warn-bg: rgba(255, 178, 60, 0.12);
+  --up-bg: rgba(43, 217, 106, 0.12);
+  --down-bg: rgba(255, 77, 61, 0.12);
+  --warn-bg: rgba(255, 176, 46, 0.12);
   --info-bg: rgba(91, 140, 255, 0.12);
-  --accent-bg: rgba(125, 255, 155, 0.10);
+  --accent-bg: rgba(43, 217, 106, 0.10);
   --teal-bg: rgba(64, 224, 180, 0.10);
 
-  /* gradients */
-  --grad-accent: linear-gradient(90deg, #7dff9b 0%, #2bd96a 100%);
-  --grad-hero: radial-gradient(120% 120% at 0% 0%, rgba(125,255,155,0.16) 0%, rgba(64,224,180,0.06) 36%, rgba(0,0,0,0) 70%);
-  --grad-teal: linear-gradient(90deg, #40e0b4 0%, #1fb894 100%);
+  /* gradients — flat phosphor fills, no candy */
+  --grad-accent: linear-gradient(90deg, #2bd96a 0%, #2bd96a 100%);
+  --grad-hero: radial-gradient(120% 120% at 0% 0%, rgba(43,217,106,0.14) 0%, rgba(64,224,180,0.05) 36%, rgba(0,0,0,0) 70%);
+  --grad-teal: linear-gradient(90deg, #40e0b4 0%, #40e0b4 100%);
 
-  /* type */
-  --font-ui: 'Schibsted Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* type — monospace-first; Schibsted survives only as the display face */
+  --font-ui: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-display: 'Schibsted Grotesk', system-ui, sans-serif;
   --fs-xs: 11px; --fs-sm: 12px; --fs-base: 13px; --fs-md: 14px;
-  --fs-lg: 16px; --fs-xl: 20px; --fs-2xl: 26px; --fs-3xl: 34px; --fs-hero: 46px;
+  --fs-lg: 16px; --fs-xl: 20px; --fs-2xl: 24px; --fs-3xl: 30px; --fs-hero: 40px;
 
-  /* shape */
-  --radius-xs: 6px; --radius: 9px; --radius-lg: 13px; --radius-xl: 18px; --radius-pill: 100px;
+  /* shape — hard corners everywhere (dots/avatars use 50% inline) */
+  --radius-xs: 0; --radius: 0; --radius-lg: 0; --radius-xl: 0; --radius-pill: 0;
   --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
   --shadow: 0 8px 30px rgba(0,0,0,.5);
-  --shadow-glow: 0 0 0 1px rgba(125,255,155,.18), 0 10px 40px rgba(125,255,155,.06);
+  --shadow-glow: 0 0 0 1px rgba(43,217,106,.18), 0 10px 40px rgba(43,217,106,.06);
   --shadow-glow-teal: 0 0 0 1px rgba(64,224,180,.22), 0 10px 40px rgba(64,224,180,.07);
 
   /* layout */
@@ -67,25 +71,27 @@
   --ease-bounce: cubic-bezier(.34, 1.56, .64, 1);
 }
 
-/* light theme (toggle adds .light to <html>) */
+/* light theme (toggle adds .light to <html>) — "paper terminal" */
 html.light {
-  --bg: #f6f8f6;
-  --bg-surface: #ffffff;
-  --bg-card: #ffffff;
-  --bg-card-2: #f1f4f1;
-  --bg-elev: #eef2ee;
-  --bg-hover: #e9efe9;
-  --border: #dde6dd;
-  --border-soft: #e8eee8;
+  --bg: #f4f7f2;
+  --bg-surface: #fbfdf9;
+  --bg-card: #fbfdf9;
+  --bg-card-2: #ecf1e9;
+  --bg-elev: #e4ebe1;
+  --bg-hover: #dfe7dc;
+  --border: #c3d2c1;
+  --border-soft: #d3dfd1;
   --accent: #0c8f43;
+  --accent-bright: #0c8f43;
   --accent-dim: #0fae62;
+  --accent-block: #d4e9d7;
   --teal: #0f9b86;
-  --text: #14201a;
-  --text-2: #5a6b60;
-  --text-3: #8aa090;
+  --text: #10160f;
+  --text-2: #4d5a4c;
+  --text-3: #68766a;
   --text-inverse: #ffffff;
-  --up: #0c8f43; --down: #c5283d; --warn: #b3650a; --info: #2563c7;
-  --grad-hero: radial-gradient(120% 120% at 0% 0%, rgba(15,174,98,0.10) 0%, rgba(15,155,134,0.04) 40%, rgba(0,0,0,0) 70%);
+  --up: #0c8f43; --down: #d43324; --warn: #a86a0a; --info: #2563eb;
+  --grad-hero: radial-gradient(120% 120% at 0% 0%, rgba(12,143,67,0.10) 0%, rgba(15,155,134,0.04) 40%, rgba(0,0,0,0) 70%);
   --shadow: 0 6px 24px rgba(20,40,28,.08);
-  --shadow-glow: 0 0 0 1px rgba(10,143,80,.18), 0 8px 30px rgba(10,143,80,.06);
+  --shadow-glow: 0 0 0 1px rgba(12,143,67,.18), 0 8px 30px rgba(12,143,67,.06);
 }

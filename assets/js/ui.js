@@ -58,7 +58,7 @@ export function avatar(addr, size = 20) {
       if (x < 2) cells += `<rect x="${4 - x}" y="${y}" width="1" height="1"/>`;
     }
   }
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5'><rect width='5' height='5' fill='#0a0d0b'/><g fill='${fg}'>${cells}</g></svg>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5'><rect width='5' height='5' fill='#080f0a'/><g fill='${fg}'>${cells}</g></svg>`;
   return `<img class="avatar" width="${size}" height="${size}" src="data:image/svg+xml,${encodeURIComponent(svg)}" alt=""/>`;
 }
 

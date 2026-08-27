@@ -14,10 +14,25 @@ a { color: inherit; text-decoration: none; }
 a.link { color: var(--accent); }
 a.link:hover { text-decoration: underline; }
 .mono { font-family: var(--font-mono); }
-::selection { background: rgba(125,255,155,.22); }
+::selection { background: var(--accent); color: var(--bg); }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 0; }
 ::-webkit-scrollbar-thumb:hover { background: var(--bg-elev); }
+
+/* CRT atmosphere: scanlines + corner vignette (shared phosphor language with
+   trade.mersennet.com). Non-interactive; killed in light mode and on phones
+   where scanlines moiré on high-DPI screens. */
+body::after {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 999;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 3px),
+    radial-gradient(130% 100% at 50% 0%, transparent 60%, rgba(0, 0, 0, 0.35) 100%);
+}
+html.light body::after { display: none; }
+@media (max-width: 767px) {
+  body::after { background: radial-gradient(130% 100% at 50% 0%, transparent 60%, rgba(0, 0, 0, 0.3) 100%); }
+}
 
 /* ---- shell ---- */
 .shell { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
@@ -31,8 +46,10 @@ a.link:hover { text-decoration: underline; }
 }
 .brand { display: flex; align-items: center; gap: 11px; padding: 8px 8px 16px; }
 .brand svg { width: 30px; height: 30px; flex: none; }
-.brand .wordmark { font-family: var(--font-mono); font-weight: 700; letter-spacing: .14em;
-  text-transform: uppercase; font-size: 14px; color: var(--text); }
+.brand .wordmark { font-family: var(--font-mono); font-weight: 800; letter-spacing: .1em;
+  text-transform: uppercase; font-size: 13px; color: var(--accent-bright);
+  text-shadow: 0 0 8px rgba(43, 217, 106, 0.4); }
+html.light .brand .wordmark { text-shadow: none; }
 .collapsed .brand .wordmark, .collapsed .nav-label, .collapsed .nav-section-label { display: none; }
 
 .nav-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: .12em;
@@ -41,10 +58,9 @@ a.link:hover { text-decoration: underline; }
   color: var(--text-2); font-size: var(--fs-md); font-weight: 500; cursor: pointer; transition: all .15s var(--ease);
   white-space: nowrap; }
 .nav-item:hover { background: var(--bg-hover); color: var(--text); }
-.nav-item.active { background: var(--accent-bg); color: var(--accent); font-weight: 600;
-  box-shadow: inset 2px 0 0 var(--accent); }
-.nav-item.active.privacy { background: var(--teal-bg); color: var(--teal);
-  box-shadow: inset 2px 0 0 var(--teal); }
+/* Active nav = inverted phosphor block, the signature move of the language. */
+.nav-item.active { background: var(--accent-block); color: var(--accent-bright); font-weight: 700; }
+.nav-item.active.privacy { background: rgba(64, 224, 180, 0.16); color: var(--teal); }
 .nav-item .ico { width: 18px; height: 18px; flex: none; opacity: .9; }
 .collapsed .nav-item { justify-content: center; padding: 9px; }
 
@@ -52,7 +68,7 @@ a.link:hover { text-decoration: underline; }
 .topbar { position: sticky; top: 0; height: var(--header-h); display: flex; align-items: center; gap: 14px;
   padding: 0 22px; background: rgba(0,0,0,.55); backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-soft); z-index: 30; }
-.topbar .menu-btn { background: none; border: none; color: var(--text-2); cursor: pointer; padding: 6px; border-radius: 8px; }
+.topbar .menu-btn { background: none; border: none; color: var(--text-2); cursor: pointer; padding: 6px; border-radius: 0; }
 .topbar .menu-btn:hover { background: var(--bg-hover); color: var(--text); }
 .content { padding: 26px 22px 80px; max-width: var(--maxw); width: 100%; margin: 0 auto; flex: 1; }
 
