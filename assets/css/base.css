@@ -104,3 +104,9 @@ html.light .brand .wordmark { text-shadow: none; }
   .sidebar.open { left: 0; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .55); }
   .content { padding: 18px 14px 60px; }
 }
+@media (max-width: 600px) {
+  /* Phone topbar is too narrow for the chain pill (it wrapped out of its box);
+     the hero carries the chain badge, so drop the pill and give the width to
+     the search field. */
+  .netpill { display: none; }
+}
