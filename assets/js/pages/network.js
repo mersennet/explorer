@@ -18,6 +18,7 @@ const RPC_METHODS = [
   { m: 'eth_getTransactionReceipt', p: ['0x'] },
   { m: 'eth_getCode', p: ['0x0000000000000000000000000000000000000100', 'latest'] },
   { m: 'net_peerCount', p: [] },
+  { m: 'mersennet_peers', p: [] },
   { m: 'web3_clientVersion', p: [] },
   { m: 'mersennet_validators', p: [] },
   { m: 'mersennet_getShieldedRoot', p: [] },
@@ -60,6 +61,19 @@ export default async function network() {
         </div>
         <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px" id="quickLinks"></div>
       </div>
+    </div>
+
+    <div class="card" id="nodesCard" style="margin-top:14px">
+      <div class="card-title"><span>${icon('network', 16)} Network nodes</span>
+        <span class="badge neutral" id="nodesMeta">loading…</span></div>
+      <div style="padding:0 18px 10px;font-size:12px;color:var(--text-3);line-height:1.5">
+        Peers of the public RPC node, as reported by <span class="mono">mersennet_peers</span>. Anyone can join — a node appears here about a minute after it starts gossiping
+        (<a href="https://docs.mersennet.com/validators/run-a-node/" target="_blank" rel="noopener">run a node →</a>). Community nodes are shown by network prefix and a stable id; <span class="mono">mersennet-check</span> prints the same id on the operator's machine.
+      </div>
+      <div style="overflow-x:auto"><table class="tbl">
+        <thead><tr><th>Node</th><th>Role</th><th class="num">First seen</th><th class="num">Last seen</th></tr></thead>
+        <tbody id="nodesBody"><tr><td colspan="4"><div class="sk line"></div></td></tr></tbody>
+      </table></div>
     </div>
 
     <div class="card" id="activityCard" style="margin-top:14px">
@@ -136,6 +150,11 @@ export default async function network() {
     </tr>`;
   }).join('');
 
+  // --- network nodes list (refreshes every 30s while the page is mounted) ---
+  renderNodes();
+  if (nodesTimer) clearInterval(nodesTimer);
+  nodesTimer = setInterval(renderNodes, 30_000);
+
   // --- live node status (rpcSafe → null tolerant) ---
   const [clientVersion, peerCount, chainIdHex] = await Promise.all([
     rpcSafe('web3_clientVersion'),
@@ -159,6 +178,62 @@ export default async function network() {
     ${nodeRow('Reported chain ID', chainIdHex != null
       ? `<span class="mono" style="color:${chainOk ? 'var(--accent)' : 'var(--warn)'}">${parseInt(chainIdHex, 16)}</span>${chainOk ? '' : ' <span class="badge warn">mismatch</span>'}`
       : '<span style="color:var(--text-3)">n/a</span>')}`;
+}
+
+// ---- Network nodes (mersennet_peers on the public RPC node) ----
+const FLEET = {
+  '46.225.30.187': 'Public RPC · bootnode',
+  '46.225.183.192': 'Validator #1 · bootnode',
+  '49.13.54.79': 'Validator #2 · bootnode',
+  '167.233.105.60': 'Validator #3',
+  '167.233.118.149': 'Validator #4',
+};
+
+// Stable short id for a community node: first 6 hex chars of sha256(ip).
+// mersennet-check computes the identical value from the node's public IP.
+async function nodeId(ip) {
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip));
+    return [...new Uint8Array(buf)].slice(0, 3).map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch { return '——————'; }
+}
+
+function ago(secs) {
+  if (secs == null) return '—';
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
+  return `${Math.floor(secs / 86400)}d ago`;
+}
+
+let nodesTimer = null;
+async function renderNodes() {
+  const body = document.getElementById('nodesBody');
+  const meta = document.getElementById('nodesMeta');
+  if (!body || !meta) { if (nodesTimer) clearInterval(nodesTimer); return; }
+  const peers = await rpcSafe('mersennet_peers');
+  if (!Array.isArray(peers)) {
+    meta.textContent = 'unavailable';
+    meta.className = 'badge warn';
+    body.innerHTML = `<tr><td colspan="4" style="color:var(--text-3)">The public node does not expose its peer list yet.</td></tr>`;
+    return;
+  }
+  const live = peers.filter((p) => p.heard);
+  const rows = await Promise.all(live.map(async (p) => {
+    const ip = String(p.addr).replace(/:\d+$/, '');
+    const fleet = FLEET[ip];
+    const label = fleet
+      ? `<span class="mono" style="color:var(--text)">${esc(p.addr)}</span>`
+      : `<span class="mono" style="color:var(--text)">${esc(ip.split('.').slice(0, 2).join('.'))}.x.x</span> <span class="mono" style="color:var(--text-3)">· id ${await nodeId(ip)}</span>`;
+    const role = fleet
+      ? `<span class="badge accent">${esc(fleet)}</span>`
+      : `<span class="badge ok">Community node</span>`;
+    return `<tr><td>${label}</td><td>${role}</td><td class="num mono">${ago(p.firstSeenSecs)}</td><td class="num mono">${ago(p.lastSeenSecs)}</td></tr>`;
+  }));
+  const community = live.filter((p) => !FLEET[String(p.addr).replace(/:\d+$/, '')]).length;
+  meta.textContent = `${live.length} connected · ${community} community`;
+  meta.className = 'badge ' + (community > 0 ? 'ok' : 'neutral');
+  body.innerHTML = rows.join('') || `<tr><td colspan="4" style="color:var(--text-3)">No peers reported.</td></tr>`;
 }
 
 const kv = (ic, k, v) => `<div class="k">${icon(ic, 13)} ${esc(k)}</div><div class="v">${v}</div>`;
