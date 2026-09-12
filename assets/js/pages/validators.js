@@ -140,7 +140,7 @@ export default async function validators() {
         ? `${compact(Number(totalStakeWei / WEI))} self · ${compact(Number(totalDelegatedWei / WEI))} delegated`
         : fmtMrsn(totalStakeWei, 2) + ' MRSN exact')
     + stat('validators', 'Validators', fmtNum(count), 'BFT quorum: ⅔+ by stake')
-    + stat('pulse', 'Est. staking APR', aprPct == null ? '—' : aprPct.toFixed(2) + '%', '~' + compact(Number(annualEmissionWei / WEI)) + ' MRSN/yr emitted')
+    + stat('pulse', 'Testnet emission / stake', aprPct == null ? '—' : aprPct.toFixed(0) + '%', '~' + compact(Number(annualEmissionWei / WEI)) + ' MRSN/yr over 4M genesis stake · not a mainnet yield')
     + stat('clock', 'Block time', measuredBt != null ? measuredBt.toFixed(2) + 's' : '~' + CONFIG.blockTimeSecs + 's', measuredBt != null ? `measured over ${fmtNum(sampled)} blocks` : 'target cadence');
 
   const c = document.getElementById('vcount');
