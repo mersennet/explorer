@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+
+jobs:
+  check:
+    name: syntax check ES modules, smoke-serve
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Every module parses
+        run: |
+          set -e
+          for f in $(find assets/js -name '*.js'); do
+            cp "$f" /tmp/check.mjs && node --check /tmp/check.mjs || { echo "syntax error in $f"; exit 1; }
+          done
+          echo "parsed $(find assets/js -name '*.js' | wc -l) modules"
+      - name: index.html references existing assets
+        run: |
+          set -e
+          for ref in $(grep -oE '(href|src)="/?assets/[^"]+' index.html | sed -E 's/^(href|src)="\/?//' | sort -u); do
+            test -f "$ref" || { echo "missing asset: $ref"; exit 1; }
+          done
+          echo "asset references ok"
+      - name: Static serve smoke test
+        run: |
+          python3 -m http.server 8088 >/dev/null 2>&1 &
+          sleep 1
+          curl -fsS http://127.0.0.1:8088/ | grep -qi "mersennet" && echo "serves index"
+          curl -fsS -o /dev/null http://127.0.0.1:8088/assets/js/app.js && echo "serves app.js"
