@@ -42,6 +42,10 @@ export default async function validators() {
 
     <div class="card" style="margin-top:14px">
       <div class="card-title"><span>Active set</span><span class="badge accent" id="vcount">…</span></div>
+      <div style="padding:0 18px 14px;font-size:12px;color:var(--text-3);line-height:1.5">
+        The active set and its stake are fixed in the genesis config for this testnet phase. Community full nodes verify and serve the chain but are not listed here; permissionless validator registration arrives with a chain upgrade.
+        <a href="https://docs.mersennet.com/validators/run-a-node/#becoming-a-validator" target="_blank" rel="noopener">Run a node →</a>
+      </div>
       <div style="overflow-x:auto"><table class="tbl">
         <thead><tr>
           <th style="width:54px">Rank</th>
