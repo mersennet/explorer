@@ -206,6 +206,18 @@ function ago(secs) {
   return `${Math.floor(secs / 86400)}d ago`;
 }
 
+// Verified node runners (trade.mersennet.com/points): operator wallets keyed
+// by the same anonymous node id, so a community node can show as verified
+// without the explorer ever seeing its IP from the API.
+async function verifiedNodes() {
+  try {
+    const r = await fetch('https://trade.mersennet.com/api/v1/nodes/verified', { cache: 'no-store' });
+    if (!r.ok) return new Map();
+    const j = await r.json();
+    return new Map((j.nodes || []).filter((n) => n.active).map((n) => [n.id, n.operator]));
+  } catch { return new Map(); }
+}
+
 let nodesTimer = null;
 async function renderNodes() {
   const body = document.getElementById('nodesBody');
@@ -219,15 +231,20 @@ async function renderNodes() {
     return;
   }
   const live = peers.filter((p) => p.heard);
+  const verified = await verifiedNodes();
   const rows = await Promise.all(live.map(async (p) => {
     const ip = String(p.addr).replace(/:\d+$/, '');
     const fleet = FLEET[ip];
+    const id = fleet ? '' : await nodeId(ip);
+    const operator = verified.get(id);
     const label = fleet
       ? `<span class="mono" style="color:var(--text)">${esc(p.addr)}</span>`
-      : `<span class="mono" style="color:var(--text)">${esc(ip.split('.').slice(0, 2).join('.'))}.x.x</span> <span class="mono" style="color:var(--text-3)">· id ${await nodeId(ip)}</span>`;
+      : `<span class="mono" style="color:var(--text)">${esc(ip.split('.').slice(0, 2).join('.'))}.x.x</span> <span class="mono" style="color:var(--text-3)">· id ${id}</span>`;
     const role = fleet
       ? `<span class="badge accent">${esc(fleet)}</span>`
-      : `<span class="badge ok">Community node</span>`;
+      : operator
+        ? `<span class="badge ok">Verified node runner</span> <a class="mono" href="#/address/${esc(operator)}" style="color:var(--text-2)">${esc(operator.slice(0, 6))}…${esc(operator.slice(-4))}</a>`
+        : `<span class="badge ok">Community node</span>`;
     return `<tr><td>${label}</td><td>${role}</td><td class="num mono">${ago(p.firstSeenSecs)}</td><td class="num mono">${ago(p.lastSeenSecs)}</td></tr>`;
   }));
   const community = live.filter((p) => !FLEET[String(p.addr).replace(/:\d+$/, '')]).length;
