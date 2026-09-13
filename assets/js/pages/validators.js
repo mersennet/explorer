@@ -5,10 +5,10 @@
 // shows blocks-proposed, proposal share, and last-seen — and a live strip streams
 // new proposers as blocks arrive (WS newHeads). Pure-RPC, no indexer dependency.
 import { CONFIG } from '../config.js';
-import { getValidators, getStakingValidators, getBlockNumber, rpcBatch } from '../rpc.js';
+import { getValidators, getStakingValidators, getBlockNumber, rpcBatch, rpcSafe } from '../rpc.js';
 import { ws } from '../ws.js';
 import { render, icon, addrLink, copyBtn, skeletonRows, emptyState } from '../ui.js';
-import { fmtNum, fmtMrsn, compact, hexToBig, hexToNum, timeAgo } from '../format.js';
+import { fmtNum, fmtMrsn, compact, hexToBig, hexToNum, timeAgo, esc } from '../format.js';
 
 const SECS_PER_YEAR = 31536000n;
 const WEI = 10n ** 18n;
@@ -42,9 +42,8 @@ export default async function validators() {
 
     <div class="card" style="margin-top:14px">
       <div class="card-title"><span>Active set</span><span class="badge accent" id="vcount">…</span></div>
-      <div style="padding:0 18px 14px;font-size:12px;color:var(--text-3);line-height:1.5">
-        The active set and its stake are fixed in the genesis config for this testnet phase. Community full nodes verify and serve the chain but are not listed here; permissionless validator registration arrives with a chain upgrade.
-        <a href="https://docs.mersennet.com/validators/run-a-node/#becoming-a-validator" target="_blank" rel="noopener">Run a node →</a>
+      <div style="padding:0 18px 14px;font-size:12px;color:var(--text-3);line-height:1.5" id="vsetNote">
+        Loading the open validator set…
       </div>
       <div style="overflow-x:auto"><table class="tbl">
         <thead><tr>
@@ -59,8 +58,9 @@ export default async function validators() {
       </table></div>
     </div>`);
 
-  const [vals, stakingVals] = await Promise.all([getValidators(), getStakingValidators()]);
+  const [vals, stakingVals, vset] = await Promise.all([getValidators(), getStakingValidators(), rpcSafe('mersennet_validatorSet')]);
   if (!alive) return () => { alive = false; };
+  renderOpenSet(vset);
 
   // delegated staking info by validator address (null on older nodes)
   const stakingByAddr = new Map();
@@ -233,6 +233,46 @@ function delegatedCell(s) {
   const amt = s.delegated > 0n ? fmtMrsn(s.delegated, 2) : '0';
   return `<span class="mono">${amt}</span>
     <div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:3px">${(s.commissionBps / 100).toFixed(1)}% commission</div>`;
+}
+
+// Open validator set (permissionless registration): parameters, epoch and
+// every registration with its live status. `mersennet_validatorSet` is null
+// on nodes older than the feature.
+const STATUS_BADGE = { active: 'ok', pending: 'warn', standby: 'neutral', jailed: 'danger', exiting: 'neutral' };
+function renderOpenSet(v) {
+  const note = document.getElementById('vsetNote');
+  if (!note) return;
+  if (!v || !v.params) {
+    note.innerHTML = 'The public node does not expose the validator set yet. <a href="https://docs.mersennet.com/validators/run-a-node/#becoming-a-validator" target="_blank" rel="noopener">Become a validator →</a>';
+    return;
+  }
+  const p = v.params;
+  const minStake = Number(hexToBig(p.minSelfStake) / WEI);
+  const epochMin = Math.round(p.epochBlocks * 2 / 60);
+  const link = '<a href="https://trade.mersennet.com/staking" target="_blank" rel="noopener">register in the terminal →</a>';
+  if (!v.active) {
+    const left = Math.max(0, p.activationHeight - v.height);
+    note.innerHTML = `<b style="color:var(--text)">Permissionless validator registration opens at block ${fmtNum(p.activationHeight)}</b> (${fmtNum(left)} blocks, ~${Math.round(left * 2 / 3600)} h). Any node can then register with ${fmtNum(minStake)} MRSN self-stake; the top ${p.maxValidators} by self + delegated stake produce blocks, recomputed every epoch (${epochMin} min). ${link}`;
+    return;
+  }
+  const rows = (v.validators || [])
+    .slice()
+    .sort((a, b) => (hexToBig(b.votingStake) > hexToBig(a.votingStake) ? 1 : -1))
+    .map((r) => `<tr>
+      <td><a class="mono" href="#/address/${esc(r.identity)}">${esc(r.identity.slice(0, 10))}…${esc(r.identity.slice(-4))}</a>${r.genesis ? ' <span class="badge neutral">genesis</span>' : ''}</td>
+      <td><a class="mono" href="#/address/${esc(r.operator)}" style="color:var(--text-3)">${esc(r.operator.slice(0, 10))}…</a></td>
+      <td class="num mono">${compact(Number(hexToBig(r.selfStake) / WEI))}</td>
+      <td class="num mono">${compact(Number(hexToBig(r.delegated) / WEI))}</td>
+      <td class="num mono">${r.commissionBps / 100}%</td>
+      <td class="num mono">${r.proposedSlots} <span style="color:var(--text-3)">/ ${r.missedSlots} missed</span></td>
+      <td><span class="badge ${STATUS_BADGE[r.status] || 'neutral'}">${esc(r.status)}</span></td>
+    </tr>`).join('');
+  const toEpoch = Math.max(0, v.nextEpochAt - v.height);
+  note.innerHTML = `<b style="color:var(--text)">Open validator set · epoch ${fmtNum(v.epoch)}</b> · ${v.activeSet.length}/${p.maxValidators} active · next epoch in ${fmtNum(toEpoch)} blocks (~${Math.round(toEpoch * 2 / 60)} min) · min self-stake ${fmtNum(minStake)} MRSN · ${link}
+    <div style="overflow-x:auto;margin-top:10px"><table class="tbl">
+      <thead><tr><th>Validator</th><th>Operator</th><th class="num">Self-stake</th><th class="num">Delegated</th><th class="num">Commission</th><th class="num">Slots (epoch)</th><th>Status</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="7" style="color:var(--text-3)">No registrations yet.</td></tr>'}</tbody>
+    </table></div>`;
 }
 
 const stat = (ic, label, val, meta = '') => `<div class="stat">
