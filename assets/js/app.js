@@ -100,18 +100,36 @@ function wire() {
     if (c) { navigator.clipboard?.writeText(c.dataset.copy).then(() => toast('Copied')); }
   });
 
-  // wallet (add Mersennet network)
-  document.getElementById('walletBtn').onclick = async () => {
-    if (!window.ethereum) { toast('No wallet found'); return; }
+  // wallet: add Mersennet to the wallet AND connect, so the button shows the
+  // account and the Validators / Network pages can mark what is yours. The
+  // old button only added the network, which read as a connect that did
+  // nothing (first outside validator, 2026-09-15).
+  const walletBtn = document.getElementById('walletBtn');
+  const showAccount = (addr) => {
+    if (!addr) return;
+    window.__account = addr.toLowerCase();
+    sessionStorage.setItem('explorer.account', window.__account);
+    walletBtn.querySelector('span').textContent = `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+    walletBtn.title = 'Open your address';
+    document.dispatchEvent(new CustomEvent('wallet:account', { detail: { address: window.__account } }));
+  };
+  const saved = sessionStorage.getItem('explorer.account');
+  if (saved) showAccount(saved);
+  walletBtn.onclick = async () => {
+    if (window.__account) { location.hash = `#/address/${window.__account}`; return; }
+    if (!window.ethereum) { toast('No wallet found — install MetaMask or open in a wallet browser'); return; }
     try {
       await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{
         chainId: CONFIG.chainIdHex, chainName: CONFIG.chainName,
         nativeCurrency: { name: CONFIG.symbol, symbol: CONFIG.symbol, decimals: CONFIG.decimals },
         rpcUrls: [CONFIG.canonicalRpc], blockExplorerUrls: [location.origin],
       }]});
-      toast('Mersennet added to wallet');
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      if (accounts && accounts[0]) { showAccount(accounts[0]); toast('Connected — Mersennet is in your wallet'); }
+      else toast('Mersennet added to wallet');
     } catch (e) { toast('Cancelled'); }
   };
+  window.ethereum?.on?.('accountsChanged', (a) => { if (a && a[0]) showAccount(a[0]); });
 
   // live status dot from WS
   document.addEventListener('ws:status', (e) => {

@@ -260,7 +260,7 @@ function renderOpenSet(v) {
     .sort((a, b) => (hexToBig(b.votingStake) > hexToBig(a.votingStake) ? 1 : -1))
     .map((r) => `<tr>
       <td><a class="mono" href="#/address/${esc(r.identity)}">${esc(r.identity.slice(0, 10))}…${esc(r.identity.slice(-4))}</a>${r.genesis ? ' <span class="badge neutral">genesis</span>' : ''}</td>
-      <td><a class="mono" href="#/address/${esc(r.operator)}" style="color:var(--text-3)">${esc(r.operator.slice(0, 10))}…</a></td>
+      <td><a class="mono" href="#/address/${esc(r.operator)}" style="color:var(--text-3)">${esc(r.operator.slice(0, 10))}…</a>${window.__account && r.operator.toLowerCase() === window.__account ? ' <span class="badge ok">you</span>' : ''}</td>
       <td class="num mono">${compact(Number(hexToBig(r.selfStake) / WEI))}</td>
       <td class="num mono">${compact(Number(hexToBig(r.delegated) / WEI))}</td>
       <td class="num mono">${r.commissionBps / 100}%</td>
