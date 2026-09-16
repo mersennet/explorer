@@ -113,8 +113,8 @@ function wire() {
     walletBtn.title = 'Open your address';
     document.dispatchEvent(new CustomEvent('wallet:account', { detail: { address: window.__account } }));
   };
-  const saved = sessionStorage.getItem('explorer.account');
-  if (saved) showAccount(saved);
+  const savedAccount = sessionStorage.getItem('explorer.account');
+  if (savedAccount) showAccount(savedAccount);
   walletBtn.onclick = async () => {
     if (window.__account) { location.hash = `#/address/${window.__account}`; return; }
     if (!window.ethereum) { toast('No wallet found — install MetaMask or open in a wallet browser'); return; }
