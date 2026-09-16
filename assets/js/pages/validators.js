@@ -265,7 +265,7 @@ function renderOpenSet(v) {
       <td class="num mono">${compact(Number(hexToBig(r.delegated) / WEI))}</td>
       <td class="num mono">${r.commissionBps / 100}%</td>
       <td class="num mono">${r.proposedSlots} <span style="color:var(--text-3)">/ ${r.missedSlots} missed</span></td>
-      <td><span class="badge ${STATUS_BADGE[r.status] || 'neutral'}">${esc(r.status)}</span></td>
+      <td><span class="badge ${STATUS_BADGE[r.status] || 'neutral'}">${esc(r.status)}</span>${r.benched ? ' <span class="badge warn" title="Missed 3 leader slots this epoch: out of the leader rotation until the epoch boundary (still voting)">benched</span>' : ''}</td>
     </tr>`).join('');
   const toEpoch = Math.max(0, v.nextEpochAt - v.height);
   note.innerHTML = `<b style="color:var(--text)">Open validator set · epoch ${fmtNum(v.epoch)}</b> · ${v.activeSet.length}/${p.maxValidators} active · next epoch in ${fmtNum(toEpoch)} blocks (~${Math.round(toEpoch * 2 / 60)} min) · min self-stake ${fmtNum(minStake)} MRSN · ${link}
