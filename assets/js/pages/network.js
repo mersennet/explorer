@@ -214,7 +214,7 @@ async function verifiedNodes() {
     const r = await fetch('https://trade.mersennet.com/api/v1/nodes/verified', { cache: 'no-store' });
     if (!r.ok) return new Map();
     const j = await r.json();
-    return new Map((j.nodes || []).filter((n) => n.active).map((n) => [n.id, n.operator]));
+    return new Map((j.nodes || []).filter((n) => n.active).map((n) => [n.id, { operator: n.operator, build: n.build_sha || null, outdated: !!n.outdated }]));
   } catch { return new Map(); }
 }
 
@@ -236,14 +236,18 @@ async function renderNodes() {
     const ip = String(p.addr).replace(/:\d+$/, '');
     const fleet = FLEET[ip];
     const id = fleet ? '' : await nodeId(ip);
-    const operator = verified.get(id);
+    const info = verified.get(id);
+    const operator = info && info.operator;
+    const build = info && info.build
+      ? ` <span class="mono ${info.outdated ? 'badge warn' : ''}" style="${info.outdated ? '' : 'color:var(--text-3)'}" title="${info.outdated ? 'Behind the current release — the operator should re-run the installer before the next protocol switch' : 'Current release'}">${esc(info.build)}${info.outdated ? ' · upgrade' : ''}</span>`
+      : '';
     const label = fleet
       ? `<span class="mono" style="color:var(--text)">${esc(p.addr)}</span>`
       : `<span class="mono" style="color:var(--text)">${esc(ip.split('.').slice(0, 2).join('.'))}.x.x</span> <span class="mono" style="color:var(--text-3)">· id ${id}</span>`;
     const role = fleet
       ? `<span class="badge accent">${esc(fleet)}</span>`
       : operator
-        ? `<span class="badge ok">Verified node runner</span> <a class="mono" href="#/address/${esc(operator)}" style="color:var(--text-2)">${esc(operator.slice(0, 6))}…${esc(operator.slice(-4))}</a>`
+        ? `<span class="badge ok">Verified node runner</span> <a class="mono" href="#/address/${esc(operator)}" style="color:var(--text-2)">${esc(operator.slice(0, 6))}…${esc(operator.slice(-4))}</a>${build}`
         : `<span class="badge ok">Community node</span>`;
     return `<tr><td>${label}</td><td>${role}</td><td class="num mono">${ago(p.firstSeenSecs)}</td><td class="num mono">${ago(p.lastSeenSecs)}</td></tr>`;
   }));
