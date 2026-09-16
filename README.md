@@ -42,14 +42,12 @@ Static files behind a reverse proxy that provides `/rpc` (required) and `/api`
 (optional). See **`Caddyfile`** for the `explorer.mersennet.com` vhost.
 
 ```bash
-rsync -a --delete ./ root@server:/var/www/explorer/ \
-  --exclude .git --exclude node_modules --exclude indexer.js \
-  --exclude package.json --exclude package-lock.json \
-  --exclude '.env*' --exclude deploy --exclude '*.bak' \
-  --exclude .build-spec.md --exclude INDEXER.md \
-  --exclude contract-verify.js --exclude seed-verified.js --exclude known-contracts
+deploy/publish.sh          # syntax-checks every module, rsyncs the static files, lists/purges cached JS
+deploy/publish.sh --check  # checks only (same as CI)
 # install the vhost (replace NODE_RPC) and reload Caddy
 ```
+
+Always deploy through `deploy/publish.sh`: a module with a syntax error fails to load and blanks the whole app, and the edge caches `assets/` for four hours.
 
 ### Indexer (optional `/api` backend)
 
