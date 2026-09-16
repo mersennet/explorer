@@ -53,7 +53,7 @@ echo "==> Purge Cloudflare cache for JS/CSS changed in the last commit(s)"
 # Everything under assets/ is cached at the edge for four hours. Purge what
 # changed since the last deploy marker so operators see fixes immediately.
 # Uses the cloudflare CLI token if present; otherwise prints the list to purge.
-files=$(git diff --name-only "$(git rev-parse HEAD~3)" HEAD -- assets index.html 2>/dev/null | sed 's#^#https://explorer.mersennet.com/#' | sed 's#/index.html$#/#')
+files=$(git diff --name-only "$(git rev-parse HEAD~3)" -- assets index.html 2>/dev/null | sed 's#^#https://explorer.mersennet.com/#' | sed 's#/index.html$#/#')
 if [[ -z "$files" ]]; then
     echo "    nothing to purge"
 elif [[ -n "${CF_API_TOKEN:-}" && -n "${CF_ZONE_ID:-}" ]]; then
