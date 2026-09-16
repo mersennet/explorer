@@ -29,7 +29,8 @@ export default async function validators() {
     <div class="banner teal" style="margin-top:14px">${icon('shield', 16)}
       <span>Consensus is <strong>HotStuff-2 BFT PoS</strong>: validators stake MRSN to propose and vote, and anyone can
       <a href="https://trade.mersennet.com/staking" target="_blank" style="color:var(--teal)"><strong>delegate MRSN</strong></a> to a validator to share block rewards (minus commission).
-      Equivocation and liveness faults are punished by <strong>escalating slashing</strong> — repeat offences burn a growing share of stake.</span>
+      The set is <strong>open</strong>: any node registers with 1,000 MRSN self-stake and joins at the next hourly epoch.
+      Signing two blocks at one height is <strong>slashed</strong>; downtime is not — a validator that misses its slots is <strong>benched</strong> for the epoch and <strong>jailed</strong> for the next, keeping its stake.</span>
     </div>
 
     <div class="card" id="stripCard" style="margin-top:14px">
