@@ -10,6 +10,13 @@ export const hexToBig = (h) => {
 };
 export const hexToNum = (h) => { try { return Number(hexToBig(h)); } catch { return 0; } };
 
+/** Chain price → human string for a market with `scale` (decimals = log10(scale)). */
+export function fmtPx(chainPrice, scale = 1) {
+  const sc = Math.max(1, Number(scale) || 1);
+  const v = (typeof chainPrice === 'bigint' ? Number(chainPrice) : Number(chainPrice || 0)) / sc;
+  return fmtNum(v, Math.round(Math.log10(sc)));
+}
+
 export function fmtNum(n, dp = 0) {
   const v = typeof n === 'bigint' ? Number(n) : Number(n || 0);
   if (!isFinite(v)) return '0';

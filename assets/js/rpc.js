@@ -92,6 +92,8 @@ export async function getMarkets(force = false) {
         symbol: raw.includes('/') ? raw : raw + '/USD',
         base: raw.split('/')[0],
         tickSize: m.tickSize, lotSize: m.lotSize, lastPrice: m.lastPrice,
+        // on-chain price = human × priceScale (1 = integer prices)
+        priceScale: (() => { try { return Math.max(1, Number(BigInt(m.priceScale ?? 1))); } catch { return 1; } })(),
         status: m.status || 'active',
       };
     });

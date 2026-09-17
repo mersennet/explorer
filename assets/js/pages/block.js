@@ -6,7 +6,7 @@ import { KNOWN_METHODS, KNOWN_CONTRACTS, MARKETS } from '../config.js';
 import { getBlock, getBlockByHash, getBlockNumber, numToTag, getMarkets } from '../rpc.js';
 import { api } from '../api.js';
 import { render, icon, hashLink, addrLink, copyBtn, skeletonRows, emptyState } from '../ui.js';
-import { fmtNum, fmtMrsn, hexToNum, hexToBig, shortHash, timeAgo, fmtTime, gasPct, esc } from '../format.js';
+import { fmtNum, fmtMrsn, hexToNum, hexToBig, shortHash, timeAgo, fmtTime, gasPct, esc, fmtPx } from '../format.js';
 import { decodeInput } from '../abi.js';
 
 export default async function block(params = {}) {
@@ -196,10 +196,10 @@ function activityRow(e) {
       // CLOB units are PLAIN INTEGERS (price/size) — decode with hexToNum, NOT wei.
       const side = sideLabel(d.side);
       detail = `${marketChip(d.market_id)} ${side} `
-        + `<span class="hash">${fmtNum(hexToNum(d.size))}</span> @ <span class="hash">${fmtNum(hexToNum(d.price))}</span>`
+        + `<span class="hash">${fmtNum(hexToNum(d.size))}</span> @ <span class="hash">${pxFor(d.market_id, d.price)}</span>`
         + (d.taker ? ` · taker ${addrLink(d.taker, { short: true, withAvatar: false })}` : '');
     } else if (kind === 'order_submitted') {
-      detail = `${marketChip(d.market_id)} ${sideLabel(d.side)} size <span class="hash">${fmtNum(hexToNum(d.size))}</span> @ <span class="hash">${fmtNum(hexToNum(d.price))}</span>`;
+      detail = `${marketChip(d.market_id)} ${sideLabel(d.side)} size <span class="hash">${fmtNum(hexToNum(d.size))}</span> @ <span class="hash">${pxFor(d.market_id, d.price)}</span>`;
     } else if (kind === 'order_cancelled') {
       detail = `${marketChip(d.market_id)} order cancelled`;
     } else if (kind === 'market_added') {
@@ -277,7 +277,15 @@ function kvSkeleton(n) {
 
 // Static fallback, refreshed from the live (permissionless) market list.
 let MARKET_BY_ID = Object.fromEntries((MARKETS || []).map((m) => [m.id, m.symbol]));
-getMarkets().then((ms) => { MARKET_BY_ID = Object.fromEntries(ms.map((m) => [m.id, m.symbol])); }).catch(() => {});
+let SCALE_BY_ID = {};
+getMarkets().then((ms) => {
+  MARKET_BY_ID = Object.fromEntries(ms.map((m) => [m.id, m.symbol]));
+  SCALE_BY_ID = Object.fromEntries(ms.map((m) => [m.id, m.priceScale || 1]));
+}).catch(() => {});
+function pxFor(marketId, price) {
+  const mid = typeof marketId === 'string' && marketId.startsWith('0x') ? hexToNum(marketId) : Number(marketId);
+  return fmtPx(hexToNum(price), SCALE_BY_ID[mid] || 1);
+}
 
 // Map an indexer /api/block/:num response (snake_case, decimal strings) to the
 // eth_getBlockByNumber shape the renderer expects (camelCase, hex strings).

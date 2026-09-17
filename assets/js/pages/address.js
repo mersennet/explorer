@@ -5,7 +5,7 @@ import { CONFIG, KNOWN_CONTRACTS, KNOWN_METHODS } from '../config.js';
 import { rpcBatch, getBalance, getNonce, getCode, getCodeAttestation, getOrdersAccount, getMarkets, getStakingValidators, getStakingDelegation, getStakingUnbonding } from '../rpc.js';
 import { api } from '../api.js';
 import { render, icon, avatar, copyBtn, hashLink, addrLink, skeletonRows, emptyState } from '../ui.js';
-import { fmtMrsn, fmtNum, fmtUnits, hexToNum, shortHash, timeAgo, esc } from '../format.js';
+import { fmtMrsn, fmtNum, fmtUnits, hexToNum, shortHash, timeAgo, esc, fmtPx } from '../format.js';
 
 const WATCH_KEY = 'mersennet-explorer-watchlist';
 
@@ -291,6 +291,7 @@ export default async function address(params) {
     const markets = await getMarkets().catch(() => []);
     if (!alive) return;
     const symFor = (id) => (markets.find((m) => m.id === Number(id)) || {}).symbol || `Market ${id}`;
+    const scaleFor = (id) => (markets.find((m) => m.id === Number(id)) || {}).priceScale || 1;
     const tokRows = toks.map((t) => {
       const meta = KNOWN_CONTRACTS[String(t.token || '').toLowerCase()];
       let amt = 0n; try { amt = BigInt(t.amount); } catch {}
@@ -306,7 +307,7 @@ export default async function address(params) {
       const cls = size > 0n ? 'ok' : size < 0n ? 'warn' : 'neutral';
       return `<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:var(--fs-sm)">
         <span><a class="hash link" href="/clob/${p.marketId}">${esc(symFor(p.marketId))}</a> <span class="badge ${cls}">${side}</span></span>
-        <span class="mono">${fmtNum(size < 0n ? -size : size)} @ ${fmtNum(hexToNum(p.entryPrice))}</span></div>`;
+        <span class="mono">${fmtNum(size < 0n ? -size : size)} @ ${fmtPx(hexToNum(p.entryPrice), scaleFor(p.marketId))}</span></div>`;
     }).join('');
     card.innerHTML = `
       <div class="card">

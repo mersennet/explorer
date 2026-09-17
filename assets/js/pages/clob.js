@@ -9,6 +9,12 @@ import { ws } from '../ws.js';
 import { render, icon, emptyState, sparkline } from '../ui.js';
 import { fmtNum, compact, hexToNum, timeAgo, esc } from '../format.js';
 
+// Price scale of the market being viewed: chain price = human × SCALE.
+// Levels and trades are decoded straight into human prices; PX_DP formats them.
+let SCALE = 1;
+let PX_DP = 0;
+const fmtPrice = (v) => fmtNum(v, PX_DP);
+
 const DEPTH_ROWS = 12;     // levels shown per side
 const MAX_TRADES = 40;     // trades kept in the tape
 const TRADE_LOOKBACK = 4000; // blocks to seed the trade tape from
@@ -19,6 +25,8 @@ export default async function clob(params = {}) {
   // resolve selected market (param is the numeric id as a string)
   const wanted = params.market != null ? Number(params.market) : NaN;
   const market = MARKETS.find((m) => m.id === wanted) || MARKETS[0];
+  SCALE = Math.max(1, Number(market.priceScale || 1));
+  PX_DP = Math.round(Math.log10(SCALE));
   const halted = market.status && market.status !== 'active';
 
   render(`
@@ -27,7 +35,7 @@ export default async function clob(params = {}) {
       <h1 style="display:flex;align-items:center;gap:12px">${icon('clob',26)} Native order book
         <span class="badge accent">${MARKETS.length} markets</span>
         ${halted ? `<span class="badge warn">${esc(market.status)}</span>` : ''}</h1>
-      <div class="sub">On-chain central-limit order book — matched in the protocol, no AMM. Sizes &amp; prices are protocol integer units.
+      <div class="sub">On-chain central-limit order book — matched in the protocol, no AMM. Sizes are protocol integer units; prices are shown in quote units (tick 1/${SCALE}).
         Markets are permissionless — anyone can <a href="https://trade.mersennet.com/create-market" target="_blank" style="color:var(--accent)">list one</a> for a 100 MRSN fee.</div>
     </div>
 
@@ -182,10 +190,10 @@ export default async function clob(params = {}) {
     const mid = (bestBid != null && bestAsk != null) ? (bestBid + bestAsk) / 2 : null;
     const spreadPct = (spread != null && mid) ? (spread / mid) * 100 : null;
     el.innerHTML = `
-      ${stat('clob', 'Best bid', bestBid != null ? fmtNum(bestBid) : '—', 'highest buy', 'var(--up)')}
-      ${stat('clob', 'Best ask', bestAsk != null ? fmtNum(bestAsk) : '—', 'lowest sell', 'var(--down)')}
-      ${stat('bolt', 'Spread', spread != null ? fmtNum(spread) : '—', spreadPct != null ? spreadPct.toFixed(3) + '%' : 'no two-sided book')}
-      ${stat('pulse', 'Mid price', mid != null ? fmtNum(mid) : '—', 'best bid/ask midpoint')}`;
+      ${stat('clob', 'Best bid', bestBid != null ? fmtPrice(bestBid) : '—', 'highest buy', 'var(--up)')}
+      ${stat('clob', 'Best ask', bestAsk != null ? fmtPrice(bestAsk) : '—', 'lowest sell', 'var(--down)')}
+      ${stat('bolt', 'Spread', spread != null ? fmtPrice(spread) : '—', spreadPct != null ? spreadPct.toFixed(3) + '%' : 'no two-sided book')}
+      ${stat('pulse', 'Mid price', mid != null ? fmtPrice(mid) : '—', 'best bid/ask midpoint')}`;
   }
 
   async function seedTrades(mkt) {
@@ -263,10 +271,10 @@ export default async function clob(params = {}) {
     const cls = chg > 0 ? 'up' : chg < 0 ? 'down' : '';
     const chrono = prices.slice().reverse();
     host.innerHTML = `
-      ${sessChip('Last', fmtNum(last), cls)}
+      ${sessChip('Last', fmtPrice(last), cls)}
       ${sessChip('Change', (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%', cls)}
-      ${sessChip('High', fmtNum(hi), 'up')}
-      ${sessChip('Low', fmtNum(lo), 'down')}
+      ${sessChip('High', fmtPrice(hi), 'up')}
+      ${sessChip('Low', fmtPrice(lo), 'down')}
       ${sessChip('Volume', fmtNum(vol))}
       ${sessChip('Trades', fmtNum(trades.length))}
       <div class="sess-spark">${sparkline(chrono, { w: 150, h: 34, color: chg >= 0 ? 'var(--up)' : 'var(--down)' })}</div>`;
@@ -319,7 +327,7 @@ function drawDepthChart(host, bids, asks, market) {
   }
   const midLine = mid != null
     ? `<line x1="${xFor(mid).toFixed(1)}" y1="${padT}" x2="${xFor(mid).toFixed(1)}" y2="${(H - padB).toFixed(1)}" stroke="var(--text-2)" stroke-dasharray="3 3" opacity=".55"/>`
-      + `<text x="${xFor(mid).toFixed(1)}" y="${(padT + 10).toFixed(1)}" text-anchor="middle" fill="var(--text-2)" font-size="10" font-family="ui-monospace,monospace">mid ${fmtNum(mid)}</text>`
+      + `<text x="${xFor(mid).toFixed(1)}" y="${(padT + 10).toFixed(1)}" text-anchor="middle" fill="var(--text-2)" font-size="10" font-family="ui-monospace,monospace">mid ${fmtPrice(mid)}</text>`
     : '';
 
   host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Cumulative order-book depth for ${esc(market.symbol)}">
@@ -351,7 +359,7 @@ function sessSkeleton() {
 
 function decodeLevel(lvl) {
   if (!lvl) return null;
-  const price = hexToNum(lvl.price);
+  const price = hexToNum(lvl.price) / SCALE;
   const size = hexToNum(lvl.size);
   if (!isFinite(price) || !isFinite(size)) return null;
   if (price <= 0 && size <= 0) return null;
@@ -367,7 +375,7 @@ function depthRow(l, side, maxCum) {
   const pct = Math.max(2, Math.min(100, (l.cum / maxCum) * 100));
   return `<div class="depth-row ${side}">
     <span class="fill" style="width:${pct.toFixed(1)}%"></span>
-    <span class="px">${fmtNum(l.price)}</span>
+    <span class="px">${fmtPrice(l.price)}</span>
     <span class="sz r">${fmtNum(l.size)}</span>
     <span class="tot r">${fmtNum(l.cum)}</span>
   </div>`;
@@ -378,8 +386,8 @@ function midRow(bestBid, bestAsk) {
   const mid = (bestBid != null && bestAsk != null) ? (bestBid + bestAsk) / 2 : null;
   const spreadPct = (spread != null && mid) ? (spread / mid) * 100 : null;
   return `<div class="depth-mid">
-    <span class="mid">${mid != null ? fmtNum(mid) : '—'}</span>
-    <span class="spread">${spread != null ? 'spread ' + fmtNum(spread) + (spreadPct != null ? ' · ' + spreadPct.toFixed(3) + '%' : '') : 'one-sided'}</span>
+    <span class="mid">${mid != null ? fmtPrice(mid) : '—'}</span>
+    <span class="spread">${spread != null ? 'spread ' + fmtPrice(spread) + (spreadPct != null ? ' · ' + spreadPct.toFixed(3) + '%' : '') : 'one-sided'}</span>
   </div>`;
 }
 
@@ -390,7 +398,7 @@ function emptyMini(label) {
 // WS/domain trade → {side, price, size, ts}. side: 0/buy = buy(taker bought), 1/sell = sell.
 function normalizeTrade(d, evt) {
   if (!d) return null;
-  const price = hexToNum(d.price);
+  const price = hexToNum(d.price) / SCALE;
   const size = hexToNum(d.size);
   if (!isFinite(price) || price <= 0) return null;
   // side may be 0/1 hex or a string. Treat 0 / 'buy' / 'bid' as a buy.
@@ -407,7 +415,7 @@ function normalizeTrade(d, evt) {
 function tradeRow(t) {
   return `<div class="trade-row ${t.side === 'buy' ? 'buy' : 'sell'}">
     <span class="side">${t.side}</span>
-    <span class="px">${fmtNum(t.price)}</span>
+    <span class="px">${fmtPrice(t.price)}</span>
     <span class="sz">${fmtNum(t.size)}</span>
     <span class="t">${timeAgo(t.ts)}</span>
   </div>`;
