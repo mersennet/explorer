@@ -44,7 +44,7 @@ export default async function network() {
           ${kv('layers', 'Chain ID', `<span class="mono">${CONFIG.chainId}</span> <span class="badge neutral">${CONFIG.chainIdHex}</span> <span style="color:var(--text-3);font-size:var(--fs-xs)">2¹⁷−1 · Mersenne prime</span>`)}
           ${kv('layers', 'Mainnet chain ID', `<span class="mono">${CONFIG.mainnetChainId}</span> <span style="color:var(--text-3);font-size:var(--fs-xs)">2¹³−1 · Mersenne prime</span>`)}
           ${kv('clock', 'Block time', `~${CONFIG.blockTimeSecs}s`)}
-          ${kv('shield', 'Consensus', `HotStuff-2 BFT PoS`)}
+          ${kv('shield', 'Consensus', `Leader-gated BFT PoS`)}
           ${kv('coins', 'Native currency', `${esc(CONFIG.symbol)} · ${CONFIG.decimals} decimals`)}
           ${kvCopy('arrow', 'RPC (HTTPS)', CONFIG.canonicalRpc)}
           ${kvCopy('bolt', 'WebSocket', CONFIG.wsUrl)}

@@ -117,7 +117,7 @@ export default async function privacy() {
           <div class="node">clear</div>
         </div>
         <div style="margin-top:14px;color:var(--text-3);font-size:var(--fs-xs);line-height:1.6">
-          A threshold of validators jointly decrypts a batch only <em>after</em> ordering is committed under HotStuff-2 BFT, so the clearing price is fixed before contents are ever revealed.
+          A threshold of validators jointly decrypts a batch only <em>after</em> ordering is committed by BFT consensus, so the clearing price is fixed before contents are ever revealed.
         </div>
       </div>
     </div>`);

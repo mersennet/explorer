@@ -1,4 +1,4 @@
-// Validators: the HotStuff-2 BFT PoS set. Total stake, validator count, an
+// Validators: the leader-gated BFT PoS set. Total stake, validator count, an
 // estimated staking APR (from emission), and the MEASURED block time. The active
 // set is enriched with live proposer analytics: we sample the last N block
 // headers (eth_getBlockByNumber) and tally who proposed them, so each validator
@@ -23,11 +23,11 @@ export default async function validators() {
   render(`
     <div class="page-head">
       <h1>${icon('validators', 24)} Validators</h1>
-      <div class="sub">The HotStuff-2 BFT proof-of-stake set securing Mersennet.</div>
+      <div class="sub">The leader-gated BFT proof-of-stake set securing Mersennet.</div>
     </div>
     <div class="grid cols-4" id="vkpis">${kpiSkeleton(4)}</div>
     <div class="banner teal" style="margin-top:14px">${icon('shield', 16)}
-      <span>Consensus is <strong>HotStuff-2 BFT PoS</strong>: validators stake MRSN to propose and vote, and anyone can
+      <span>Consensus is <strong>leader-gated BFT PoS</strong> (one leader per height, every validator re-executes and signs, final at 2/3 of stake): validators stake MRSN to propose and vote, and anyone can
       <a href="https://trade.mersennet.com/staking" target="_blank" style="color:var(--teal)"><strong>delegate MRSN</strong></a> to a validator to share block rewards (minus commission).
       The set is <strong>open</strong>: any node registers with 1,000 MRSN self-stake and joins at the next hourly epoch.
       Signing two blocks at one height is <strong>slashed</strong>; downtime is not — a validator that misses its slots is <strong>benched</strong> for the epoch and <strong>jailed</strong> for the next, keeping its stake.</span>

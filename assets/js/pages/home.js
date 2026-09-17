@@ -54,7 +54,7 @@ export default async function home() {
       ${stat('gas', 'Base fee', gas != null ? fmtGwei(hexToNum(gas)) : '—', 'EIP-1559')}
       ${stat('validators', 'Validators', fmtNum((vals || []).length), compact(Number(totalStake / (10n ** 18n))) + ' MRSN staked')}
       ${stat('coins', 'Supply cap', '618.97M', '2⁸⁹−1 · Mersenne prime')}
-      ${stat('clock', 'Block time', '~' + CONFIG.blockTimeSecs + 's', 'HotStuff-2 BFT')}
+      ${stat('clock', 'Block time', '~' + CONFIG.blockTimeSecs + 's', 'leader-gated BFT')}
       ${statTeal('privacy', 'Anonymity set', fmtNum(anon), (shielded?.noteCount||0)+' notes · '+(shielded?.nullifierCount||0)+' spent')}
       ${statTeal('coins', 'Emission', compact(CONFIG.emissionTotalMrsn), 'converges, halving 33.5M blk')}`;
   }
