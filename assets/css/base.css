@@ -52,7 +52,7 @@ html.light body::after { display: none; }
 html.light .brand .wordmark { text-shadow: none; }
 .collapsed .brand .wordmark, .collapsed .nav-label, .collapsed .nav-section-label { display: none; }
 
-.nav-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: .12em;
+.nav-section-label { font-size: 11px; text-transform: uppercase; letter-spacing: .12em;
   color: var(--text-3); padding: 14px 12px 6px; font-weight: 600; }
 .nav-item { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: var(--radius);
   color: var(--text-2); font-size: var(--fs-md); font-weight: 500; cursor: pointer; transition: all .15s var(--ease);
@@ -109,4 +109,11 @@ html.light .brand .wordmark { text-shadow: none; }
      the hero carries the chain badge, so drop the pill and give the width to
      the search field. */
   .netpill { display: none; }
+  /* Icon-only Connect on phones (the class was referenced but never defined). */
+  .hide-sm { display: none; }
+  .searchbar input { padding-left: 34px; font-size: 13px; }
+}
+/* Keyboard focus is visible everywhere, not only in the search box. */
+:where(a, button, [role="button"], input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px;
 }

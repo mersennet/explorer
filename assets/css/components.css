@@ -11,7 +11,7 @@
 .card { background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: var(--radius-lg); }
 .card.pad { padding: 18px; }
 /* Card title = inverted phosphor block (shared with the trade terminal). */
-.card-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .16em;
+.card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .16em;
   display: flex; align-items: center; justify-content: space-between;
   padding: 7px 12px; background: var(--accent-block); color: var(--accent-bright); }
 html.light .card-title { color: var(--accent); }
@@ -43,6 +43,9 @@ html.light .stat .value { text-shadow: none; }
 
 /* tables */
 .tbl { width: 100%; border-collapse: collapse; font-size: var(--fs-base); }
+.tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+.tbl-wrap > .tbl { min-width: 100%; }
+@media (max-width: 640px) { .tbl-wrap > .tbl { min-width: 560px; } }
 .tbl th { text-align: left; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em;
   color: var(--text-2); font-weight: 700; padding: 11px 18px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .tbl td { padding: 12px 18px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
@@ -78,7 +81,11 @@ html.light .stat .value { text-shadow: none; }
 
 /* hero */
 .hero { position: relative; border: 1px solid var(--border-soft); border-radius: var(--radius-xl); overflow: hidden;
-  padding: 34px 30px; background: var(--bg-card); margin-bottom: 18px; }
+  padding: 22px 26px; background: var(--bg-card); margin-bottom: 14px; }
+/* Dashboard hero: one line, so the live KPIs and the latest blocks sit above the fold. */
+.hero.compact { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 16px 22px; }
+.hero.compact h1 { font-size: var(--fs-2xl); max-width: none; line-height: 1.15; }
+.hero.compact .tagline { font-size: var(--fs-sm); margin-top: 0; flex-basis: 100%; }
 .hero::before { content: ''; position: absolute; inset: 0; background: var(--grad-hero); pointer-events: none; }
 .hero > * { position: relative; }
 .hero h1 { font-size: var(--fs-hero); font-weight: 800; letter-spacing: -.025em; line-height: 1.04; max-width: 16ch; }

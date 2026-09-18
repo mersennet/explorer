@@ -6,17 +6,31 @@ import { api } from '../api.js';
 import { ws } from '../ws.js';
 import { render, icon, logoSvg, hashLink, addrLink, sparkline, skeletonRows, emptyState } from '../ui.js';
 import { fmtNum, fmtMrsn, compact, hexToNum, hexToBig, timeAgo, fmtMrsn as mrsn, gasPct, shortHash } from '../format.js';
+import { KNOWN_METHODS, KNOWN_CONTRACTS } from '../config.js';
+
+// "placeOrder" / "transfer" / contract tag from the calldata selector.
+function methodBadge(tx) {
+  const input = tx.input || '0x';
+  if (!input || input === '0x' || input.length < 10) return '<span class="badge method">transfer</span>';
+  const sel = input.slice(0, 10).toLowerCase();
+  const name = KNOWN_METHODS[sel];
+  if (name) return `<span class="badge accent">${name}</span>`;
+  const known = tx.to && KNOWN_CONTRACTS[String(tx.to).toLowerCase()];
+  if (known) return `<span class="badge ${known.tag === 'privacy' ? 'teal' : 'accent'}">${known.tag || known.name}</span>`;
+  return `<span class="badge method" title="${sel}">${sel}</span>`;
+}
 
 const RECENT = 14;
 
 export default async function home() {
   render(`
-    <section class="hero">
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">${logoSvg(40)}
+    <section class="hero compact">
+      <div style="display:flex;align-items:center;gap:12px">${logoSvg(30)}
+        <h1 style="margin:0">The <span class="g">private, verifiable</span> explorer</h1></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
         <span class="badge teal">${icon('lock',12)} ZK-native L1</span>
         <span class="badge accent">Chain ${CONFIG.chainId}</span></div>
-      <h1>The <span class="g">private, verifiable</span> blockchain explorer</h1>
-      <div class="tagline">Blocks, transactions, the native order book, validators, and a live shielded/ZK state — all in one place.</div>
+      <div class="tagline">Blocks, transactions, the native order book, validators and the shielded / proven state of the Mersennet testnet.</div>
     </section>
     <div class="grid cols-4" id="kpis">${kpiSkeleton()}</div>
     <div class="grid cols-2" style="margin-top:14px">
@@ -55,7 +69,7 @@ export default async function home() {
       ${stat('validators', 'Validators', fmtNum((vals || []).length), compact(Number(totalStake / (10n ** 18n))) + ' MRSN staked')}
       ${stat('coins', 'Supply cap', '618.97M', '2⁸⁹−1 · Mersenne prime')}
       ${stat('clock', 'Block time', '~' + CONFIG.blockTimeSecs + 's', 'leader-gated BFT')}
-      ${statTeal('privacy', 'Anonymity set', fmtNum(anon), (shielded?.noteCount||0)+' notes · '+(shielded?.nullifierCount||0)+' spent')}
+      ${statTeal('privacy', 'Shielded pool', anon > 0 ? fmtNum(anon) : 'opens at fork', anon > 0 ? (shielded?.noteCount||0)+' notes · '+(shielded?.nullifierCount||0)+' spent' : 'root anchored every block · private trading at the privacy hard fork')}
       ${statTeal('coins', 'Emission', compact(CONFIG.emissionTotalMrsn), 'converges, halving 33.5M blk')}`;
   }
   const stat = (ic, label, val, meta, spark = '') => `<div class="stat"><div class="label">${icon(ic,13)} ${label}</div><div class="value">${val}</div><div class="meta">${meta||''}</div>${spark}</div>`;
@@ -70,10 +84,14 @@ export default async function home() {
   }
   function renderTxs() {
     const t = document.getElementById('txsBody'); if (!t) return;
+    // What each transaction DID matters more than a "0 MRSN" value column:
+    // almost every testnet tx is a precompile call (placeOrder, cancelOrder,
+    // depositCollateral…), so decode the method and show the value only when
+    // MRSN actually moved.
     t.innerHTML = txs.slice(0, 8).map((tx) => `
-      <tr><td>${hashLink(tx.hash, 'tx')}</td>
-      <td style="color:var(--text-2);font-size:var(--fs-xs)">${addrLink(tx.from)} ${icon('arrow',11)} ${tx.to ? addrLink(tx.to) : '<span class="badge neutral">create</span>'}</td>
-      <td class="num">${fmtMrsn(tx.value)} <span style="color:var(--text-3)">MRSN</span></td></tr>`).join('')
+      <tr><td>${hashLink(tx.hash, 'tx', { lead: 8, tail: 6 })}</td>
+      <td style="color:var(--text-2);font-size:var(--fs-xs)">${methodBadge(tx)} ${addrLink(tx.from)} ${icon('arrow',11)} ${tx.to ? addrLink(tx.to) : '<span class="badge neutral">create</span>'}</td>
+      <td class="num">${hexToBig(tx.value || '0x0') > 0n ? fmtMrsn(tx.value) + ' <span style="color:var(--text-3)">MRSN</span>' : '<span style="color:var(--text-3)">—</span>'}</td></tr>`).join('')
       || `<tr><td colspan="3">${emptyState('No transactions yet', 'CLOB trading happens via native order-book events, not EVM transactions — see a block\u2019s on-chain activity.', 'tx')}</td></tr>`;
   }
 
@@ -89,14 +107,25 @@ export default async function home() {
     if (Array.isArray(bl.transactions) && bl.transactions.length && typeof bl.transactions[0] === 'object') {
       for (const tx of bl.transactions) {
         if (txs.some((x) => x.hash === tx.hash)) continue;
-        txs.unshift({ hash: tx.hash, from: tx.from, to: tx.to, value: tx.value, block: num });
+        txs.unshift({ hash: tx.hash, from: tx.from, to: tx.to, value: tx.value, input: tx.input, block: num });
       }
       if (txs.length > 30) txs.length = 30;
     }
   }
 
-  // initial load: latest N blocks (full) in one batch
-  const latest = hexToNum(await getBlockNumber());
+  // initial load: latest N blocks (full) in one batch. If the RPC is down the
+  // page keeps its shell and says so instead of throwing into the router's
+  // "Failed to load this page".
+  let headHex;
+  try { headHex = await getBlockNumber(); } catch { headHex = null; }
+  if (headHex == null) {
+    const b = document.getElementById('blocksBody'); const t = document.getElementById('txsBody');
+    if (b) b.innerHTML = `<tr><td colspan="3">${emptyState('RPC unavailable', 'The public node is not answering right now. This page retries every 10 seconds; live status at status.mersennet.com.')}</td></tr>`;
+    if (t) t.innerHTML = '';
+    const retry = setTimeout(() => { if (alive) home(); }, 10_000);
+    return () => { alive = false; clearTimeout(retry); };
+  }
+  const latest = hexToNum(headHex);
   const nums = []; for (let i = 0; i < RECENT && latest - i >= 0; i++) nums.push(latest - i);
   const [gas, vals, shielded, proof] = await Promise.all([getGasPrice(), getValidators(), getShieldedRoot(), getLatestStateProof()]);
   const full = await rpcBatch(nums.map((n) => ({ method: 'eth_getBlockByNumber', params: ['0x' + n.toString(16), true] })));
@@ -123,7 +152,7 @@ export default async function home() {
   const proofChip = document.getElementById('proofChip');
   if (proof && proof.proof !== null && proof.blockHeight) {
     proofChip.textContent = (proof.proofType || 'SP1') + ' @ #' + proof.blockHeight;
-    document.getElementById('verifyHome').innerHTML = `Latest proof links state root <span class="mono">${shortHash(proof.prevStateRoot,6,4)}</span> → <span class="mono" style="color:var(--teal)">${shortHash(proof.newStateRoot,6,4)}</span>. Verify it yourself →`;
+    document.getElementById('verifyHome').innerHTML = `Block <span class="mono">#${fmtNum(proof.blockHeight)}</span> is proven: state root <span class="mono" style="color:var(--teal)">${shortHash(proof.newStateRoot,8,6)}</span>${proof.prevStateRoot && proof.prevStateRoot !== proof.newStateRoot ? ` (from ${shortHash(proof.prevStateRoot,6,4)})` : ''}. Verify it yourself →`;
   } else { proofChip.textContent = 'fork pending'; proofChip.className = 'badge warn';
     document.getElementById('verifyHome').textContent = 'SP1 state proofs activate at the privacy hard fork. The proof machinery is live and queryable.'; }
   const poolChip = document.getElementById('poolChip');

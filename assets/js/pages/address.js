@@ -93,7 +93,7 @@ export default async function address(params) {
 
   const kv = document.getElementById('kvCards');
   if (kv) kv.innerHTML = `
-    ${stat('coins', 'Balance', fmtMrsn(balance) + ' <span style="color:var(--text-3);font-size:var(--fs-md)">MRSN</span>', balance != null ? '' : 'unavailable')}
+    ${stat('coins', 'Balance', (balance != null ? fmtMrsn(balance) : '—') + ' <span style="color:var(--text-3);font-size:var(--fs-md)">MRSN</span>', balance != null ? '' : 'RPC did not answer — retry in a moment')}
     ${stat('tx', isContract ? 'Code size' : 'Nonce', isContract ? fmtNum((code.length - 2) / 2) + ' <span style="color:var(--text-3);font-size:var(--fs-md)">bytes</span>' : fmtNum(hexToNum(nonce)), isContract ? 'on-chain bytecode' : 'transactions sent')}
     ${stat('account', 'Type', isContract ? 'Contract' : 'EOA', known ? esc(known.name) : (isContract ? 'has bytecode' : 'externally owned'))}`;
 

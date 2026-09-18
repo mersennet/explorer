@@ -3,7 +3,7 @@
 import { CONFIG } from './config.js';
 import { startRouter, navigate } from './router.js';
 import { icon, logoSvg, toast } from './ui.js';
-import { rpcSafe, getChainId } from './rpc.js';
+import { rpcSafe, getChainId, getMarkets } from './rpc.js';
 import { ws } from './ws.js';
 import { api } from './api.js';
 
@@ -46,11 +46,11 @@ function buildShell() {
           <button class="menu-btn" id="menuBtn" aria-label="Menu">${icon('menu')}</button>
           <div class="searchbar">
             <span class="s-ico">${icon('search', 16)}</span>
-            <input id="search" placeholder="Search block / tx / address…" autocomplete="off" spellcheck="false"/>
+            <input id="search" type="search" aria-label="Search" placeholder="Block, tx hash, address or market (e.g. BTC)…" autocomplete="off" spellcheck="false"/>
           </div>
           <div class="netpill" title="Chain ${CONFIG.chainId}"><span class="dot live" id="netdot"></span><span id="netlabel">Testnet · 131071</span></div>
-          <button class="btn" id="themeBtn" title="Toggle theme">${icon('moon', 16)}</button>
-          <button class="btn primary" id="walletBtn">${icon('wallet', 16)}<span class="hide-sm">Connect</span></button>
+          <button class="btn" id="themeBtn" title="Toggle theme" aria-label="Toggle light / dark theme">${icon('moon', 16)}</button>
+          <button class="btn primary" id="walletBtn" aria-label="Connect wallet to open your address">${icon('wallet', 16)}<span class="hide-sm">Connect</span></button>
         </header>
         <main class="content"><div id="view"></div></main>
       </div>
@@ -84,6 +84,8 @@ function wire() {
   });
 
   // search
+  let _marketsForSearch = [];
+  getMarkets().then((ms) => { _marketsForSearch = ms || []; }).catch(() => {});
   const s = document.getElementById('search');
   s.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
@@ -91,7 +93,12 @@ function wire() {
     if (/^\d+$/.test(q)) navigate('block/' + q);
     else if (/^0x[0-9a-fA-F]{64}$/.test(q)) navigate('tx/' + q);
     else if (/^0x[0-9a-fA-F]{40}$/.test(q)) navigate('address/' + q);
-    else navigate('search/' + encodeURIComponent(q));
+    else {
+      // A market symbol ("BTC", "btc/usd") opens its order book directly.
+      const base = q.toUpperCase().split('/')[0];
+      const mk = _marketsForSearch.find((m) => m.base === base || m.symbol === q.toUpperCase());
+      if (mk) navigate('clob/' + mk.id); else navigate('search/' + encodeURIComponent(q));
+    }
     s.blur();
   });
 
@@ -123,7 +130,7 @@ function wire() {
   const savedAccount = sessionStorage.getItem('explorer.account');
   if (savedAccount) showAccount(savedAccount);
   walletBtn.onclick = async () => {
-    if (window.__account) { location.hash = `#/address/${window.__account}`; return; }
+    if (window.__account) { navigate(`address/${window.__account}`); return; }
     if (!window.ethereum) { toast('No wallet found — install MetaMask or open in a wallet browser'); return; }
     try {
       await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [{

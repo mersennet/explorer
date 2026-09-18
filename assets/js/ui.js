@@ -64,7 +64,7 @@ export function avatar(addr, size = 20) {
 
 // copy-to-clipboard button (delegated handler in app.js reads data-copy)
 export function copyBtn(text) {
-  return `<span class="copy" data-copy="${esc(text)}" title="Copy">${icon('copy', 13)}</span>`;
+  return `<span class="copy" role="button" tabindex="0" aria-label="Copy to clipboard" data-copy="${esc(text)}" title="Copy">${icon('copy', 13)}</span>`;
 }
 
 export const UPGRADE_CMD = 'curl -fsSL https://mersennet.com/downloads/install.sh | sudo bash';
