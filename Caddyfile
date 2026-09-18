@@ -27,6 +27,13 @@ explorer.mersennet.com {
 
 	# SPA: serve assets, fall back to index.html for hash routes.
 	handle {
+		# Module URLs carry ?v=<deploy sha> (deploy/publish.sh), so assets can
+		# live long in caches; the entry document must always be revalidated so
+		# a new deploy's graph is picked up on the next load.
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@entry not path /assets/* /favicon.ico /robots.txt /sitemap.xml /*.png /*.svg /known-contracts/*
+		header @entry Cache-Control "no-cache"
 		try_files {path} /index.html
 		file_server
 	}
