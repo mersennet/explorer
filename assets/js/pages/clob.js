@@ -35,7 +35,7 @@ export default async function clob(params = {}) {
       <h1 style="display:flex;align-items:center;gap:12px">${icon('clob',26)} Native order book
         <span class="badge accent">${MARKETS.length} markets</span>
         ${halted ? `<span class="badge warn">${esc(market.status)}</span>` : ''}</h1>
-      <div class="sub">On-chain central-limit order book — matched in the protocol, no AMM. Sizes are protocol integer units; prices are shown in quote units (tick 1/${SCALE}).
+      <div class="sub">On-chain central-limit order book — matched in the protocol, no AMM. Sizes are protocol integer units; prices are shown in quote units (tick ${SCALE === 1 ? '1' : (1 / SCALE).toFixed(PX_DP)}).
         Markets are permissionless — anyone can <a href="https://trade.mersennet.com/create-market" target="_blank" style="color:var(--accent)">list one</a> for a 100 MRSN fee.</div>
     </div>
 
@@ -110,7 +110,30 @@ export default async function clob(params = {}) {
     pulseLive();
   });
 
-  return () => { alive = false; try { unsub(); } catch {} };
+  // Keep the depth live: re-read the book every 4 s while the tab is visible.
+  // Every 60 s re-read the market list too — a price-scale switch (finer
+  // ticks) changes how raw prices decode, and a tab left open across the
+  // switch must follow it without a reload.
+  let tickN = 0;
+  const timer = setInterval(async () => {
+    if (!alive || document.hidden) return;
+    tickN += 1;
+    try {
+      if (tickN % 15 === 0) {
+        const ms = await getMarkets(true);
+        const m = ms.find((x) => x.id === market.id);
+        const sc = Math.max(1, Number(m?.priceScale || 1));
+        if (sc !== SCALE) {
+          SCALE = sc; PX_DP = Math.round(Math.log10(SCALE));
+          renderTrades(market); fillSession(market);
+        }
+      }
+      const b = await getOrderBook(market.id);
+      if (alive && b) renderBook(b, market);
+    } catch { /* transient RPC error: keep the last render */ }
+  }, 4000);
+
+  return () => { alive = false; clearInterval(timer); try { unsub(); } catch {} };
 
   // ===== helpers (closure over trades/alive/market) =====
 
