@@ -35,7 +35,7 @@ export default async function clob(params = {}) {
       <h1 style="display:flex;align-items:center;gap:12px">${icon('clob',26)} Native order book
         <span class="badge accent">${MARKETS.length} markets</span>
         ${halted ? `<span class="badge warn">${esc(market.status)}</span>` : ''}</h1>
-      <div class="sub">On-chain central-limit order book — matched in the protocol, no AMM. Sizes are protocol integer units; prices are shown in quote units (tick 1/${SCALE}).
+      <div class="sub">On-chain central-limit order book — matched in the protocol, no AMM. Sizes are protocol integer units; prices are shown in quote units (tick ${SCALE === 1 ? '1' : (1 / SCALE).toFixed(PX_DP)}).
         Markets are permissionless — anyone can <a href="https://trade.mersennet.com/create-market" target="_blank" style="color:var(--accent)">list one</a> for a 100 MRSN fee.</div>
     </div>
 
