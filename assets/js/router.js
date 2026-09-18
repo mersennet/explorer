@@ -37,7 +37,33 @@ function parsePath() {
   return decodeURIComponent(p);
 }
 
+// Every data table scrolls sideways on narrow screens. Pages render tables
+// in many places (and re-render them on live updates), so instead of wrapping
+// each by hand a MutationObserver wraps any new `table.tbl` whose parent is
+// not already a horizontal scroller. Rows keep full width on wide screens.
+function wrapTables(root) {
+  root.querySelectorAll('table.tbl').forEach((t) => {
+    const parent = t.parentElement;
+    if (!parent || parent.classList.contains('tbl-wrap')) return;
+    const style = getComputedStyle(parent);
+    if (/auto|scroll/.test(style.overflowX)) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'tbl-wrap';
+    parent.insertBefore(wrap, t);
+    wrap.appendChild(t);
+  });
+}
+let _tableObserver = null;
+function observeTables() {
+  if (_tableObserver) return;
+  const view = document.getElementById('view');
+  if (!view) return;
+  _tableObserver = new MutationObserver(() => wrapTables(view));
+  _tableObserver.observe(view, { childList: true, subtree: true });
+}
+
 async function dispatch() {
+  observeTables();
   const path = parsePath();
   const my = ++_token;
   let matched = null, params = {};
@@ -53,6 +79,11 @@ async function dispatch() {
     n.classList.toggle('active', n.dataset.route === (matched ? matched.mod : ''));
   });
   window.scrollTo(0, 0);
+  // Distinct tab title per route (pages may refine it, e.g. block number).
+  const TITLES = { home: 'Dashboard', blocks: 'Blocks', block: 'Block', txs: 'Transactions', tx: 'Transaction', address: 'Address', accounts: 'Accounts', validators: 'Validators', clob: 'Order books', privacy: 'Privacy hub', verify: 'Verifiable chain', tokenomics: 'Tokenomics', network: 'Network', search: 'Search' };
+  const t = matched ? TITLES[matched.mod] : 'Not found';
+  const detail = matched && (params.id || params.hash || params.addr || params.market || params.block || params.q);
+  document.title = `${t}${detail ? ' ' + String(detail).slice(0, 18) : ''} · Mersennet Explorer`;
   const root = document.getElementById('view');
   if (!matched) { root.innerHTML = ''; const m = await import('./pages/notfound.js').catch(() => null);
     if (m) m.default(); else root.innerHTML = '<div class="empty">Page not found</div>'; return; }

@@ -11,7 +11,7 @@ export default async function accounts() {
   render(`
     <div class="crumbs"><a href="/">Home</a> <span>/</span> <span>Top accounts</span></div>
     <div class="page-head">
-      <h1>Top accounts</h1>
+      <h1>Accounts</h1>
       <div class="sub">Ranked by on-chain <strong>activity</strong> (transaction count) — not by balance.</div>
     </div>
     <div id="notice"></div>

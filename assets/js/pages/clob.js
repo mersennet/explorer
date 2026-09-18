@@ -3,7 +3,7 @@
 // streaming recent-trades tape (WS MersennetOrdersTrades, seeded from domain
 // events). CLOB units are PLAIN INTEGERS (hexToNum) — NOT 18-dec wei. Collateral
 // is escrowed native MRSN, backed 1:1. If the book read is privacy-gated/null
-// (transparent CLOB disabled post-fork) we say so honestly and point to #/privacy.
+// (transparent CLOB disabled post-fork) we say so honestly and point to /privacy.
 import { getOrderBook, getDomainEvents, getBlockNumber, getMarkets } from '../rpc.js';
 import { ws } from '../ws.js';
 import { render, icon, emptyState, sparkline } from '../ui.js';
@@ -34,7 +34,7 @@ export default async function clob(params = {}) {
   render(`
     <div class="page-head">
       <div class="crumbs"><a href="/">Home</a> ${icon('arrow',12)} <span>Order book</span></div>
-      <h1 style="display:flex;align-items:center;gap:12px">${icon('clob',26)} Native order book
+      <h1 style="display:flex;align-items:center;gap:12px">${icon('clob',26)} Order books
         <span class="badge accent">${MARKETS.length} markets</span>
         ${halted ? `<span class="badge warn">${esc(market.status)}</span>` : ''}</h1>
       <div class="sub">On-chain central-limit order book — matched in the protocol, no AMM. Sizes are protocol integer units; prices are shown in quote units (tick ${SCALE === 1 ? '1' : (1 / SCALE).toFixed(PX_DP)}).
@@ -44,7 +44,7 @@ export default async function clob(params = {}) {
     <div class="tabs" id="mktTabs">${tabsHtml(MARKETS, market)}</div>
 
     <div class="banner teal" style="margin-bottom:14px">${icon('lock',15)}
-      <span>Every resting order is fully funded on-chain — margin accepts native MRSN plus registered token collateral (e.g. USDC at a risk-weighted haircut).</span></div>
+      <span>Every resting order is fully funded on-chain — margin accepts native MRSN plus registered token collateral (test USDC at a 90% weight).</span></div>
 
     <div class="grid cols-4" id="mktStats" style="margin-bottom:14px">${statSkeleton()}</div>
 

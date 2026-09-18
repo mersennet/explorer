@@ -100,7 +100,7 @@ export default async function block(params = {}) {
         ${kv('gas', 'Gas used', `${fmtNum(hexToNum(bl.gasUsed))} <span style="color:var(--text-3)">/ ${fmtNum(hexToNum(bl.gasLimit))}</span> ${gasMeter(pct)}`)}
         ${kv('bolt', 'Base fee', bl.baseFeePerGas != null ? fmtBaseFee(hexToNum(bl.baseFeePerGas)) : '—')}
         ${kv('tree', 'State root', `<span class="hash">${esc(bl.stateRoot || '—')}</span> ${bl.stateRoot ? copyBtn(bl.stateRoot) : ''}`)}
-        ${kv('coins', 'Size', bl.size != null ? `${fmtNum(hexToNum(bl.size))} bytes` : '—')}
+        ${kv('coins', 'Size', bl.size != null && hexToNum(bl.size) > 0 ? `${fmtNum(hexToNum(bl.size))} bytes` : `${fmtNum(JSON.stringify(bl).length)} bytes <span style="color:var(--text-3)">(encoded)</span>`)}
       </div>
     </div>
 
