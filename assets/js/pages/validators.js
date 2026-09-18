@@ -251,6 +251,31 @@ async function fetchBuilds() {
     return { latest: j.latest || null, byId: new Map((j.nodes || []).map((n) => [String(n.identity).toLowerCase(), n])) };
   } catch { return { latest: null, byId: new Map() }; }
 }
+// Armed protocol switches with ETAs from the observed block time (trade API
+// computes both from the chain; grouped by height for a one-line schedule).
+async function fetchSwitches() {
+  try {
+    const r = await fetch('https://trade.mersennet.com/api/v1/protocol/switches', { cache: 'no-store' });
+    if (!r.ok) return [];
+    const j = await r.json();
+    const byHeight = new Map();
+    for (const sw of j.switches || []) {
+      const g = byHeight.get(sw.height) || { height: sw.height, etaSec: sw.etaSec, etaAt: sw.etaAt, labels: [] };
+      g.labels.push(sw.label); byHeight.set(sw.height, g);
+    }
+    return [...byHeight.values()].sort((a, b) => a.height - b.height);
+  } catch { return []; }
+}
+function switchLine(groups) {
+  if (!groups.length) return '';
+  const fmt = (g) => {
+    const h = g.etaSec / 3600;
+    const when = new Date(g.etaAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+    const rel = h >= 1 ? `~${Math.round(h)} h` : `~${Math.max(1, Math.round(g.etaSec / 60))} min`;
+    return `<span class="mono" style="color:var(--text)">block ${fmtNum(g.height)}</span> <span class="badge warn">${rel} · ${when} UTC</span> <span style="color:var(--text-3)">${esc(g.labels.join(' · '))}</span>`;
+  };
+  return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px" id="switchSchedule"><b style="color:var(--text)">Protocol switches ahead</b> ${groups.map((g) => `<div>${fmt(g)}</div>`).join('')}<span style="color:var(--text-3)">Validators run the current release before each height; traders have nothing to do.</span></div>`;
+}
 async function renderOpenSet(v) {
   const note = document.getElementById('vsetNote');
   if (!note) return;
@@ -267,7 +292,7 @@ async function renderOpenSet(v) {
     note.innerHTML = `<b style="color:var(--text)">Permissionless validator registration opens at block ${fmtNum(p.activationHeight)}</b> (${fmtNum(left)} blocks, ~${Math.round(left * 2 / 3600)} h). Any node can then register with ${fmtNum(minStake)} MRSN self-stake; the top ${p.maxValidators} by self + delegated stake produce blocks, recomputed every epoch (${epochMin} min). ${link}`;
     return;
   }
-  const builds = await fetchBuilds();
+  const [builds, switchGroups] = await Promise.all([fetchBuilds(), fetchSwitches()]);
   const inSet = new Set((v.activeSet || []).map((a) => String(a).toLowerCase()));
   const sorted = (v.validators || []).slice().sort((a, b) => (hexToBig(b.votingStake) > hexToBig(a.votingStake) ? 1 : -1));
   const registered = sorted.length;
@@ -295,6 +320,7 @@ async function renderOpenSet(v) {
   const toEpoch = Math.max(0, v.nextEpochAt - v.height);
   const outdated = sorted.filter((r) => builds.byId.get(r.identity.toLowerCase())?.outdated).length;
   note.innerHTML = `<b style="color:var(--text)">Open validator set · epoch ${fmtNum(v.epoch)}</b> · <b style="color:var(--text)">${fmtNum(registered)} registered</b> · ${v.activeSet.length}/${p.maxValidators} active (the top ${p.maxValidators} by stake produce blocks) · next epoch in ${fmtNum(toEpoch)} blocks (~${Math.round(toEpoch * 2 / 60)} min) · min self-stake ${fmtNum(minStake)} MRSN${builds.latest ? ` · current release <span class="mono">${esc(builds.latest)}</span>${outdated ? ` · <span class="badge warn">${outdated} behind</span>` : ''}` : ''} · ${link}
+    ${switchLine(switchGroups)}
     <div style="overflow-x:auto;margin-top:10px"><table class="tbl">
       <thead><tr><th style="width:54px">Rank</th><th>Validator</th><th>Operator</th><th class="num">Self-stake</th><th class="num">Delegated</th><th class="num">Commission</th><th class="num">Slots (epoch)</th><th>Build</th><th>Status</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="9" style="color:var(--text-3)">No registrations yet.</td></tr>'}</tbody>
