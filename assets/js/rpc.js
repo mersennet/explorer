@@ -71,6 +71,22 @@ export const getOrderBook = (mkt) => rpcSafe('mersennet_orders_getOrderBook', [m
 export const getOpenOrders = (owner) => rpcSafe('mersennet_orders_getOpenOrders', [owner]);
 export const getCollateralAssets = () => rpcSafe('mersennet_orders_getCollateralAssets');
 export const getOrdersAccount = (owner) => rpcSafe('mersennet_orders_getAccount', [owner]);
+// Protocol switches and parameters (margin bps, wei per collateral unit, armed
+// heights). Cached briefly: consumers read it on every page paint.
+let _protocol = null; let _protocolAt = 0;
+export async function getProtocol() {
+  if (_protocol && Date.now() - _protocolAt < 15_000) return _protocol;
+  const p = await rpcSafe('mersennet_orders_getProtocol');
+  if (p) { _protocol = p; _protocolAt = Date.now(); }
+  return _protocol;
+}
+/** Collateral units → wei for display (1 unit = 1 wei before the settlement switch, 1 MRSN after). */
+export async function collateralUnitsToWei(units) {
+  const p = await getProtocol();
+  let per = 1n; try { per = BigInt((p && p.weiPerCollateralUnit) || 1); } catch {}
+  let u = 0n; try { u = BigInt(units || 0); } catch {}
+  return u * (per > 0n ? per : 1n);
+}
 // staking (delegated PoS)
 export const getStakingValidators = () => rpcSafe('mersennet_staking_getValidators');
 export const getStakingDelegation = (delegator, validator) => rpcSafe('mersennet_staking_getDelegation', [delegator, validator]);

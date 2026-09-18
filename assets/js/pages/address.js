@@ -2,7 +2,7 @@
 // and tabbed history (Transactions + Token transfers via indexer, RPC-aware
 // fallbacks). RPC-first; the indexer (api.js) is progressive enhancement.
 import { CONFIG, KNOWN_CONTRACTS, KNOWN_METHODS } from '../config.js';
-import { rpcBatch, getBalance, getNonce, getCode, getCodeAttestation, getOrdersAccount, getMarkets, getStakingValidators, getStakingDelegation, getStakingUnbonding } from '../rpc.js';
+import { rpcBatch, getBalance, getNonce, getCode, getCodeAttestation, getOrdersAccount, collateralUnitsToWei, getMarkets, getStakingValidators, getStakingDelegation, getStakingUnbonding } from '../rpc.js';
 import { api } from '../api.js';
 import { render, icon, avatar, copyBtn, hashLink, addrLink, skeletonRows, emptyState } from '../ui.js';
 import { fmtMrsn, fmtNum, fmtUnits, hexToNum, shortHash, timeAgo, esc, fmtPx } from '../format.js';
@@ -289,6 +289,8 @@ export default async function address(params) {
     const hasToks = toks.some((t) => { try { return BigInt(t.amount) > 0n; } catch { return false; } });
     if (coll === 0n && !hasToks && !positions.length && !(acct.openOrders > 0)) return; // no margin activity — keep the page clean
     const markets = await getMarkets().catch(() => []);
+    // Units are wei until the settlement switch and whole MRSN after it.
+    const collateralWei = await collateralUnitsToWei(acct.collateral);
     if (!alive) return;
     const symFor = (id) => (markets.find((m) => m.id === Number(id)) || {}).symbol || `Market ${id}`;
     const scaleFor = (id) => (markets.find((m) => m.id === Number(id)) || {}).priceScale || 1;
@@ -316,7 +318,7 @@ export default async function address(params) {
         <div class="pad" style="padding-top:10px">
           <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:var(--fs-sm)">
             <span style="color:var(--text-2)">Native collateral</span>
-            <span class="mono">${fmtMrsn(acct.collateral)} <span style="color:var(--text-3)">MRSN</span></span></div>
+            <span class="mono">${fmtMrsn('0x' + collateralWei.toString(16))} <span style="color:var(--text-3)">MRSN</span></span></div>
           ${tokRows}
           ${posRows ? `<div style="color:var(--text-3);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 4px">Open positions</div>${posRows}` : ''}
         </div>
