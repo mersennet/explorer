@@ -21,10 +21,12 @@ const TRADE_LOOKBACK = 4000; // blocks to seed the trade tape from
 
 export default async function clob(params = {}) {
   // live market list (permissionless — new markets appear automatically)
-  const MARKETS = await getMarkets();
-  // resolve selected market (param is the numeric id as a string)
+  const ALL_MARKETS = await getMarkets();
+  // resolve selected market (param is the numeric id as a string); test
+  // listings stay reachable by id but are not offered as tabs
   const wanted = params.market != null ? Number(params.market) : NaN;
-  const market = MARKETS.find((m) => m.id === wanted) || MARKETS[0];
+  const market = ALL_MARKETS.find((m) => m.id === wanted) || ALL_MARKETS.find((m) => !m.hidden) || ALL_MARKETS[0];
+  const MARKETS = ALL_MARKETS.filter((m) => !m.hidden || m.id === market.id);
   SCALE = Math.max(1, Number(market.priceScale || 1));
   PX_DP = Math.round(Math.log10(SCALE));
   const halted = market.status && market.status !== 'active';
