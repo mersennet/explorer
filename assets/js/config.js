@@ -57,6 +57,7 @@ export const KNOWN_CONTRACTS = {
   '0x27942c2cee3e0e02377d01bfe6e74cefc9a9fd45': { name: 'DAI', kind: 'token', tag: 'ERC-20', symbol: 'DAI', decimals: 18, note: 'Mock Dai · faucet test token' },
   '0x5bbf04528469591280d36d46209c7ccd5a68a798': { name: 'WMRSN', kind: 'token', tag: 'ERC-20', symbol: 'WMRSN', decimals: 18, note: 'Wrapped MRSN' },
   '0xdc27e8f5f77721f5930b8c90fade391e28331da6': { name: 'Multicall3', kind: 'contract', tag: 'infra', note: 'Batched RPC reads' },
+  '0x2ccc6fb9a1853ad4c217047cc74bd0d032325284': { name: 'MakerVault', kind: 'contract', tag: 'vault', note: 'Pooled market-making vault (mvMRSN shares at NAV); quotes through an agent key on the CLOB' },
 };
 
 // 4-byte selector → display. Used to label tx "method".
@@ -70,6 +71,9 @@ export const KNOWN_METHODS = {
   '0x83e0341c': 'createMarket',
   '0xbad4a01f': 'depositCollateral', '0x6112fe2e': 'withdrawCollateral',
   '0x31e087b1': 'depositTokenCollateral', '0xc4708bdd': 'withdrawTokenCollateral',
+  '0xb845309c': 'setAgent', '0x7da6ac0d': 'revokeAgent', '0xac3c0e30': 'agentOf',
+  // MakerVault (deposit()/withdraw(uint256) share the ERC-20/WETH selectors above)
+  '0xa879e11e': 'pushCollateral',
   // MersennetStaking precompile
   '0x026e402b': 'delegate', '0x4d99dd16': 'undelegate',
   '0xef5cfb8c': 'claimRewards', '0x6e373bef': 'withdrawUnbonded',
