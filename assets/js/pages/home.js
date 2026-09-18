@@ -89,7 +89,7 @@ export default async function home() {
     // depositCollateral…), so decode the method and show the value only when
     // MRSN actually moved.
     t.innerHTML = txs.slice(0, 8).map((tx) => `
-      <tr><td>${hashLink(tx.hash, 'tx')}</td>
+      <tr><td>${hashLink(tx.hash, 'tx', { lead: 8, tail: 6 })}</td>
       <td style="color:var(--text-2);font-size:var(--fs-xs)">${methodBadge(tx)} ${addrLink(tx.from)} ${icon('arrow',11)} ${tx.to ? addrLink(tx.to) : '<span class="badge neutral">create</span>'}</td>
       <td class="num">${hexToBig(tx.value || '0x0') > 0n ? fmtMrsn(tx.value) + ' <span style="color:var(--text-3)">MRSN</span>' : '<span style="color:var(--text-3)">—</span>'}</td></tr>`).join('')
       || `<tr><td colspan="3">${emptyState('No transactions yet', 'CLOB trading happens via native order-book events, not EVM transactions — see a block\u2019s on-chain activity.', 'tx')}</td></tr>`;
