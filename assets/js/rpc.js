@@ -111,6 +111,10 @@ export async function getMarkets(force = false) {
         // on-chain price = human × priceScale (1 = integer prices)
         priceScale: (() => { try { return Math.max(1, Number(BigInt(m.priceScale ?? 1))); } catch { return 1; } })(),
         status: m.status || 'active',
+        // Listings from automated end-to-end runs (E2E<n>) are real markets
+        // but not products: kept addressable by id, left out of tab lists
+        // and counts (same rule as the trade API's HIDDEN_MARKET_PATTERN).
+        hidden: /^E2E\d*$/i.test(raw.split('/')[0]),
       };
     });
   } else {
