@@ -140,7 +140,8 @@ export default async function validators() {
       totalDelegatedWei > 0n
         ? `${compact(Number(totalStakeWei / WEI))} self · ${compact(Number(totalDelegatedWei / WEI))} delegated`
         : fmtMrsn(totalStakeWei, 2) + ' MRSN exact')
-    + stat('validators', 'Validators', fmtNum(count), 'BFT quorum: ⅔+ by stake')
+    + stat('validators', 'Validators', fmtNum(count) + (vset && vset.params ? `<span style="color:var(--text-3);font-size:.6em"> / ${vset.params.maxValidators}</span>` : ''),
+      (vset && Array.isArray(vset.validators) ? `${fmtNum(vset.validators.length)} registered · ` : '') + 'BFT quorum: ⅔+ by stake')
     + stat('pulse', 'Testnet emission / stake', aprPct == null ? '—' : aprPct.toFixed(0) + '%', '~' + compact(Number(annualEmissionWei / WEI)) + ' MRSN/yr over 4M genesis stake · not a mainnet yield')
     + stat('clock', 'Block time', measuredBt != null ? measuredBt.toFixed(2) + 's' : '~' + CONFIG.blockTimeSecs + 's', measuredBt != null ? `measured over ${fmtNum(sampled)} blocks` : 'target cadence');
 
@@ -240,7 +241,17 @@ function delegatedCell(s) {
 // every registration with its live status. `mersennet_validatorSet` is null
 // on nodes older than the feature.
 const STATUS_BADGE = { active: 'ok', pending: 'warn', standby: 'neutral', jailed: 'danger', exiting: 'neutral' };
-function renderOpenSet(v) {
+// Build of every node that answers `whoami` (fleet and community), by identity —
+// what the trade API's build registry saw in the last few minutes.
+async function fetchBuilds() {
+  try {
+    const r = await fetch('https://trade.mersennet.com/api/v1/nodes/builds', { cache: 'no-store' });
+    if (!r.ok) return { latest: null, byId: new Map() };
+    const j = await r.json();
+    return { latest: j.latest || null, byId: new Map((j.nodes || []).map((n) => [String(n.identity).toLowerCase(), n])) };
+  } catch { return { latest: null, byId: new Map() }; }
+}
+async function renderOpenSet(v) {
   const note = document.getElementById('vsetNote');
   if (!note) return;
   if (!v || !v.params) {
@@ -256,23 +267,39 @@ function renderOpenSet(v) {
     note.innerHTML = `<b style="color:var(--text)">Permissionless validator registration opens at block ${fmtNum(p.activationHeight)}</b> (${fmtNum(left)} blocks, ~${Math.round(left * 2 / 3600)} h). Any node can then register with ${fmtNum(minStake)} MRSN self-stake; the top ${p.maxValidators} by self + delegated stake produce blocks, recomputed every epoch (${epochMin} min). ${link}`;
     return;
   }
-  const rows = (v.validators || [])
-    .slice()
-    .sort((a, b) => (hexToBig(b.votingStake) > hexToBig(a.votingStake) ? 1 : -1))
-    .map((r) => `<tr>
+  const builds = await fetchBuilds();
+  const inSet = new Set((v.activeSet || []).map((a) => String(a).toLowerCase()));
+  const sorted = (v.validators || []).slice().sort((a, b) => (hexToBig(b.votingStake) > hexToBig(a.votingStake) ? 1 : -1));
+  const registered = sorted.length;
+  const rows = sorted
+    .map((r, i) => {
+      const active = inSet.has(r.identity.toLowerCase());
+      const b = builds.byId.get(r.identity.toLowerCase());
+      const buildCell = b && b.build
+        ? `<span class="mono" title="${esc(b.version || '')}">${esc(b.build)}</span>${b.outdated ? ' <span class="badge warn" title="Behind the current release ' + esc(builds.latest || '') + ' — must upgrade before the next protocol switch">upgrade</span>' : ''}`
+        : '<span style="color:var(--text-3)">—</span>';
+      // Top `maxValidators` by stake produce blocks; anyone below the line (or
+      // registered this epoch) waits for the boundary — shown dimmed.
+      const rankCell = active
+        ? `<span class="badge ${i === 0 ? 'accent' : 'neutral'}">#${i + 1}</span>`
+        : `<span class="badge neutral" style="opacity:.55" title="Not in the active set this epoch">${i < p.maxValidators ? '#' + (i + 1) : '—'}</span>`;
+      return `<tr${active ? '' : ' style="opacity:.55"'}>
+      <td>${rankCell}</td>
       <td><a class="mono" href="#/address/${esc(r.identity)}">${esc(r.identity.slice(0, 10))}…${esc(r.identity.slice(-4))}</a>${r.genesis ? ' <span class="badge neutral">genesis</span>' : ''}</td>
       <td><a class="mono" href="#/address/${esc(r.operator)}" style="color:var(--text-3)">${esc(r.operator.slice(0, 10))}…</a>${window.__account && r.operator.toLowerCase() === window.__account ? ' <span class="badge ok">you</span>' : ''}</td>
       <td class="num mono">${compact(Number(hexToBig(r.selfStake) / WEI))}</td>
       <td class="num mono">${compact(Number(hexToBig(r.delegated) / WEI))}</td>
       <td class="num mono">${r.commissionBps / 100}%</td>
       <td class="num mono">${r.proposedSlots} <span style="color:var(--text-3)">/ ${r.missedSlots} missed</span></td>
+      <td>${buildCell}</td>
       <td><span class="badge ${STATUS_BADGE[r.status] || 'neutral'}">${esc(r.status)}</span>${r.benched ? ' <span class="badge warn" title="Missed 3 leader slots this epoch: out of the leader rotation until the epoch boundary (still voting)">benched</span>' : ''}</td>
-    </tr>`).join('');
+    </tr>`; }).join('');
   const toEpoch = Math.max(0, v.nextEpochAt - v.height);
-  note.innerHTML = `<b style="color:var(--text)">Open validator set · epoch ${fmtNum(v.epoch)}</b> · ${v.activeSet.length}/${p.maxValidators} active · next epoch in ${fmtNum(toEpoch)} blocks (~${Math.round(toEpoch * 2 / 60)} min) · min self-stake ${fmtNum(minStake)} MRSN · ${link}
+  const outdated = sorted.filter((r) => builds.byId.get(r.identity.toLowerCase())?.outdated).length;
+  note.innerHTML = `<b style="color:var(--text)">Open validator set · epoch ${fmtNum(v.epoch)}</b> · <b style="color:var(--text)">${fmtNum(registered)} registered</b> · ${v.activeSet.length}/${p.maxValidators} active (the top ${p.maxValidators} by stake produce blocks) · next epoch in ${fmtNum(toEpoch)} blocks (~${Math.round(toEpoch * 2 / 60)} min) · min self-stake ${fmtNum(minStake)} MRSN${builds.latest ? ` · current release <span class="mono">${esc(builds.latest)}</span>${outdated ? ` · <span class="badge warn">${outdated} behind</span>` : ''}` : ''} · ${link}
     <div style="overflow-x:auto;margin-top:10px"><table class="tbl">
-      <thead><tr><th>Validator</th><th>Operator</th><th class="num">Self-stake</th><th class="num">Delegated</th><th class="num">Commission</th><th class="num">Slots (epoch)</th><th>Status</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="7" style="color:var(--text-3)">No registrations yet.</td></tr>'}</tbody>
+      <thead><tr><th style="width:54px">Rank</th><th>Validator</th><th>Operator</th><th class="num">Self-stake</th><th class="num">Delegated</th><th class="num">Commission</th><th class="num">Slots (epoch)</th><th>Build</th><th>Status</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="9" style="color:var(--text-3)">No registrations yet.</td></tr>'}</tbody>
     </table></div>`;
 }
 
