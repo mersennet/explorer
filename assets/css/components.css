@@ -319,3 +319,12 @@ html.light .stat .value { text-shadow: none; }
 .holding .hsym { font-weight: 700; font-size: var(--fs-sm); color: var(--accent); }
 .holding .hbal { font-size: var(--fs-lg); color: var(--text); }
 .holding .haddr { font-size: var(--fs-xs); color: var(--text-3); }
+
+/* build markers: "Upgrade → sha" badge that unfolds the install command */
+.upgrade-wrap { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.upgrade-badge { cursor: pointer; border: 0; font: inherit; font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+.upgrade-badge:hover { filter: brightness(1.15); }
+.upgrade-cmd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; margin-top: 4px; padding: 8px 10px; border: 1px solid var(--border-soft); border-radius: var(--radius); background: var(--bg-card); }
+.upgrade-cmd[hidden] { display: none; }
+.upgrade-cmd code { font-family: var(--mono); font-size: 12px; color: var(--text); word-break: break-all; }
+.upgrade-cmd .hint { flex-basis: 100%; font-size: 11px; color: var(--text-3); }

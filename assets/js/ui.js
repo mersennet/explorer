@@ -67,6 +67,23 @@ export function copyBtn(text) {
   return `<span class="copy" data-copy="${esc(text)}" title="Copy">${icon('copy', 13)}</span>`;
 }
 
+export const UPGRADE_CMD = 'curl -fsSL https://mersennet.com/downloads/install.sh | sudo bash';
+
+/**
+ * Build marker for a node. Current → quiet sha. Behind → an "Upgrade → <latest>"
+ * badge that opens the exact command to run (with copy) when clicked.
+ * `latest` is the release the node should be on.
+ */
+export function buildMarker(build, latest, outdated) {
+  if (!build) return '<span style="color:var(--text-3)">—</span>';
+  if (!outdated) return `<span class="mono" style="color:var(--text-3)" title="Current release">${esc(build)}</span>`;
+  const to = latest ? ` → ${esc(latest)}` : '';
+  return `<span class="upgrade-wrap"><span class="mono" style="color:var(--text-3)">${esc(build)}</span> `
+    + `<button type="button" class="badge warn upgrade-badge" data-upgrade title="Behind the current release${latest ? ' ' + esc(latest) : ''} — click for the command">Upgrade${to}</button>`
+    + `<span class="upgrade-cmd" hidden><code>${esc(UPGRADE_CMD)}</code>${copyBtn(UPGRADE_CMD)}`
+    + `<span class="hint">Run on the node as root. Keeps keys, state and operator; ~1 min. <a href="https://docs.mersennet.com/validators/run-a-node/#step-4--keep-it-running" target="_blank" rel="noopener">Guide →</a></span></span></span>`;
+}
+
 export function hashLink(hash, type = 'tx', { short = true, lead = 10, tail = 8 } = {}) {
   const disp = short ? shortHash(hash, lead, tail) : hash;
   return `<a class="hash link" href="/${type}/${esc(hash)}">${esc(disp)}</a>`;

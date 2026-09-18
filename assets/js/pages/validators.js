@@ -7,7 +7,7 @@
 import { CONFIG } from '../config.js';
 import { getValidators, getStakingValidators, getBlockNumber, rpcBatch, rpcSafe } from '../rpc.js';
 import { ws } from '../ws.js';
-import { render, icon, addrLink, copyBtn, skeletonRows, emptyState } from '../ui.js';
+import { render, icon, addrLink, copyBtn, skeletonRows, emptyState, buildMarker } from '../ui.js';
 import { fmtNum, fmtMrsn, compact, hexToBig, hexToNum, timeAgo, esc } from '../format.js';
 
 const SECS_PER_YEAR = 31536000n;
@@ -275,9 +275,7 @@ async function renderOpenSet(v) {
     .map((r, i) => {
       const active = inSet.has(r.identity.toLowerCase());
       const b = builds.byId.get(r.identity.toLowerCase());
-      const buildCell = b && b.build
-        ? `<span class="mono" title="${esc(b.version || '')}">${esc(b.build)}</span>${b.outdated ? ' <span class="badge warn" title="Behind the current release ' + esc(builds.latest || '') + ' — must upgrade before the next protocol switch">upgrade</span>' : ''}`
-        : '<span style="color:var(--text-3)">—</span>';
+      const buildCell = buildMarker(b && b.build, builds.latest, !!(b && b.outdated));
       // Top `maxValidators` by stake produce blocks; anyone below the line (or
       // registered this epoch) waits for the boundary — shown dimmed.
       const rankCell = active

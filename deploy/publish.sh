@@ -38,22 +38,34 @@ echo "    ok"
 
 [[ $CHECK_ONLY -eq 1 ]] && exit 0
 
-echo "==> rsync to $HOST:$DEST"
-# Static files only: the indexer (indexer.js, contract-verify.js, node_modules)
-# is deployed separately as a service.
-rsync -az --delete \
+echo "==> Stage with versioned module URLs"
+# Every deploy ships a fresh module graph (see deploy/version-modules.py):
+# browsers and the CDN either have the whole new graph or the whole old one,
+# never a stale ui.js next to a fresh page module. index.html is no-cache.
+SHA="$(git rev-parse --short HEAD)"
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
+rsync -a \
     --include='index.html' --include='robots.txt' --include='sitemap.xml' \
     --include='*.png' --include='*.ico' --include='*.svg' \
     --include='assets/***' --include='known-contracts/***' \
     --exclude='*' \
-    ./ "$HOST:$DEST"
+    ./ "$STAGE/"
+python3 deploy/version-modules.py "$STAGE" "$SHA"
+# The versioned graph must still parse.
+while IFS= read -r f; do cp "$f" /tmp/explorer-check.mjs; node --check /tmp/explorer-check.mjs || { echo "versioned module fails to parse: $f" >&2; exit 1; }; done < <(find "$STAGE/assets/js" -name '*.js')
+
+echo "==> rsync to $HOST:$DEST"
+# Static files only: the indexer (indexer.js, contract-verify.js, node_modules)
+# is deployed separately as a service.
+rsync -az --delete "$STAGE/" "$HOST:$DEST"
 echo "    done"
 
-echo "==> Purge Cloudflare cache for JS/CSS changed in the last commit(s)"
-# Everything under assets/ is cached at the edge for four hours. Purge what
-# changed since the last deploy marker so operators see fixes immediately.
-# Uses the cloudflare CLI token if present; otherwise prints the list to purge.
-files=$(git diff --name-only "$(git rev-parse HEAD~3)" -- assets index.html 2>/dev/null | sed 's#^#https://explorer.mersennet.com/#' | sed 's#/index.html$#/#')
+echo "==> Purge Cloudflare cache for the entry points"
+# Module URLs are versioned, so only the un-versioned entry points can be
+# stale at the edge: the SPA routes (all serve index.html).
+[[ -f "$HOME/.mersennet/cloudflare.env" ]] && set -a && . "$HOME/.mersennet/cloudflare.env" && set +a
+files=$(printf 'https://explorer.mersennet.com/\nhttps://explorer.mersennet.com/index.html\nhttps://explorer.mersennet.com/validators\nhttps://explorer.mersennet.com/network\nhttps://explorer.mersennet.com/clob/1\n')
 if [[ -z "$files" ]]; then
     echo "    nothing to purge"
 elif [[ -n "${CF_API_TOKEN:-}" && -n "${CF_ZONE_ID:-}" ]]; then

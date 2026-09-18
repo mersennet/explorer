@@ -99,6 +99,12 @@ function wire() {
   document.addEventListener('click', (e) => {
     const c = e.target.closest('[data-copy]');
     if (c) { navigator.clipboard?.writeText(c.dataset.copy).then(() => toast('Copied')); }
+    // "Upgrade → sha" badges reveal the install command next to them.
+    const u = e.target.closest('[data-upgrade]');
+    if (u) {
+      const cmd = u.parentElement?.querySelector('.upgrade-cmd');
+      if (cmd) cmd.hidden = !cmd.hidden;
+    }
   });
 
   // wallet: add Mersennet to the wallet AND connect, so the button shows the
