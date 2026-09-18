@@ -4,7 +4,7 @@
 // Pure-RPC; no indexer dependency.
 import { CONFIG, KNOWN_CONTRACTS } from '../config.js';
 import { rpcSafe, rpcBatch, getBlockNumber } from '../rpc.js';
-import { render, icon, copyBtn, toast, sparkline } from '../ui.js';
+import { render, icon, copyBtn, toast, sparkline, buildMarker } from '../ui.js';
 import { fmtNum, hexToNum, hexToBig, timeAgo, shortAddr, esc } from '../format.js';
 
 // read-only methods offered in the RPC playground (with example params)
@@ -214,7 +214,8 @@ async function verifiedNodes() {
     const r = await fetch('https://trade.mersennet.com/api/v1/nodes/verified', { cache: 'no-store' });
     if (!r.ok) return new Map();
     const j = await r.json();
-    return new Map((j.nodes || []).filter((n) => n.active).map((n) => [n.id, { operator: n.operator, build: n.build_sha || null, outdated: !!n.outdated }]));
+    const latest = j.latest_sha || null;
+    return new Map((j.nodes || []).filter((n) => n.active).map((n) => [n.id, { operator: n.operator, build: n.build_sha || null, outdated: !!n.outdated, latest }]));
   } catch { return new Map(); }
 }
 
@@ -239,7 +240,7 @@ async function renderNodes() {
     const info = verified.get(id);
     const operator = info && info.operator;
     const build = info && info.build
-      ? ` <span class="mono ${info.outdated ? 'badge warn' : ''}" style="${info.outdated ? '' : 'color:var(--text-3)'}" title="${info.outdated ? 'Behind the current release — the operator should re-run the installer before the next protocol switch' : 'Current release'}">${esc(info.build)}${info.outdated ? ' · upgrade' : ''}</span>`
+      ? ` ${buildMarker(info.build, info.latest, info.outdated)}`
       : '';
     const label = fleet
       ? `<span class="mono" style="color:var(--text)">${esc(p.addr)}</span>`
