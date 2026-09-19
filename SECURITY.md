@@ -3,8 +3,10 @@
 Mersennet runs a public testnet with real users, so please treat findings as
 you would on a production network.
 
-**Report privately** to **security@mersennet.com** (or ask an admin in the
-[Telegram group](https://t.me/Mersennet) for a private channel). Include steps
+**Report privately** to **security@mersennet.com**, or use GitHub's private
+vulnerability reporting on this repository (Security tab → *Report a
+vulnerability*); either way it reaches the same people. If you need another
+channel, ask an admin in the [Telegram group](https://t.me/Mersennet). Include steps
 to reproduce, the affected component (node, precompile, terminal, API,
 explorer, faucet, SDK) and, for chain issues, the block height. Every public
 hostname publishes the same contact at `/.well-known/security.txt`.
