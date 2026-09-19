@@ -276,7 +276,9 @@ async function fetchSwitches() {
       const g = byHeight.get(sw.height) || { height: sw.height, etaSec: sw.etaSec, etaAt: sw.etaAt, labels: [] };
       g.labels.push(sw.label); byHeight.set(sw.height, g);
     }
-    return [...byHeight.values()].sort((a, b) => a.height - b.height);
+    const groups = [...byHeight.values()].sort((a, b) => a.height - b.height);
+    groups.blockTimeSec = j.blockTimeSec;
+    return groups;
   } catch { return []; }
 }
 function switchLine(groups) {
@@ -287,7 +289,8 @@ function switchLine(groups) {
     const rel = h >= 1 ? `~${Math.round(h)} h` : `~${Math.max(1, Math.round(g.etaSec / 60))} min`;
     return `<span class="mono" style="color:var(--text)">block ${fmtNum(g.height)}</span> <span class="badge warn">${rel} · ${when} UTC</span> <span style="color:var(--text-3)">${esc(g.labels.join(' · '))}</span>`;
   };
-  return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px" id="switchSchedule"><b style="color:var(--text)">Protocol switches ahead</b> ${groups.map((g) => `<div>${fmt(g)}</div>`).join('')}<span style="color:var(--text-3)">Validators run the current release before each height; traders have nothing to do.</span></div>`;
+  const spb = groups.blockTimeSec ? ` <span style="color:var(--text-3);font-weight:400">· estimated at ${groups.blockTimeSec.toFixed(2)} s per block</span>` : '';
+  return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px" id="switchSchedule"><b style="color:var(--text)">Upcoming protocol upgrades${spb}</b> ${groups.map((g) => `<div>${fmt(g)}</div>`).join('')}<span style="color:var(--text-3)">Validators run the current release before each height; traders have nothing to do. <a href="/upgrades" data-route="upgrades">Completed upgrades and how close the estimates were →</a></span></div>`;
 }
 async function renderOpenSet(v) {
   const note = document.getElementById('vsetNote');
