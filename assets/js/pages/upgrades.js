@@ -54,14 +54,15 @@ function upcomingCard(d) {
 }
 
 function completedRows(list, q) {
+  // One row per activation block: several rules usually activate together.
+  const groups = groupByHeight(list).sort((a, b) => b.height - a.height);
   const needle = q.trim().toLowerCase();
-  const hit = (c) => !needle || [c.label, c.detail, c.key, String(c.height), fmtNum(c.height), utc(c.activatedAt), (c.activatedAt || '').slice(0, 10)]
-    .some((s) => String(s || '').toLowerCase().includes(needle));
-  const rows = list.filter(hit);
+  const text = (g) => [String(g.height), fmtNum(g.height), utc(g.activatedAt), (g.activatedAt || '').slice(0, 10), ...g.items.flatMap((c) => [c.label, c.detail, c.key])];
+  const rows = groups.filter((g) => !needle || text(g).some((t) => String(t || '').toLowerCase().includes(needle)));
   if (!rows.length) return `<tr><td colspan="5" style="color:var(--text-3);text-align:center;padding:22px">No upgrade matches “${esc(q)}”.</td></tr>`;
-  return rows.map((c) => {
-    const est = c.estimate;
-    const fin = c.finalEstimate;
+  return rows.map((g) => {
+    const est = g.estimate;
+    const fin = g.finalEstimate;
     const estCell = est
       ? `<div>${utc(est.etaAt)}</div><div style="color:var(--text-3);font-size:var(--fs-xs)">${est.source === 'announced' ? 'announced' : 'estimate'} ${utc(est.recordedAt)}</div>`
       : `<span style="color:var(--text-3)">no estimate on record</span>`;
@@ -69,11 +70,11 @@ function completedRows(list, q) {
       ? `<span class="badge ${deltaClass(est.deltaSec)}">${fmtDelta(est.deltaSec)}</span>${fin ? `<div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:4px" title="The last estimate shown before activation, recorded ${utc(fin.recordedAt)}">last estimate ${utcTime(fin.etaAt)} → ${fmtDelta(fin.deltaSec)}</div>` : ''}`
       : '<span class="badge neutral">—</span>';
     return `<tr>
-      <td>${hashLink(String(c.height), 'block', { short: false })}</td>
-      <td><span class="mono" style="color:var(--text)">${c.activatedAt ? utc(c.activatedAt, true) : '—'}</span></td>
+      <td>${hashLink(String(g.height), 'block', { short: false })}<div style="color:var(--text-3);font-size:var(--fs-xs)">${g.items.length} rule${g.items.length > 1 ? 's' : ''}</div></td>
+      <td><span class="mono" style="color:var(--text)">${g.activatedAt ? utc(g.activatedAt, true) : '—'}</span></td>
       <td>${estCell}</td>
       <td>${deltaCell}</td>
-      <td><b style="color:var(--text)">${esc(c.label)}</b>${c.detail ? `<div style="color:var(--text-3);font-size:var(--fs-xs)">${esc(c.detail)}</div>` : ''}</td>
+      <td>${g.items.map((c) => `<div><b style="color:var(--text)">${esc(c.label)}</b>${c.detail ? ` <span style="color:var(--text-3)">— ${esc(c.detail)}</span>` : ''}</div>`).join('')}</td>
     </tr>`;
   }).join('');
 }
