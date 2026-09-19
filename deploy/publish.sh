@@ -70,6 +70,22 @@ echo "==> rsync to $HOST:$DEST"
 rsync -az --delete "$STAGE/" "$HOST:$DEST"
 echo "    done"
 
+# Both app hosts serve the explorer behind the same hostname, so the standby
+# must carry the new build *before* the cache purge: a versioned module URL
+# fetched from a lagging origin would be cached at the edge — immutable, for a
+# year — with the previous build's content (seen on 2026-09-19).
+STANDBY="${EXPLORER_STANDBY:-root@178.104.230.201}"
+echo "==> sync the standby ($STANDBY)"
+if ssh -o BatchMode=yes -o ConnectTimeout=10 "$STANDBY" 'systemctl start standby-sync.service' 2>/dev/null; then
+  for i in $(seq 1 12); do
+    ssh -o BatchMode=yes "$STANDBY" "grep -q 'v=$SHA' $DEST/index.html" 2>/dev/null && break
+    sleep 5
+  done
+  ssh -o BatchMode=yes "$STANDBY" "grep -q 'v=$SHA' $DEST/index.html" 2>/dev/null && echo "    standby serves $SHA" || { echo "    standby did NOT pick up $SHA — not purging; run standby-sync there and purge by hand"; exit 1; }
+else
+  echo "    standby unreachable — not purging (a stale origin would poison versioned URLs); retry when it is back"; exit 1
+fi
+
 echo "==> Purge Cloudflare cache for the entry points"
 # Module URLs are versioned, so only the un-versioned entry points can be
 # stale at the edge: the SPA routes (all serve index.html).
