@@ -52,6 +52,8 @@ html.light .stat .value { text-shadow: none; }
 .tbl tr:last-child td, .tbl tbody tr:last-child td { border-bottom: none; }
 .tbl tbody tr { transition: background .12s; }
 .tbl tbody tr:hover { background: var(--bg-hover); }
+/* Grand-total rows (validators): set apart from the data rows, no hover. */
+.tbl tfoot tr.total td { border-top: 2px solid var(--border); border-bottom: 0; background: var(--bg-elev); }
 .tbl td.num, .tbl th.num { text-align: right; font-family: var(--font-mono); }
 .row-enter { animation: rowin .35s var(--ease); }
 @keyframes rowin { from { opacity: 0; transform: translateY(-6px); background: var(--accent-bg); } to { opacity: 1; } }

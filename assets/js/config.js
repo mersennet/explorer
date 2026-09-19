@@ -1,6 +1,11 @@
-// Chain + app configuration. RPC is reverse-proxied at <origin>/rpc; the indexer
-// REST API at <origin>/api is OPTIONAL (progressive enhancement) — api.js probes
+// Chain + app configuration. RPC calls go straight to the public endpoint
+// (CORS is open there) so the node's per-IP limiter sees each visitor; the
+// old <origin>/rpc proxy made every explorer user share the app host's
+// exempt address. `?rpc=` still overrides for local nodes. The indexer REST
+// API at <origin>/api is OPTIONAL (progressive enhancement) — api.js probes
 // it and pages fall back to pure-RPC when it isn't proxied.
+
+const CANONICAL_RPC = 'https://rpc.mersennet.com';
 
 function resolveRpc() {
   try {
@@ -8,7 +13,7 @@ function resolveRpc() {
     const custom = u.searchParams.get('rpc');
     if (custom) return { url: custom, custom: true };
   } catch (_) {}
-  return { url: location.origin + '/rpc', custom: false };
+  return { url: CANONICAL_RPC, custom: false };
 }
 const _rpc = resolveRpc();
 
@@ -23,7 +28,7 @@ export const CONFIG = {
   rpcCustom: _rpc.custom,
   // canonical node WS is always wss (cross-origin WS needs no CORS)
   wsUrl: 'wss://rpc.mersennet.com',
-  canonicalRpc: 'https://rpc.mersennet.com',
+  canonicalRpc: CANONICAL_RPC,
   apiBase: location.origin + '/api',
   explorerName: 'Mersennet Explorer',
   tagline: 'The private, verifiable network',
