@@ -18,6 +18,7 @@ const NAV = [
   { mod: 'clob', label: 'Order Books', ico: 'clob', route: 'clob' },
   { mod: 'tokenomics', label: 'Tokenomics', ico: 'coins', route: 'tokenomics' },
   { mod: 'network', label: 'Network', ico: 'network', route: 'network' },
+  { mod: 'upgrades', label: 'Protocol Upgrades', ico: 'layers', route: 'upgrades' },
   // Staking lives in the terminal (delegation, self-stake, registration); an
   // explorer visitor should not have to hunt for it (operator feedback).
   { label: 'Staking', ico: 'coins', href: 'https://trade.mersennet.com/staking', external: true },

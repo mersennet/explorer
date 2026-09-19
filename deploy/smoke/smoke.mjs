@@ -25,7 +25,7 @@ const server = createServer(async (req, res) => {
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const BASE = `http://127.0.0.1:${server.address().port}`;
-const ROUTES = ['/', '/validators', '/network', '/clob/1', '/blocks', '/txs', '/tokenomics', '/privacy', '/verify'];
+const ROUTES = ['/', '/validators', '/network', '/upgrades', '/clob/1', '/blocks', '/txs', '/tokenomics', '/privacy', '/verify'];
 const IGNORE = [/favicon/i, /net::ERR_BLOCKED_BY_CLIENT/i, /Failed to load resource.*(429|404)/i, /Object is disposed/i, /cloudflareinsights/i];
 const failures = [];
 const browser = await chromium.launch();

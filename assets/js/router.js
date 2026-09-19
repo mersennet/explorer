@@ -19,6 +19,7 @@ const ROUTES = [
   { p: 'verify/:block', mod: 'verify' },
   { p: 'tokenomics', mod: 'tokenomics' },
   { p: 'network', mod: 'network' },
+  { p: 'upgrades', mod: 'upgrades' },
   { p: 'search/:q', mod: 'search' },
 ];
 
@@ -80,7 +81,7 @@ async function dispatch() {
   });
   window.scrollTo(0, 0);
   // Distinct tab title per route (pages may refine it, e.g. block number).
-  const TITLES = { home: 'Dashboard', blocks: 'Blocks', block: 'Block', txs: 'Transactions', tx: 'Transaction', address: 'Address', accounts: 'Accounts', validators: 'Validators', clob: 'Order books', privacy: 'Privacy hub', verify: 'Verifiable chain', tokenomics: 'Tokenomics', network: 'Network', search: 'Search' };
+  const TITLES = { home: 'Dashboard', blocks: 'Blocks', block: 'Block', txs: 'Transactions', tx: 'Transaction', address: 'Address', accounts: 'Accounts', validators: 'Validators', clob: 'Order books', privacy: 'Privacy hub', verify: 'Verifiable chain', tokenomics: 'Tokenomics', network: 'Network', upgrades: 'Protocol upgrades', search: 'Search' };
   const t = matched ? TITLES[matched.mod] : 'Not found';
   const detail = matched && (params.id || params.hash || params.addr || params.market || params.block || params.q);
   document.title = `${t}${detail ? ' ' + String(detail).slice(0, 18) : ''} · Mersennet Explorer`;

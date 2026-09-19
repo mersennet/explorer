@@ -8,6 +8,7 @@
   <url><loc>https://explorer.mersennet.com/clob</loc><changefreq>always</changefreq></url>
   <url><loc>https://explorer.mersennet.com/tokenomics</loc><changefreq>daily</changefreq></url>
   <url><loc>https://explorer.mersennet.com/network</loc><changefreq>hourly</changefreq></url>
+  <url><loc>https://explorer.mersennet.com/upgrades</loc><changefreq>hourly</changefreq></url>
   <url><loc>https://explorer.mersennet.com/privacy</loc><changefreq>daily</changefreq></url>
   <url><loc>https://explorer.mersennet.com/verify</loc><changefreq>daily</changefreq></url>
 </urlset>

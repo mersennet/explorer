@@ -74,7 +74,7 @@ echo "==> Purge Cloudflare cache for the entry points"
 # Module URLs are versioned, so only the un-versioned entry points can be
 # stale at the edge: the SPA routes (all serve index.html).
 [[ -f "$HOME/.mersennet/cloudflare.env" ]] && set -a && . "$HOME/.mersennet/cloudflare.env" && set +a
-files=$(printf 'https://explorer.mersennet.com/\nhttps://explorer.mersennet.com/index.html\nhttps://explorer.mersennet.com/validators\nhttps://explorer.mersennet.com/network\nhttps://explorer.mersennet.com/clob/1\n')
+files=$(printf 'https://explorer.mersennet.com/\nhttps://explorer.mersennet.com/index.html\nhttps://explorer.mersennet.com/validators\nhttps://explorer.mersennet.com/network\nhttps://explorer.mersennet.com/upgrades\nhttps://explorer.mersennet.com/clob/1\n')
 if [[ -z "$files" ]]; then
     echo "    nothing to purge"
 elif [[ -n "${CF_API_TOKEN:-}" && -n "${CF_ZONE_ID:-}" ]]; then
