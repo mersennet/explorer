@@ -78,7 +78,7 @@ export default async function home() {
   function renderBlocks() {
     const b = document.getElementById('blocksBody'); if (!b) return;
     b.innerHTML = blocks.slice(0, 8).map((bl) => `
-      <tr><td>${icon('blocks',14)} ${hashLink(String(bl.number), 'block', {short:false}).replace('hash link','hash link')}</td>
+      <tr><td>${icon('blocks',14)} ${hashLink(String(bl.number), 'block', {short:false})}</td>
       <td style="color:var(--text-2)">${bl.txCount} txs · ${addrLink(bl.miner, {short:true})}</td>
       <td class="num" style="color:var(--text-3)">${timeAgo(bl.timestamp)}</td></tr>`).join('') || skeletonRows(6,3);
   }
