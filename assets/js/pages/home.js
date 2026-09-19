@@ -46,11 +46,11 @@ export default async function home() {
     <div class="grid cols-2" style="margin-top:14px">
       <div class="card">
         <div class="card-title"><span>Latest blocks</span><a class="link" href="/blocks">View all →</a></div>
-        <table class="tbl"><tbody id="blocksBody">${skeletonRows(8, 3)}</tbody></table>
+        <table class="tbl"><thead><tr><th>Block</th><th>Txs · proposer</th><th class="num">Age</th></tr></thead><tbody id="blocksBody">${skeletonRows(8, 3)}</tbody></table>
       </div>
       <div class="card">
         <div class="card-title"><span>Latest transactions</span><a class="link" href="/txs">View all →</a></div>
-        <table class="tbl"><tbody id="txsBody">${skeletonRows(8, 3)}</tbody></table>
+        <table class="tbl"><thead><tr><th>Transaction</th><th>Method · from → to</th><th class="num">Value</th></tr></thead><tbody id="txsBody">${skeletonRows(8, 3)}</tbody></table>
       </div>
     </div>`);
 
