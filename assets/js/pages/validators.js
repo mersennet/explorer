@@ -50,12 +50,13 @@ export default async function validators() {
         <thead><tr>
           <th style="width:54px">Rank</th>
           <th>Validator</th>
-          <th class="num">Stake (MRSN)</th>
-          <th class="num">Delegated</th>
+          <th class="num" title="Bonded by the operator (voting weight minus delegations)">Self-stake (MRSN)</th>
+          <th class="num" title="Staked behind the validator by other wallets">Delegated (MRSN)</th>
           <th>Proposed (last ${SAMPLE})</th>
-          <th class="num">Network share</th>
+          <th class="num" title="Share of the total voting stake (self + delegated)">Network share</th>
         </tr></thead>
         <tbody id="vbody">${skeletonRows(8, 6)}</tbody>
+        <tfoot id="vfoot"></tfoot>
       </table></div>
     </div>`);
 
@@ -133,13 +134,16 @@ export default async function validators() {
 
   const sampled = recent.length;
 
+  // `stake` from the consensus set is the voting weight: self-stake + delegations.
   const totalDelegatedWei = rows.reduce((acc, r) => acc + (stakingByAddr.get(r.address)?.delegated ?? 0n), 0n);
+  const totalSelfWei = totalStakeWei > totalDelegatedWei ? totalStakeWei - totalDelegatedWei : totalStakeWei;
+  const selfOf = (r) => { const d = stakingByAddr.get(r.address)?.delegated ?? 0n; return r.stakeWei > d ? r.stakeWei - d : r.stakeWei; };
 
   document.getElementById('vkpis').innerHTML =
-    stat('coins', 'Total staked', compact(Number((totalStakeWei + totalDelegatedWei) / WEI)) + ' MRSN',
+    stat('coins', 'Total staked', compact(Number(totalStakeWei / WEI)) + ' MRSN',
       totalDelegatedWei > 0n
-        ? `${compact(Number(totalStakeWei / WEI))} self · ${compact(Number(totalDelegatedWei / WEI))} delegated`
-        : fmtMrsn(totalStakeWei, 2) + ' MRSN exact')
+        ? `${fmtMrsn(totalSelfWei, 0)} self · ${fmtMrsn(totalDelegatedWei, 0)} delegated`
+        : fmtMrsn(totalStakeWei, 0) + ' MRSN, all self-stake')
     + stat('validators', 'Validators', fmtNum(count) + (vset && vset.params ? `<span style="color:var(--text-3);font-size:.6em"> / ${vset.params.maxValidators}</span>` : ''),
       (vset && Array.isArray(vset.validators) ? `${fmtNum(vset.validators.length)} registered · ` : '') + 'BFT quorum: ⅔+ by stake')
     + stat('pulse', 'Testnet emission / stake', aprPct == null ? '—' : aprPct.toFixed(0) + '%', '~' + compact(Number(annualEmissionWei / WEI)) + ' MRSN/yr over 4M genesis stake · not a mainnet yield')
@@ -174,7 +178,7 @@ export default async function validators() {
           <span style="display:inline-flex;align-items:center;gap:2px">${dot}${addrLink(r.address, { short: true, withAvatar: false })}${copyBtn(r.address)}</span>
           <div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:3px">${ls ? `last proposed #${fmtNum(ls.num)} · ${timeAgo(ls.ts)}` : 'no recent proposals'}</div>
         </td>
-        <td class="num">${fmtMrsn(r.stakeWei, 2)}</td>
+        <td class="num mono">${fmtMrsn(selfOf(r), 0)}</td>
         <td class="num">${delegatedCell(stakingByAddr.get(r.address))}</td>
         <td>
           <div style="display:flex;align-items:center;gap:9px">
@@ -192,6 +196,15 @@ export default async function validators() {
         </td>
       </tr>`;
     }).join('');
+    const foot = document.getElementById('vfoot');
+    if (foot) foot.innerHTML = `<tr class="total">
+        <td></td>
+        <td><b>Grand total</b> <span style="color:var(--text-3);font-size:var(--fs-xs)">· ${fmtNum(count)} validators</span></td>
+        <td class="num mono"><b>${fmtMrsn(totalSelfWei, 0)}</b><div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:3px">staked (MRSN)</div></td>
+        <td class="num mono"><b>${fmtMrsn(totalDelegatedWei, 0)}</b><div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:3px">delegated (MRSN)</div></td>
+        <td><span style="color:var(--text-3);font-size:var(--fs-xs)">${fmtNum(sampled)} blocks sampled</span></td>
+        <td class="num mono"><b>${fmtMrsn(totalStakeWei, 0)}</b><div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:3px">voting stake (MRSN) · 100%</div></td>
+      </tr>`;
   }
 
   // ---- live: stream new proposers into the strip + counts ----
@@ -232,7 +245,7 @@ export default async function validators() {
 // Delegated stake + commission for one validator (— on nodes without staking RPC)
 function delegatedCell(s) {
   if (!s) return `<span style="color:var(--text-3)">—</span>`;
-  const amt = s.delegated > 0n ? fmtMrsn(s.delegated, 2) : '0';
+  const amt = s.delegated > 0n ? fmtMrsn(s.delegated, 0) : '0';
   return `<span class="mono">${amt}</span>
     <div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:3px">${(s.commissionBps / 100).toFixed(1)}% commission</div>`;
 }
@@ -310,8 +323,8 @@ async function renderOpenSet(v) {
       <td>${rankCell}</td>
       <td><a class="mono" href="#/address/${esc(r.identity)}">${esc(r.identity.slice(0, 10))}…${esc(r.identity.slice(-4))}</a>${r.genesis ? ' <span class="badge neutral">genesis</span>' : ''}</td>
       <td><a class="mono" href="#/address/${esc(r.operator)}" style="color:var(--text-3)">${esc(r.operator.slice(0, 10))}…</a>${window.__account && r.operator.toLowerCase() === window.__account ? ' <span class="badge ok">you</span>' : ''}</td>
-      <td class="num mono">${compact(Number(hexToBig(r.selfStake) / WEI))}</td>
-      <td class="num mono">${compact(Number(hexToBig(r.delegated) / WEI))}</td>
+      <td class="num mono">${fmtMrsn(hexToBig(r.selfStake), 0)}</td>
+      <td class="num mono">${fmtMrsn(hexToBig(r.delegated), 0)}</td>
       <td class="num mono">${r.commissionBps / 100}%</td>
       <td class="num mono">${r.proposedSlots} <span style="color:var(--text-3)">/ ${r.missedSlots} missed</span></td>
       <td>${buildCell}</td>
@@ -319,11 +332,18 @@ async function renderOpenSet(v) {
     </tr>`; }).join('');
   const toEpoch = Math.max(0, v.nextEpochAt - v.height);
   const outdated = sorted.filter((r) => builds.byId.get(r.identity.toLowerCase())?.outdated).length;
+  const sumSelf = sorted.reduce((a, r) => a + hexToBig(r.selfStake), 0n);
+  const sumDeleg = sorted.reduce((a, r) => a + hexToBig(r.delegated), 0n);
+  const foot = `<tfoot><tr class="total"><td></td><td colspan="2"><b>Grand total</b> <span style="color:var(--text-3);font-size:var(--fs-xs)">· ${fmtNum(registered)} registered</span></td>
+      <td class="num mono"><b>${fmtMrsn(sumSelf, 0)}</b><div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:3px">staked (MRSN)</div></td>
+      <td class="num mono"><b>${fmtMrsn(sumDeleg, 0)}</b><div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:3px">delegated (MRSN)</div></td>
+      <td colspan="4"></td></tr></tfoot>`;
   note.innerHTML = `<b style="color:var(--text)">Open validator set · epoch ${fmtNum(v.epoch)}</b> · <b style="color:var(--text)">${fmtNum(registered)} registered</b> · ${v.activeSet.length}/${p.maxValidators} active (the top ${p.maxValidators} by stake produce blocks) · next epoch in ${fmtNum(toEpoch)} blocks (~${Math.round(toEpoch * 2 / 60)} min) · min self-stake ${fmtNum(minStake)} MRSN${builds.latest ? ` · current release <span class="mono">${esc(builds.latest)}</span>${outdated ? ` · <span class="badge warn">${outdated} behind</span>` : ''}` : ''} · ${link}
     ${switchLine(switchGroups)}
     <div style="overflow-x:auto;margin-top:10px"><table class="tbl">
-      <thead><tr><th style="width:54px">Rank</th><th>Validator</th><th>Operator</th><th class="num">Self-stake</th><th class="num">Delegated</th><th class="num">Commission</th><th class="num">Slots (epoch)</th><th>Build</th><th>Status</th></tr></thead>
+      <thead><tr><th style="width:54px">Rank</th><th>Validator</th><th>Operator</th><th class="num">Self-stake (MRSN)</th><th class="num">Delegated (MRSN)</th><th class="num">Commission</th><th class="num">Slots (epoch)</th><th>Build</th><th>Status</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="9" style="color:var(--text-3)">No registrations yet.</td></tr>'}</tbody>
+      ${rows ? foot : ''}
     </table></div>`;
 }
 

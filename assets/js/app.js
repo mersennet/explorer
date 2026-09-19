@@ -18,6 +18,9 @@ const NAV = [
   { mod: 'clob', label: 'Order Books', ico: 'clob', route: 'clob' },
   { mod: 'tokenomics', label: 'Tokenomics', ico: 'coins', route: 'tokenomics' },
   { mod: 'network', label: 'Network', ico: 'network', route: 'network' },
+  // Staking lives in the terminal (delegation, self-stake, registration); an
+  // explorer visitor should not have to hunt for it (operator feedback).
+  { label: 'Staking', ico: 'coins', href: 'https://trade.mersennet.com/staking', external: true },
   { section: 'Privacy / ZK', privacy: true },
   { mod: 'privacy', label: 'Privacy Hub', ico: 'privacy', route: 'privacy', privacy: true },
   { mod: 'verify', label: 'Verifiable Chain', ico: 'verify', route: 'verify', privacy: true },
@@ -26,6 +29,8 @@ const NAV = [
 function buildShell() {
   const nav = NAV.map((n) => {
     if (n.section) return `<div class="nav-section-label">${n.section}</div>`;
+    if (n.external) return `<a class="nav-item" href="${n.href}" target="_blank" rel="noopener" title="${n.label} — opens the trade terminal">
+      ${icon(n.ico)}<span class="nav-label">${n.label} <span style="opacity:.55">↗</span></span></a>`;
     return `<a class="nav-item ${n.privacy ? 'privacy' : ''}" data-route="${n.mod}" href="/${n.route}">
       ${icon(n.ico)}<span class="nav-label">${n.label}</span></a>`;
   }).join('');
