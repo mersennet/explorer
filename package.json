@@ -15,5 +15,8 @@
     "pg": "^8.23.0",
     "solc": "^0.8.37"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "overrides": {
+    "tmp": "0.2.7"
+  }
 }
