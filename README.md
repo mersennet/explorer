@@ -1,4 +1,11 @@
-# Mersennet Explorer
+<p align="center"><a href="https://mersennet.com"><img src="https://raw.githubusercontent.com/mersennet/.github/main/profile/mark.svg" width="72" alt="Mersennet"></a></p>
+<h1 align="center">Mersennet Explorer</h1>
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-7dff9b?style=flat-square" alt="MIT license"></a>
+  <a href="https://github.com/mersennet/explorer/actions/workflows/ci.yml"><img src="https://github.com/mersennet/explorer/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://explorer.mersennet.com"><img src="https://img.shields.io/badge/docs-mersennet-1c1c1c?style=flat-square" alt="Docs"></a>
+  <a href="https://t.me/Mersennet"><img src="https://img.shields.io/badge/telegram-%40Mersennet-26A5E4?style=flat-square" alt="Telegram"></a>
+</p>
 
 The block explorer for **Mersennet** — the private, verifiable Layer 1 (chain 131071).
 A dark, prime-themed, ZK-native explorer: blocks, transactions, accounts, the
@@ -61,6 +68,14 @@ runs as a systemd service separate from the static tree. Full steps in
 > "indexer offline" note and fall back to live RPC. The core explorer + the
 > Privacy/ZK, CLOB, validators, tokenomics, and network pages work without it.
 
-## License
+---
 
-MIT — see [LICENSE](LICENSE). Copyright (c) 2026 Mersennet Foundation. Security reports: security@mersennet.com ([SECURITY.md](SECURITY.md)).
+<p align="center">
+  Part of the <a href="https://github.com/mersennet">Mersennet</a> ecosystem —
+  <a href="https://trade.mersennet.com">trade</a> ·
+  <a href="https://explorer.mersennet.com">explorer</a> ·
+  <a href="https://docs.mersennet.com">docs</a> ·
+  <a href="https://mersennet.com/downloads/">run a node</a> ·
+  <a href="https://t.me/Mersennet">Telegram</a><br>
+  <sub>© 2026 Mersennet Foundation · MIT License · security@mersennet.com</sub>
+</p>
