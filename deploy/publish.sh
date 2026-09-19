@@ -55,6 +55,15 @@ python3 deploy/version-modules.py "$STAGE" "$SHA"
 # The versioned graph must still parse.
 while IFS= read -r f; do cp "$f" /tmp/explorer-check.mjs; node --check /tmp/explorer-check.mjs || { echo "versioned module fails to parse: $f" >&2; exit 1; }; done < <(find "$STAGE/assets/js" -name '*.js')
 
+echo "==> Browser smoke on the staged build"
+# Loads every route from the staged directory in headless Chromium (module
+# graph, console errors, empty view). A failure stops the publish here.
+if [[ -d "$(dirname "$0")/smoke/node_modules" ]]; then
+    (cd "$(dirname "$0")/smoke" && node smoke.mjs "$STAGE") || { echo "    smoke failed — nothing published"; exit 1; }
+else
+    echo "    skipped: deploy/smoke/node_modules missing (cd deploy/smoke && npm install && npx playwright install chromium)"
+fi
+
 echo "==> rsync to $HOST:$DEST"
 # Static files only: the indexer (indexer.js, contract-verify.js, node_modules)
 # is deployed separately as a service.
