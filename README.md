@@ -60,3 +60,7 @@ runs as a systemd service separate from the static tree. Full steps in
 > Until `/api` is proxied to the indexer, indexer-backed features show an
 > "indexer offline" note and fall back to live RPC. The core explorer + the
 > Privacy/ZK, CLOB, validators, tokenomics, and network pages work without it.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Copyright (c) 2026 Mersennet Foundation. Security reports: security@mersennet.com ([SECURITY.md](SECURITY.md)).
