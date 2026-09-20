@@ -66,8 +66,13 @@ function completedRows(list, q) {
     const estCell = est
       ? `<div>${utc(est.etaAt)}</div><div style="color:var(--text-3);font-size:var(--fs-xs)">${est.source === 'announced' ? 'announced' : 'estimate'} ${utc(est.recordedAt)}</div>`
       : `<span style="color:var(--text-3)">no estimate on record</span>`;
+    const day = g.dayBeforeEstimate;
+    const sub = [
+      day ? `<span title="The live estimate about a day out, recorded ${utc(day.recordedAt)}">24 h out ${utcTime(day.etaAt)} → ${fmtDelta(day.deltaSec)}</span>` : '',
+      fin ? `<span title="The last estimate shown before activation, recorded ${utc(fin.recordedAt)}">last estimate ${utcTime(fin.etaAt)} → ${fmtDelta(fin.deltaSec)}</span>` : '',
+    ].filter(Boolean).join('<br>');
     const deltaCell = est
-      ? `<span class="badge ${deltaClass(est.deltaSec)}">${fmtDelta(est.deltaSec)}</span>${fin ? `<div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:4px" title="The last estimate shown before activation, recorded ${utc(fin.recordedAt)}">last estimate ${utcTime(fin.etaAt)} → ${fmtDelta(fin.deltaSec)}</div>` : ''}`
+      ? `<span class="badge ${deltaClass(est.deltaSec)}">${fmtDelta(est.deltaSec)}</span>${sub ? `<div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:4px">${sub}</div>` : ''}`
       : '<span class="badge neutral">—</span>';
     return `<tr>
       <td>${hashLink(String(g.height), 'block', { short: false })}<div style="color:var(--text-3);font-size:var(--fs-xs)">${g.items.length} rule${g.items.length > 1 ? 's' : ''}</div></td>
@@ -91,7 +96,7 @@ export default async function upgrades() {
         <span class="searchbar" style="max-width:320px"><input id="upgSearch" type="search" aria-label="Search completed upgrades" placeholder="Search by name, block or date…" autocomplete="off" style="height:30px;padding-left:12px;font-size:12px"/></span></div>
       <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Block</th><th>Activated (UTC)</th><th>Estimated</th><th>Actual − estimate</th><th>What changed</th></tr></thead>
       <tbody id="upgDone"><tr><td colspan="5"><div class="sk line" style="margin:8px 0"></div></td></tr></tbody></table></div>
-      <div style="padding:10px 16px;color:var(--text-3);font-size:var(--fs-xs)">“Activated” is the timestamp of the block at the upgrade height. “Estimated” is the time that was on record for it — the announced one where we published a date, otherwise the earliest live estimate — and “Actual − estimate” is the difference; the line beneath shows the last estimate displayed before activation.</div>
+      <div style="padding:10px 16px;color:var(--text-3);font-size:var(--fs-xs)">“Activated” is the timestamp of the block at the upgrade height. “Estimated” is the time that was on record for it — the announced one where we published a date, otherwise the earliest live estimate — and “Actual − estimate” is the difference; the lines beneath show how the live estimate did about a day out and just before activation.</div>
     </div>`);
 
   let data;
