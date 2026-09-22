@@ -329,7 +329,7 @@ async function renderOpenSet(v) {
       <td class="num mono">${fmtMrsn(hexToBig(r.selfStake), 0)}</td>
       <td class="num mono">${fmtMrsn(hexToBig(r.delegated), 0)}</td>
       <td class="num mono">${r.commissionBps / 100}%</td>
-      <td class="num mono">${r.proposedSlots} <span style="color:var(--text-3)">/ ${r.missedSlots} missed</span></td>
+      <td class="num mono" title="Leader slots this epoch: blocks proposed vs. slots missed. All-time: ${fmtNum(r.totalProposed || 0)} blocks proposed since registration.">${r.proposedSlots} <span style="color:var(--text-3)">/ ${r.missedSlots} missed</span><div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:2px">${fmtNum(r.totalProposed || 0)} all-time</div></td>
       <td>${buildCell}</td>
       <td><span class="badge ${STATUS_BADGE[r.status] || 'neutral'}">${esc(r.status)}</span>${r.benched ? ' <span class="badge warn" title="Missed 3 leader slots this epoch: out of the leader rotation until the epoch boundary (still voting)">benched</span>' : ''}</td>
     </tr>`; }).join('');
@@ -337,10 +337,15 @@ async function renderOpenSet(v) {
   const outdated = sorted.filter((r) => builds.byId.get(r.identity.toLowerCase())?.outdated).length;
   const sumSelf = sorted.reduce((a, r) => a + hexToBig(r.selfStake), 0n);
   const sumDeleg = sorted.reduce((a, r) => a + hexToBig(r.delegated), 0n);
+  const sumProposed = sorted.reduce((a, r) => a + (r.proposedSlots || 0), 0);
+  const sumMissed = sorted.reduce((a, r) => a + (r.missedSlots || 0), 0);
+  const sumAllTime = sorted.reduce((a, r) => a + (r.totalProposed || 0), 0);
   const foot = `<tfoot><tr class="total"><td></td><td colspan="2"><b>Grand total</b> <span style="color:var(--text-3);font-size:var(--fs-xs)">· ${fmtNum(registered)} registered</span></td>
       <td class="num mono"><b>${fmtMrsn(sumSelf, 0)}</b><div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:3px">staked (MRSN)</div></td>
       <td class="num mono"><b>${fmtMrsn(sumDeleg, 0)}</b><div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:3px">delegated (MRSN)</div></td>
-      <td colspan="4"></td></tr></tfoot>`;
+      <td></td>
+      <td class="num mono" title="Leader slots this epoch across the registered validators (proposed = blocks in the epoch so far) and blocks proposed all-time since each registered"><b>${fmtNum(sumProposed)}</b> <span style="color:var(--text-3)">/ ${fmtNum(sumMissed)} missed</span><div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:3px">this epoch · ${fmtNum(sumAllTime)} all-time</div></td>
+      <td colspan="2"></td></tr></tfoot>`;
   note.innerHTML = `<b style="color:var(--text)">Open validator set · epoch ${fmtNum(v.epoch)}</b> · <b style="color:var(--text)">${fmtNum(registered)} registered</b> · ${v.activeSet.length}/${p.maxValidators} active (the top ${p.maxValidators} by stake produce blocks) · next epoch in ${fmtNum(toEpoch)} blocks (~${Math.round(toEpoch * 2 / 60)} min) · min self-stake ${fmtNum(minStake)} MRSN${builds.latest ? ` · current release <span class="mono">${esc(builds.latest)}</span>${outdated ? ` · <span class="badge warn">${outdated} behind</span>` : ''}` : ''} · ${link}
     ${switchLine(switchGroups)}
     <div style="overflow-x:auto;margin-top:10px"><table class="tbl">
