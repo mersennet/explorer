@@ -560,7 +560,7 @@ const server = http.createServer(async (req, res) => {
 
         // ── Chain stats (for home page) ───────────────
         if (path === '/api/stats') {
-            const [txCount, blockCount, addrCount, ttCount] = await Promise.all([
+            const [txCount, blockCount, addrCount, ttCount, day] = await Promise.all([
                 pool.query('SELECT count(*)::int as c FROM transactions'),
                 pool.query('SELECT count(*)::int as c FROM blocks'),
                 pool.query(`SELECT count(DISTINCT addr)::int as c FROM (
@@ -568,12 +568,21 @@ const server = http.createServer(async (req, res) => {
                     UNION SELECT to_addr as addr FROM transactions WHERE to_addr IS NOT NULL
                 ) u`),
                 pool.query('SELECT count(*)::int as c FROM token_transfers'),
+                // Executed vs reverted over the last day. A chain can look busy
+                // while nothing works: 20–25 Sep, 91% of all transactions were
+                // one bot's reverting orders and every dashboard stayed green.
+                pool.query(`SELECT count(*)::int AS total, count(*) FILTER (WHERE status = 1)::int AS ok
+                              FROM transactions
+                             WHERE "timestamp" >= extract(epoch from now() - interval '24 hours')::bigint`),
             ]);
+            const d = day.rows[0];
             return sendJSON(res, 200, {
                 totalBlocks: blockCount.rows[0].c,
                 totalTransactions: txCount.rows[0].c,
                 totalAddresses: addrCount.rows[0].c,
                 totalTokenTransfers: ttCount.rows[0].c,
+                transactions24h: d.total,
+                successRate24h: d.total ? d.ok / d.total : null,
                 chainHead,
                 lastIndexedBlock: indexedBlock,
             });
