@@ -426,6 +426,37 @@ async function insertTokenTransfersWithClient(client, transfers) {
 }
 
 // ─── HTTP API ────────────────────────────────────────────────────────────────
+const STATS_TTL_MS = 30_000;
+let statsCache = { at: 0, body: null, inflight: null };
+async function computeStats() {
+    const [txCount, blockCount, addrCount, ttCount, day] = await Promise.all([
+        pool.query('SELECT count(*)::int as c FROM transactions'),
+        pool.query('SELECT count(*)::int as c FROM blocks'),
+        pool.query(`SELECT count(DISTINCT addr)::int as c FROM (
+            SELECT from_addr as addr FROM transactions
+            UNION SELECT to_addr as addr FROM transactions WHERE to_addr IS NOT NULL
+        ) u`),
+        pool.query('SELECT count(*)::int as c FROM token_transfers'),
+        // Executed vs reverted over the last day. A chain can look busy
+        // while nothing works: 20–25 Sep, 91% of all transactions were
+        // one bot's reverting orders and every dashboard stayed green.
+        pool.query(`SELECT count(*)::int AS total, count(*) FILTER (WHERE status = 1)::int AS ok
+                      FROM transactions
+                     WHERE "timestamp" >= extract(epoch from now() - interval '24 hours')::bigint`),
+    ]);
+    const d = day.rows[0];
+    return {
+        totalBlocks: blockCount.rows[0].c,
+        totalTransactions: txCount.rows[0].c,
+        totalAddresses: addrCount.rows[0].c,
+        totalTokenTransfers: ttCount.rows[0].c,
+        transactions24h: d.total,
+        successRate24h: d.total ? d.ok / d.total : null,
+        chainHead,
+        lastIndexedBlock: indexedBlock,
+    };
+}
+
 function sendJSON(res, code, data) {
     res.writeHead(code, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify(data));
@@ -559,33 +590,20 @@ const server = http.createServer(async (req, res) => {
         }
 
         // ── Chain stats (for home page) ───────────────
+        // The whole-table counts take ~6 s on 5M transactions; the answer is
+        // computed at most once per STATS_TTL_MS and shared by every caller
+        // (stale copy served while a refresh is in flight).
         if (path === '/api/stats') {
-            const [txCount, blockCount, addrCount, ttCount, day] = await Promise.all([
-                pool.query('SELECT count(*)::int as c FROM transactions'),
-                pool.query('SELECT count(*)::int as c FROM blocks'),
-                pool.query(`SELECT count(DISTINCT addr)::int as c FROM (
-                    SELECT from_addr as addr FROM transactions
-                    UNION SELECT to_addr as addr FROM transactions WHERE to_addr IS NOT NULL
-                ) u`),
-                pool.query('SELECT count(*)::int as c FROM token_transfers'),
-                // Executed vs reverted over the last day. A chain can look busy
-                // while nothing works: 20–25 Sep, 91% of all transactions were
-                // one bot's reverting orders and every dashboard stayed green.
-                pool.query(`SELECT count(*)::int AS total, count(*) FILTER (WHERE status = 1)::int AS ok
-                              FROM transactions
-                             WHERE "timestamp" >= extract(epoch from now() - interval '24 hours')::bigint`),
-            ]);
-            const d = day.rows[0];
-            return sendJSON(res, 200, {
-                totalBlocks: blockCount.rows[0].c,
-                totalTransactions: txCount.rows[0].c,
-                totalAddresses: addrCount.rows[0].c,
-                totalTokenTransfers: ttCount.rows[0].c,
-                transactions24h: d.total,
-                successRate24h: d.total ? d.ok / d.total : null,
-                chainHead,
-                lastIndexedBlock: indexedBlock,
-            });
+            const fresh = statsCache.body && Date.now() - statsCache.at < STATS_TTL_MS;
+            if (!fresh && !statsCache.inflight) {
+                statsCache.inflight = computeStats()
+                    .then((body) => { statsCache = { at: Date.now(), body, inflight: null }; })
+                    .catch((e) => { statsCache.inflight = null; console.error('[api] stats refresh failed:', e.message); });
+            }
+            if (!statsCache.body) await statsCache.inflight;
+            if (!statsCache.body) return sendJSON(res, 503, { error: 'stats unavailable' });
+            // Head and indexed height are live; only the heavy counts are cached.
+            return sendJSON(res, 200, { ...statsCache.body, chainHead, lastIndexedBlock: indexedBlock });
         }
 
         // ── Latest blocks ─────────────────────────────
