@@ -3,6 +3,7 @@
 // button (wallet_addEthereumChain), and quick links to docs/trade/faucet.
 // Pure-RPC; no indexer dependency.
 import { CONFIG, KNOWN_CONTRACTS } from '../config.js';
+import { api } from '../api.js';
 import { rpcSafe, rpcBatch, getBlockNumber } from '../rpc.js';
 import { render, icon, copyBtn, toast, sparkline, buildMarker } from '../ui.js';
 import { fmtNum, hexToNum, hexToBig, timeAgo, shortAddr, esc } from '../format.js';
@@ -79,7 +80,7 @@ export default async function network() {
     <div class="card" id="activityCard" style="margin-top:14px">
       <div class="card-title"><span>${icon('pulse', 16)} Live activity &amp; fee market</span>
         <span class="badge neutral" id="actMeta">sampling…</span></div>
-      <div class="grid cols-4" id="actStats" style="padding:14px 18px 0">${actSkeleton()}</div>
+      <div class="grid cols-5" id="actStats" style="padding:14px 18px 0">${actSkeleton()}</div>
       <div class="pad">
         <div class="act-legend"><span>${icon('blocks',12)} gas used per block (last 60)</span><span id="actSpark"></span></div>
         <div class="act-bars" id="actBars"><div class="sk line" style="height:46px"></div></div>
@@ -321,12 +322,19 @@ async function buildActivity() {
 
   if (meta) { meta.textContent = `${headers.length} blocks`; meta.className = 'badge accent'; }
 
+  // Executed vs reverted over the last day, from the indexer. Throughput alone
+  // hides a chain full of failing transactions (20–25 Sep: 91% reverts).
+  const day = await api.stats();
+  const rate = day && day.successRate24h != null ? day.successRate24h : null;
+  const rateCls = rate == null ? '' : rate >= 0.9 ? ' ok' : rate >= 0.6 ? ' warn' : ' err';
   const stats = document.getElementById('actStats');
   if (stats) stats.innerHTML =
     actStat('blocks', 'Head', '#' + fmtNum(latest), timeAgo(tsNew)) +
     actStat('clock', 'Block time', bt != null ? bt.toFixed(2) + 's' : '—', 'measured') +
     actStat('bolt', 'Base fee', baseFee != null ? fmtNum(baseFee) + ' wei' : '—', 'current head') +
-    actStat('tx', 'Throughput', (txTotal / headers.length).toFixed(2) + ' tx/blk', fmtNum(txTotal) + ' tx in window');
+    actStat('tx', 'Throughput', (txTotal / headers.length).toFixed(2) + ' tx/blk', fmtNum(txTotal) + ' tx in window') +
+    actStat('check', 'Tx success', rate == null ? '—' : `<span class="rate${rateCls}">${(rate * 100).toFixed(1)}%</span>`,
+      day && day.transactions24h != null ? `${fmtNum(day.transactions24h)} tx in 24 h executed` : 'indexer offline');
 
   const bars = document.getElementById('actBars');
   if (bars) bars.innerHTML = chrono.map((s) => {
@@ -340,6 +348,6 @@ async function buildActivity() {
 const actStat = (ic, label, val, meta) =>
   `<div class="stat"><div class="label">${icon(ic, 13)} ${esc(label)}</div><div class="value sm">${val}</div><div class="meta">${esc(meta || '')}</div></div>`;
 function actSkeleton() {
-  let s = ''; for (let i = 0; i < 4; i++) s += `<div class="stat"><div class="sk line short"></div><div class="sk line" style="height:20px;margin-top:8px"></div></div>`;
+  let s = ''; for (let i = 0; i < 5; i++) s += `<div class="stat"><div class="sk line short"></div><div class="sk line" style="height:20px;margin-top:8px"></div></div>`;
   return s;
 }
