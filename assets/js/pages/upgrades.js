@@ -4,13 +4,11 @@
 // timestamp) against the estimate that was on record, so anyone can see how
 // far off we were. Data: trade API /protocol/upgrades (chain-derived).
 import { render, icon, hashLink } from '../ui.js';
-import { fmtNum, esc } from '../format.js';
+import { fmtNum, fmtUtcShort, esc } from '../format.js';
 
 const API = 'https://trade.mersennet.com/api/v1/protocol/upgrades';
 
-const utc = (iso, secs = false) => iso
-  ? new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', ...(secs ? { second: '2-digit' } : {}), timeZone: 'UTC' }) + ' UTC'
-  : '—';
+const utc = (iso, secs = false) => iso ? fmtUtcShort(iso, secs) + ' UTC' : '—';
 const utcTime = (iso) => iso ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' }) + ' UTC' : '—';
 
 /** +2 min 14 s / −40 s / on time. */
@@ -40,7 +38,7 @@ function upcomingCard(d) {
   const groups = groupByHeight(d.upcoming).sort((a, b) => a.height - b.height);
   if (!groups.length) return `<div class="card pad" style="color:var(--text-2)">${icon('check', 15)} No protocol upgrade is scheduled. New heights are announced in the <a href="https://t.me/Mersennet" target="_blank" rel="noopener">Telegram group</a> and land here first.</div>`;
   return `<div class="card">
-    <div class="card-title"><span>${icon('clock', 16)} Upcoming protocol upgrades</span><span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-3)">estimated at ${d.blockTimeSec.toFixed(2)} s per block</span></div>
+    <div class="card-title"><span>${icon('clock', 16)} Upcoming protocol upgrade${groups.length > 1 ? 's' : ''}</span><span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-3)">estimated at ${d.blockTimeSec.toFixed(2)}s/block</span></div>
     <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Block</th><th>Estimated (UTC)</th><th>What changes</th></tr></thead><tbody>
     ${groups.map((g) => `<tr>
       <td><span class="mono" style="color:var(--text)">${fmtNum(g.height)}</span><div style="color:var(--text-3);font-size:var(--fs-xs)">${fmtNum(g.blocksLeft)} blocks to go</div></td>
