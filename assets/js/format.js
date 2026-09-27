@@ -83,6 +83,20 @@ export function fmtTime(unixSecs) {
   return new Date(ms).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' });
 }
 
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/**
+ * "Tue 29 Sep, 16:44" in UTC (no suffix). Fixed English abbreviations on
+ * purpose: Intl's en-GB writes "Sept" while every other date says "Sep".
+ */
+export function fmtUtcShort(input, seconds = false) {
+  const d = new Date(input);
+  if (Number.isNaN(d.getTime())) return '—';
+  const p = (n) => String(n).padStart(2, '0');
+  const t = `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}${seconds ? `:${p(d.getUTCSeconds())}` : ''}`;
+  return `${DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}, ${t}`;
+}
+
 export function gasPct(used, limit) {
   const u = hexToNum(used), l = hexToNum(limit);
   return l > 0 ? Math.min(100, (u / l) * 100) : 0;
