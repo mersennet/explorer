@@ -289,7 +289,7 @@ function switchLine(groups) {
     const rel = h >= 1 ? `~${Math.round(h)} h` : `~${Math.max(1, Math.round(g.etaSec / 60))} min`;
     return `<span class="mono" style="color:var(--text)">block ${fmtNum(g.height)}</span> <span class="badge warn">${rel} · ${when} UTC</span> <span style="color:var(--text-3)">${esc(g.labels.join(' · '))}</span>`;
   };
-  const spb = groups.blockTimeSec ? ` <span style="color:var(--text-3);font-weight:400">· estimated at ${groups.blockTimeSec.toFixed(2)}s/block</span>` : '';
+  const spb = groups.blockTimeSec ? ` <span style="color:var(--text-3);font-weight:400">· estimated at ${groups.blockTimeSec.toFixed(2)} s per block</span>` : '';
   return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px" id="switchSchedule"><b style="color:var(--text)">Upcoming protocol upgrade${groups.length > 1 ? 's' : ''}${spb}</b> ${groups.map((g) => `<div>${fmt(g)}</div>`).join('')}<span style="color:var(--text-3)">Validators run the current release before each height; traders have nothing to do. <a href="/upgrades" data-route="upgrades">Completed upgrades and how close the estimates were →</a></span></div>`;
 }
 async function renderOpenSet(v) {
