@@ -4,6 +4,7 @@
 // against blocks / txs / addresses. Renders a result card that links to the
 // resolved entity, or a clean "no results" empty state.
 import { navigate } from '../router.js';
+import { KNOWN_CONTRACTS } from '../config.js';
 import { getBlock, getBlockByHash, getTx, getBalance, getCode, getNonce, numToTag } from '../rpc.js';
 import { api } from '../api.js';
 import { render, icon, addrLink, copyBtn, emptyState } from '../ui.js';
@@ -31,9 +32,16 @@ export default async function search(params) {
   const done = () => !alive || !document.getElementById('results');
 
   if (!q) {
-    out.innerHTML = emptyState('Type something to search', 'A block number, transaction hash, or address.', 'search');
+    out.innerHTML = emptyState('Type something to search', 'A block number, transaction hash, address, or token name.', 'search');
     return () => { alive = false; };
   }
+
+  // 0) Known contracts and tokens by name or symbol (USDC, WMRSN, MersennetOrders…).
+  const needle = q.toLowerCase();
+  const labels = (c) => [c.name, c.symbol].filter(Boolean).map((s) => s.toLowerCase());
+  const named = Object.entries(KNOWN_CONTRACTS).filter(([, c]) => labels(c).some((s) => s.includes(needle)));
+  const exact = named.find(([, c]) => labels(c).includes(needle));
+  if (exact) { navigate('address/' + exact[0]); return () => { alive = false; }; }
 
   // 1) indexer text search (best for token names / fuzzy queries). Route on hit.
   if (await api.probe()) {
@@ -52,8 +60,11 @@ export default async function search(params) {
   if (done()) return;
 
   if (!found) {
-    out.innerHTML = emptyState('No results',
-      'No block, transaction, or address matched this query. Check the value and try again.', 'search');
+    out.innerHTML = named.length
+      ? `<div style="font-weight:600;margin-bottom:8px">Known contracts matching “${esc(q)}”</div>`
+        + named.map(([a, c]) => `<div style="padding:6px 0">${addrLink(a)} <span class="badge neutral">${esc(c.tag || c.kind)}</span> <span style="color:var(--text-3)">${esc(c.note || '')}</span></div>`).join('')
+      : emptyState('No results',
+        'No block, transaction, address or token name matched this query. Check the value and try again.', 'search');
     return () => { alive = false; };
   }
 

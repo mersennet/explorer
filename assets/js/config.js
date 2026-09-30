@@ -56,7 +56,8 @@ export const CONFIG = {
 export const KNOWN_CONTRACTS = {
   '0x0000000000000000000000000000000000000100': { name: 'MersennetOrders', kind: 'precompile', tag: 'CLOB', note: 'Native order-book precompile (collateral escrow)' },
   '0x0000000000000000000000000000000000000400': { name: 'MersennetStaking', kind: 'precompile', tag: 'staking', note: 'Delegated staking precompile (principal + reward escrow)' },
-  '0x0000000000000000000000000000000000000200': { name: 'ShieldBridge', kind: 'precompile', tag: 'privacy', note: 'Shield / unshield bridge precompile' },
+  '0x0000000000000000000000000000000000000200': { name: 'ShieldedTransfer', kind: 'precompile', tag: 'privacy', note: 'Shielded transfer precompile (from the privacy hard fork)' },
+  '0x0000000000000000000000000000000000000201': { name: 'ShieldBridge', kind: 'precompile', tag: 'privacy', note: 'Shield / unshield bridge precompile (from the privacy hard fork)' },
   '0xa44b23d1d0c0133da71dece399d5d5ade6dd22d1': { name: 'USDC', kind: 'token', tag: 'ERC-20', symbol: 'USDC', decimals: 6, note: 'Mock USD Coin · faucet test token' },
   '0x3923578a19d0e9b35cef08b7eba0cb6d4b9c28f6': { name: 'USDT', kind: 'token', tag: 'ERC-20', symbol: 'USDT', decimals: 6, note: 'Mock Tether USD · faucet test token' },
   '0x27942c2cee3e0e02377d01bfe6e74cefc9a9fd45': { name: 'DAI', kind: 'token', tag: 'ERC-20', symbol: 'DAI', decimals: 18, note: 'Mock Dai · faucet test token' },

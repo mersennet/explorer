@@ -129,10 +129,12 @@ export default async function blocks(params = {}) {
     try { bl = await getBlock('0x' + num.toString(16), false); } catch {}
     if (!alive || !bl || !body.isConnected) return;
     if (body.querySelector(`tr[data-bn="${num}"]`)) return;
-    body.insertAdjacentHTML('afterbegin', blockRow(bl));
+    // Rebuild the rows rather than inserting one on top: inserting moves every existing
+    // row down, which the browser scores as a layout shift on each block.
+    const keep = [...body.querySelectorAll('tr')].slice(0, PER - 1)
+      .map((tr) => { tr.classList.remove('row-enter'); return tr.outerHTML; });
+    body.innerHTML = blockRow(bl) + keep.join('');
     const first = body.querySelector('tr'); if (first) first.classList.add('row-enter');
-    const trs = body.querySelectorAll('tr');
-    for (let i = trs.length - 1; i >= PER; i--) trs[i].remove();
   }
 
   function gasBar(pct, used) {

@@ -32,7 +32,7 @@ export default async function address(params) {
             ${known ? `<span class="badge ${known.kind === 'privacy' ? 'teal' : 'accent'}">${esc(known.name)}</span>` : ''}
             <span id="attestBadge"></span>
           </div>
-          <div class="hash" style="margin-top:8px;word-break:break-all;font-size:var(--fs-md)">${esc(addr)} ${copyBtn(addr)}</div>
+          <h1 class="hash" style="margin-top:8px;word-break:break-all;font-size:var(--fs-md);font-weight:inherit">${esc(addr)} ${copyBtn(addr)}</h1>
           ${known ? `<div style="color:var(--text-3);font-size:var(--fs-sm);margin-top:5px">${esc(known.note || '')}</div>` : ''}
         </div>
         <div style="display:flex;gap:8px;flex:none">
@@ -45,21 +45,22 @@ export default async function address(params) {
       ${statSk()}${statSk()}${statSk()}
     </div>
 
-    <div id="holdingsCard" style="margin-top:14px"></div>
-
-    <div id="marginCard" style="margin-top:14px"></div>
-
-    <div id="stakingCard" style="margin-top:14px"></div>
-
-    <div id="attestCard" style="margin-top:14px"></div>
-
     <div class="card" style="margin-top:14px">
       <div class="tabs" id="tabs">
         <div class="tab active" data-tab="txs">${icon('tx',14)} Transactions</div>
         <div class="tab" data-tab="tokens">${icon('token',14)} Token transfers</div>
       </div>
       <div id="tabBody" style="padding:0 0 4px"><table class="tbl"><tbody>${skeletonRows(8, 4)}</tbody></table></div>
-    </div>`);
+    </div>
+
+    <!-- Optional cards fill in late; below the transactions they push nothing on screen. -->
+    <div id="holdingsCard" style="margin-top:14px"></div>
+
+    <div id="marginCard" style="margin-top:14px"></div>
+
+    <div id="stakingCard" style="margin-top:14px"></div>
+
+    <div id="attestCard" style="margin-top:14px"></div>`);
 
   let alive = true;
 

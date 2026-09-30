@@ -1,11 +1,12 @@
 // Validators: the leader-gated BFT PoS set. Total stake, validator count, an
 // estimated staking APR (from emission), and the MEASURED block time. The active
 // set is enriched with live proposer analytics: we sample the last N block
-// headers (eth_getBlockByNumber) and tally who proposed them, so each validator
-// shows blocks-proposed, proposal share, and last-seen — and a live strip streams
-// new proposers as blocks arrive (WS newHeads). Pure-RPC, no indexer dependency.
+// headers (from the indexer, or eth_getBlockByNumber when it is down) and tally
+// who proposed them, so each validator shows blocks-proposed, proposal share, and
+// last-seen — and a live strip streams new proposers as blocks arrive (WS newHeads).
 import { CONFIG } from '../config.js';
 import { getValidators, getStakingValidators, getBlockNumber, rpcBatch, rpcSafe } from '../rpc.js';
+import { api } from '../api.js';
 import { ws } from '../ws.js';
 import { render, icon, addrLink, copyBtn, skeletonRows, emptyState, buildMarker } from '../ui.js';
 import { fmtNum, fmtMrsn, fmtUtcShort, compact, hexToBig, hexToNum, timeAgo, esc } from '../format.js';
@@ -38,14 +39,11 @@ export default async function validators() {
         <span><span class="live-dot idle" id="propDot"></span> Recent block proposers</span>
         <span class="badge neutral" id="stripMeta">sampling…</span>
       </div>
-      <div class="pad" id="stripBody"><div class="sk line"></div></div>
+      <div class="pad" id="stripBody"><div class="prop-strip">${'<span class="prop-cell" style="opacity:.25">·</span>'.repeat(STRIP)}</div></div>
     </div>
 
     <div class="card" style="margin-top:14px">
       <div class="card-title"><span>Active set</span><span class="badge accent" id="vcount">…</span></div>
-      <div style="padding:0 18px 14px;font-size:12px;color:var(--text-3);line-height:1.5" id="vsetNote">
-        Loading the open validator set…
-      </div>
       <div style="overflow-x:auto"><table class="tbl">
         <thead><tr>
           <th style="width:54px">Rank</th>
@@ -58,6 +56,10 @@ export default async function validators() {
         <tbody id="vbody">${skeletonRows(8, 6)}</tbody>
         <tfoot id="vfoot"></tfoot>
       </table></div>
+      <!-- The registration table arrives late; last on the page, it pushes nothing on screen. -->
+      <div style="padding:14px 18px;font-size:12px;color:var(--text-3);line-height:1.5" id="vsetNote">
+        Loading the open validator set…
+      </div>
     </div>`);
 
   const [vals, stakingVals, vset] = await Promise.all([getValidators(), getStakingValidators(), rpcSafe('mersennet_validatorSet')]);
@@ -97,11 +99,6 @@ export default async function validators() {
   const count = rows.length;
   const rankByAddr = new Map(rows.map((r, i) => [r.address, i]));
 
-  // est. staking APR from the emission schedule (BigInt wei to avoid float drift)
-  const blocksPerYear = SECS_PER_YEAR / BigInt(Math.max(1, CONFIG.blockTimeSecs));
-  const annualEmissionWei = CONFIG.initialRewardWei * blocksPerYear;
-  const aprPct = totalStakeWei > 0n ? Number((annualEmissionWei * 10000n) / totalStakeWei) / 100 : null;
-
   // ---- sample recent block headers for proposer analytics ----
   const proposed = new Map();   // addr -> count
   const lastSeen = new Map();   // addr -> { num, ts }
@@ -110,17 +107,24 @@ export default async function validators() {
   let latest = 0;
   try {
     latest = hexToNum(await getBlockNumber());
-    const n = Math.min(SAMPLE, latest + 1);
-    const nums = [];
-    for (let i = 0; i < n; i++) nums.push(latest - i);
-    const headers = await rpcBatch(nums.map((bn) => ({ method: 'eth_getBlockByNumber', params: ['0x' + bn.toString(16), false] })));
+    // Two indexer pages instead of one RPC request per header; RPC when the indexer is down.
+    const pages = await Promise.all([api.blocks(1, SAMPLE / 2), api.blocks(2, SAMPLE / 2)]);
+    let got = pages.every((pg) => pg && Array.isArray(pg.blocks))
+      ? pages.flatMap((pg) => pg.blocks).map((b) => ({ miner: b.miner, num: Number(b.number), ts: Number(b.timestamp) }))
+      : null;
+    if (!got) {
+      const n = Math.min(SAMPLE, latest + 1);
+      const nums = [];
+      for (let i = 0; i < n; i++) nums.push(latest - i);
+      const headers = await rpcBatch(nums.map((bn) => ({ method: 'eth_getBlockByNumber', params: ['0x' + bn.toString(16), false] })));
+      got = headers.filter(Boolean).map((h) => ({ miner: h.miner || h.proposer, num: hexToNum(h.number), ts: hexToNum(h.timestamp) }));
+    }
     if (!alive) return () => { alive = false; };
-    const got = headers.filter(Boolean);
     let tsNew = null, tsOld = null, samples = 0;
     for (const h of got) {
-      const p = String(h.miner || h.proposer || '').toLowerCase();
-      const bn = hexToNum(h.number);
-      const ts = hexToNum(h.timestamp);
+      const p = String(h.miner || '').toLowerCase();
+      const bn = h.num;
+      const ts = h.ts;
       if (p) {
         proposed.set(p, (proposed.get(p) || 0) + 1);
         if (!lastSeen.has(p)) lastSeen.set(p, { num: bn, ts });
@@ -131,6 +135,12 @@ export default async function validators() {
     if (tsNew != null && tsOld != null && samples > 1) measuredBt = (tsNew - tsOld) / (samples - 1);
   } catch {}
   if (!alive) return () => { alive = false; };
+
+  // est. staking APR from the emission schedule at the measured block time (BigInt wei to avoid float drift)
+  const emissionBt = measuredBt || CONFIG.blockTimeSecs;
+  const blocksPerYear = BigInt(Math.round(Number(SECS_PER_YEAR) / Math.max(0.5, emissionBt)));
+  const annualEmissionWei = CONFIG.initialRewardWei * blocksPerYear;
+  const aprPct = totalStakeWei > 0n ? Number((annualEmissionWei * 10000n) / totalStakeWei) / 100 : null;
 
   const sampled = recent.length;
 
@@ -146,7 +156,7 @@ export default async function validators() {
         : fmtMrsn(totalStakeWei, 0) + ' MRSN, all self-stake')
     + stat('validators', 'Validators', fmtNum(count) + (vset && vset.params ? `<span style="color:var(--text-3);font-size:.6em"> / ${vset.params.maxValidators}</span>` : ''),
       (vset && Array.isArray(vset.validators) ? `${fmtNum(vset.validators.length)} registered · ` : '') + 'BFT quorum: ⅔+ by stake')
-    + stat('pulse', 'Testnet emission / stake', aprPct == null ? '—' : aprPct.toFixed(0) + '%', '~' + compact(Number(annualEmissionWei / WEI)) + ' MRSN/yr over 4M genesis stake · not a mainnet yield')
+    + stat('pulse', 'Testnet emission / stake', aprPct == null ? '—' : aprPct.toFixed(0) + '%', '~' + compact(Number(annualEmissionWei / WEI)) + ' MRSN/yr over ' + compact(Number(totalStakeWei / WEI)) + ' MRSN staked · not a mainnet yield')
     + stat('clock', 'Block time', measuredBt != null ? measuredBt.toFixed(2) + 's' : '~' + CONFIG.blockTimeSecs + 's', measuredBt != null ? `measured over ${fmtNum(sampled)} blocks` : 'target cadence');
 
   const c = document.getElementById('vcount');
@@ -361,8 +371,9 @@ const stat = (ic, label, val, meta = '') => `<div class="stat">
   <div class="value">${val}</div>
   ${meta ? `<div class="meta">${meta}</div>` : ''}</div>`;
 
+// Same markup as the real tiles, so the row keeps its height when the numbers arrive
+// (the emission tile's note runs to two lines).
 function kpiSkeleton(n) {
-  let s = '';
-  for (let i = 0; i < n; i++) s += `<div class="stat"><div class="sk line short"></div><div class="sk line" style="height:24px;margin-top:10px"></div></div>`;
-  return s;
+  return Array.from({ length: n }, (_, i) =>
+    stat('pulse', '&nbsp;', '<span style="opacity:.35">—</span>', i === 2 ? '&nbsp;<br>&nbsp;' : '&nbsp;')).join('');
 }

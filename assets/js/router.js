@@ -33,6 +33,25 @@ const COMPILED = ROUTES.map((r) => ({ ...r, ...compile(r.p) }));
 let _cleanup = null;
 let _token = 0;
 
+// index.html carries the home page's description; the others are set per route.
+let HOME_DESCRIPTION = '';
+const DESCRIPTIONS = {
+  blocks: 'Latest Mersennet testnet blocks, live: proposer, transactions, gas and age.',
+  block: 'A Mersennet testnet block: header, proposer, transactions and state root.',
+  txs: 'Latest Mersennet testnet transactions, live.',
+  tx: 'A Mersennet testnet transaction: status, method, value, fee and logs.',
+  address: 'A Mersennet testnet address: balance, transactions, token transfers and staking.',
+  accounts: 'Top Mersennet testnet accounts by MRSN balance.',
+  validators: 'The Mersennet validator set: stake, delegations, proposer share, builds and status.',
+  clob: 'The native on-chain order books of Mersennet: depth, trades and markets.',
+  privacy: 'The Mersennet privacy hub: the shielded pool, shielded order book and disclosure grants of the privacy hard fork.',
+  verify: 'Verify Mersennet state proofs yourself, block by block.',
+  tokenomics: 'MRSN supply cap, emission schedule and halvings.',
+  network: 'Mersennet network status: nodes, peers, client versions and block time.',
+  upgrades: 'Mersennet protocol upgrades: upcoming heights with live estimates, completed ones against their estimates.',
+  search: 'Search Mersennet blocks, transactions, addresses and tokens.',
+};
+
 function parsePath() {
   let p = location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
   return decodeURIComponent(p);
@@ -85,6 +104,13 @@ async function dispatch() {
   const t = matched ? TITLES[matched.mod] : 'Not found';
   const detail = matched && (params.id || params.hash || params.addr || params.market || params.block || params.q);
   document.title = `${t}${detail ? ' ' + String(detail).slice(0, 18) : ''} · Mersennet Explorer`;
+  const canon = document.querySelector('link[rel="canonical"]');
+  if (canon) canon.href = 'https://explorer.mersennet.com/' + (matched ? encodeURI(path) : '');
+  const desc = document.querySelector('meta[name="description"]');
+  if (desc) {
+    if (!HOME_DESCRIPTION) HOME_DESCRIPTION = desc.content;
+    desc.content = (matched && DESCRIPTIONS[matched.mod]) || HOME_DESCRIPTION;
+  }
   const root = document.getElementById('view');
   if (!matched) { root.innerHTML = ''; const m = await import('./pages/notfound.js').catch(() => null);
     if (m) m.default(); else root.innerHTML = '<div class="empty">Page not found</div>'; return; }

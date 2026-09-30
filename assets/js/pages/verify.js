@@ -28,13 +28,14 @@ export default async function verify(params = {}) {
       <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap">
         <div style="color:var(--teal);flex:none">${icon('proof', 30)}</div>
         <div style="flex:1;min-width:240px">
-          <div style="font-weight:700;font-size:var(--fs-lg);margin-bottom:6px">SP1 succinct state-transition proofs</div>
+          <div style="font-weight:700;font-size:var(--fs-lg);margin-bottom:6px">Succinct state-transition proofs</div>
           <div style="color:var(--text-2);line-height:1.6">
-            Each Mersennet block carries a zero-knowledge proof that its state transition is valid: given the
-            previous roots and the block's public inputs, the new state and nullifier roots follow from the
-            rules of the chain. The proof is a constant-size SP1 receipt — verifying it is cheap and stateless.
-            On the Ethereum bridge path that receipt is wrapped to <span class="mono" style="color:var(--teal)">Groth16</span>
-            and checked on-chain, so an L1 contract can finalize Mersennet from one succinct proof
+            Each Mersennet block carries a proof that its shielded-state transition is valid: given the
+            previous roots and the block's public inputs, the new shielded state and nullifier roots follow from the
+            rules of the chain. On the public testnet it comes from the deterministic development prover, which
+            commits to the full block content but is not yet zero-knowledge. In production it is a constant-size
+            SP1 proof, cheap and stateless to verify, and the design wraps it to <span class="mono" style="color:var(--teal)">Groth16</span>
+            for an Ethereum contract (not yet deployed) to check, so an L1 contract can finalize Mersennet from one succinct proof
             <span style="color:var(--text-3)">— a chain you can verify without trusting anyone, and without syncing a full node.</span>
           </div>
         </div>
@@ -50,7 +51,7 @@ export default async function verify(params = {}) {
       <div class="pad">
         <div style="color:var(--text-2);font-size:var(--fs-sm);margin-bottom:12px">
           Each node is a block's proof; a link is <b style="color:var(--teal)">verified</b> when the prior proof's
-          new state root equals the next proof's previous state root — an unbroken, provable chain of custody.</div>
+          new shielded state root equals the next proof's previous one — an unbroken, provable chain of custody.</div>
         <div class="proofchain" id="ribbon">${ribbonSkeleton()}</div>
         <div id="ribbonNote" style="color:var(--text-3);font-size:var(--fs-xs);margin-top:10px"></div>
       </div>
@@ -150,12 +151,12 @@ export default async function verify(params = {}) {
         <div class="pad">
           <div class="vfy-transition">
             <div class="root from">
-              <div class="lbl">Prev state root</div>
+              <div class="lbl">Prev shielded state root</div>
               <div class="val">${esc(proof.prevStateRoot || '—')}</div>
             </div>
             <div class="vfy-arrow">${icon('arrow', 22)}</div>
             <div class="root to">
-              <div class="lbl">New state root</div>
+              <div class="lbl">New shielded state root</div>
               <div class="val">${esc(proof.newStateRoot || '—')} ${copyBtn(proof.newStateRoot || '')}</div>
             </div>
           </div>
@@ -168,7 +169,7 @@ export default async function verify(params = {}) {
             ${kvRow('Block hash', hashLink(proof.blockHash, 'block', { lead: 14, tail: 12 }) + ' ' + copyBtn(proof.blockHash || ''), 'blocks')}
             ${kvRow('Market state hash', mono(proof.newMarketStateHash), 'clob')}
             ${kvRow('Tx count', `<span class="mono">${fmtNum(hexToNum(proof.txCount))}</span>`, 'tx')}
-            ${kvRow('Proof size', `<span class="mono">${proofBytes != null ? fmtNum(proofBytes) + ' bytes' : '—'}</span> <span style="color:var(--text-3)">· constant-size SP1 receipt</span>`, 'proof')}
+            ${kvRow('Proof size', `<span class="mono">${proofBytes != null ? fmtNum(proofBytes) + ' bytes' : '—'}</span> <span style="color:var(--text-3)">· ${dev ? 'development-prover receipt' : 'constant-size SP1 receipt'}</span>`, 'proof')}
           </div>
 
           <div style="margin-top:18px">

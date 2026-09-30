@@ -34,12 +34,28 @@ function groupByHeight(list) {
   return [...m.values()];
 }
 
+const UPCOMING_HEAD = '<thead><tr><th>Block</th><th>Estimated (UTC)</th><th>What changes</th></tr></thead>';
+const UPCOMING_NOTE = `<div style="padding:10px 16px;color:var(--text-3);font-size:var(--fs-xs)">Blocks are nominally 2 s; missed leader slots stretch the average, so an estimate a day out can move by tens of minutes. Validators run the current release before the height (<a href="https://mersennet.com/downloads/" target="_blank" rel="noopener">downloads</a>); traders have nothing to do.</div>`;
+
+// The card's own frame with placeholder lines, so it keeps its height when the schedule arrives.
+function upcomingSkeleton() {
+  return `<div class="card">
+    <div class="card-title"><span>${icon('clock', 16)} Upcoming protocol upgrade</span></div>
+    <div style="overflow-x:auto"><table class="tbl">${UPCOMING_HEAD}<tbody><tr>
+      <td><div class="sk line" style="width:90px"></div><div class="sk line short" style="margin-top:6px"></div></td>
+      <td><div class="sk line" style="width:180px"></div><div class="sk line short" style="margin-top:6px"></div></td>
+      <td><div class="sk line"></div><div class="sk line short" style="margin-top:6px"></div></td>
+    </tr></tbody></table></div>
+    ${UPCOMING_NOTE}
+  </div>`;
+}
+
 function upcomingCard(d) {
   const groups = groupByHeight(d.upcoming).sort((a, b) => a.height - b.height);
   if (!groups.length) return `<div class="card pad" style="color:var(--text-2)">${icon('check', 15)} No protocol upgrade is scheduled. New heights are announced in the <a href="https://t.me/Mersennet" target="_blank" rel="noopener">Telegram group</a> and land here first.</div>`;
   return `<div class="card">
     <div class="card-title"><span>${icon('clock', 16)} Upcoming protocol upgrade${groups.length > 1 ? 's' : ''}</span><span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-3)">estimated at ${d.blockTimeSec.toFixed(2)} s per block</span></div>
-    <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Block</th><th>Estimated (UTC)</th><th>What changes</th></tr></thead><tbody>
+    <div style="overflow-x:auto"><table class="tbl">${UPCOMING_HEAD}<tbody>
     ${groups.map((g) => `<tr>
       <td><span class="mono" style="color:var(--text)">${fmtNum(g.height)}</span><div style="color:var(--text-3);font-size:var(--fs-xs)">${fmtNum(g.blocksLeft)} blocks to go</div></td>
       <td><span class="badge warn">${rel(g.etaSec)} · ${utc(g.etaAt)}</span>
@@ -47,7 +63,7 @@ function upcomingCard(d) {
       <td>${g.items.map((s) => `<div><b style="color:var(--text)">${esc(s.label)}</b>${s.detail ? ` <span style="color:var(--text-3)">— ${esc(s.detail)}</span>` : ''}</div>`).join('')}</td>
     </tr>`).join('')}
     </tbody></table></div>
-    <div style="padding:10px 16px;color:var(--text-3);font-size:var(--fs-xs)">Blocks are nominally 2 s; missed leader slots stretch the average, so an estimate a day out can move by tens of minutes. Validators run the current release before the height (<a href="https://mersennet.com/downloads/" target="_blank" rel="noopener">downloads</a>); traders have nothing to do.</div>
+    ${UPCOMING_NOTE}
   </div>`;
 }
 
@@ -88,14 +104,9 @@ export default async function upgrades() {
       <h1>${icon('layers', 24)} Protocol upgrades</h1>
       <div class="sub">Consensus rules change at announced block heights. Upcoming upgrades carry a live estimate; completed ones show when the block was actually produced and how far off the estimate was.</div>
     </div>
-    <div id="upgUpcoming"><div class="card pad"><div class="sk line" style="margin:8px 0"></div><div class="sk line short"></div></div></div>
-    <div class="card" style="margin-top:14px">
-      <div class="card-title"><span>${icon('check', 16)} Completed upgrades</span>
-        <span class="searchbar" style="max-width:320px"><input id="upgSearch" type="search" aria-label="Search completed upgrades" placeholder="Search by name, block or date…" autocomplete="off" style="height:30px;padding-left:12px;font-size:12px"/></span></div>
-      <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Block</th><th>Activated (UTC)</th><th>Estimated</th><th>Actual − estimate</th><th>What changed</th></tr></thead>
-      <tbody id="upgDone"><tr><td colspan="5"><div class="sk line" style="margin:8px 0"></div></td></tr></tbody></table></div>
-      <div style="padding:10px 16px;color:var(--text-3);font-size:var(--fs-xs)">“Activated” is the timestamp of the block at the upgrade height. “Estimated” is the time that was on record for it — the announced one where we published a date, otherwise the earliest live estimate — and “Actual − estimate” is the difference; the lines beneath show how the live estimate did about a day out and just before activation.</div>
-    </div>`);
+    <!-- Both cards replace the placeholder in one step: their heights depend on the schedule
+         (one tall row on a phone, or a one-line "nothing scheduled"), so nothing is drawn early. -->
+    <div id="upgBody">${upcomingSkeleton()}</div>`);
 
   let data;
   try {
@@ -103,11 +114,17 @@ export default async function upgrades() {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     data = await r.json();
   } catch (e) {
-    document.getElementById('upgUpcoming').innerHTML = `<div class="card pad" style="color:var(--text-2)">The upgrade schedule is temporarily unavailable (${esc(e.message)}). The heights themselves are in <span class="mono">mersennet_orders_getProtocol</span> and <span class="mono">mersennet_validatorSet</span>.</div>`;
-    document.getElementById('upgDone').innerHTML = '<tr><td colspan="5" style="color:var(--text-3);text-align:center;padding:22px">Unavailable</td></tr>';
+    document.getElementById('upgBody').innerHTML = `<div class="card pad" style="color:var(--text-2)">The upgrade schedule is temporarily unavailable (${esc(e.message)}). The heights themselves are in <span class="mono">mersennet_orders_getProtocol</span> and <span class="mono">mersennet_validatorSet</span>.</div>`;
     return;
   }
-  document.getElementById('upgUpcoming').innerHTML = upcomingCard(data);
+  document.getElementById('upgBody').innerHTML = `${upcomingCard(data)}
+    <div class="card" style="margin-top:14px">
+      <div class="card-title"><span>${icon('check', 16)} Completed upgrades</span>
+        <span class="searchbar" style="max-width:320px"><input id="upgSearch" type="search" aria-label="Search completed upgrades" placeholder="Search by name, block or date…" autocomplete="off" style="height:30px;padding-left:12px;font-size:12px"/></span></div>
+      <div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Block</th><th>Activated (UTC)</th><th>Estimated</th><th>Actual − estimate</th><th>What changed</th></tr></thead>
+      <tbody id="upgDone"></tbody></table></div>
+      <div style="padding:10px 16px;color:var(--text-3);font-size:var(--fs-xs)">“Activated” is the timestamp of the block at the upgrade height. “Estimated” is the time that was on record for it — the announced one where we published a date, otherwise the earliest live estimate — and “Actual − estimate” is the difference; the lines beneath show how the live estimate did about a day out and just before activation.</div>
+    </div>`;
   const body = document.getElementById('upgDone');
   const input = document.getElementById('upgSearch');
   const draw = () => { body.innerHTML = completedRows(data.completed, input.value); };

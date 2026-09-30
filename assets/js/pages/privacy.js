@@ -128,13 +128,16 @@ export default async function privacy() {
   const pool = { root: null, block: 0, notes: 0, nullifiers: 0, eoa: 0, ts: 0 };
 
   // ----- helpers -----
+  // The empty commitment tree already has a non-zero root, so only notes or nullifiers
+  // show that the fork has activated.
+  const started = () => pool.notes > 0 || pool.nullifiers > 0;
   const fork = (active) => {
     const el = document.getElementById('forkBanner');
     if (!el) return;
     if (active) {
       el.innerHTML = `<div class="banner teal">${icon('check',15)} <span><strong>Privacy fork: active</strong> — the shielded pool is live; notes and proofs are populating.</span></div>`;
     } else {
-      el.innerHTML = `<div class="banner warn">${icon('clock',15)} <span><strong>Privacy fork: pending</strong> — the shielded pool + ZK machinery are live and queryable; notes/proofs populate at activation.</span></div>`;
+      el.innerHTML = `<div class="banner warn">${icon('clock',15)} <span><strong>Privacy fork: pending</strong> — shielded accounts, the shielded order book and disclosure grants switch on with the privacy hard fork. Until then the pool is empty; this page shows how it will work.</span></div>`;
     }
   };
 
@@ -159,7 +162,9 @@ export default async function privacy() {
       ${tile('privacy', 'Anonymity set', fmtNum(anon), 'unspent notes (notes − nullifiers)', true)}
       ${tile('tree', 'Note commitments', fmtNum(pool.notes), pool.ts ? 'updated ' + timeAgo(pool.ts) : 'inserted leaves')}
       ${tile('bolt', 'Nullifiers', fmtNum(pool.nullifiers), 'notes spent')}
-      ${tile('account', 'Transparent EOAs', fmtNum(pool.eoa), 'shieldable accounts')}`;
+      ${started() || pool.eoa
+        ? tile('account', 'Transparent EOAs', fmtNum(pool.eoa), 'shieldable accounts')
+        : tile('account', 'Transparent EOAs', '—', 'counted from the privacy fork')}`;
     if (bump) {
       const set = el.querySelector('.stat .value .tick');
       if (set) { set.classList.remove('bumped'); void set.offsetWidth; set.classList.add('bumped'); }
@@ -219,8 +224,7 @@ export default async function privacy() {
     if (!pool.nullifiers && bal.totalNullifierCount != null) pool.nullifiers = Number(bal.totalNullifierCount || 0);
   }
 
-  const rootEmpty = !pool.root || hexToBig(pool.root) === 0n;
-  fork(!(rootEmpty && pool.notes === 0));
+  fork(started());
   paintRoot(false);
   paintTiles(false);
   renderClob(aggs);
@@ -239,8 +243,7 @@ export default async function privacy() {
     paintTiles(true);
     const c = document.getElementById('wsChip');
     if (c) { c.textContent = 'live'; c.className = 'badge teal'; }
-    // a populated root means the fork is effectively active
-    if (hexToBig(pool.root) !== 0n || pool.notes > 0) fork(true);
+    if (started()) fork(true);
   }));
 
   // ----- private clearing tape: newClearingPrice -----
