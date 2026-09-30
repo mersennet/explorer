@@ -244,6 +244,7 @@ async function indexChain() {
         const total = latest - startBlock + 1;
         console.log(`[indexer] Syncing blocks ${startBlock}→${latest} (${total} blocks)`);
         const t0 = Date.now();
+        let cycleTxs = 0, cycleTransfers = 0;
 
         for (let start = startBlock; start <= latest; start += BATCH_SIZE) {
             const end = Math.min(start + BATCH_SIZE - 1, latest);
@@ -314,6 +315,9 @@ async function indexChain() {
             }
 
             indexedBlock = end;
+            cycleTxs += allTxs.length;
+            cycleTransfers += tokenTransfers.length;
+            noteInserted(allTxs.length, validBlocks.length, tokenTransfers.length);
 
             if ((end - startBlock) % 2000 < BATCH_SIZE || end === latest) {
                 const pct = ((end - startBlock + 1) / total * 100).toFixed(1);
@@ -323,10 +327,10 @@ async function indexChain() {
             }
         }
 
+        // The cycle's own numbers: counting both tables here scanned 6.7M rows every
+        // ~3 s, and that Postgres also serves the trade API.
         const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-        const stats = await pool.query('SELECT count(*) as txs FROM transactions');
-        const ttStats = await pool.query('SELECT count(*) as transfers FROM token_transfers');
-        console.log(`[indexer] Sync done in ${elapsed}s — ${stats.rows[0].txs} txs, ${ttStats.rows[0].transfers} transfers in DB`);
+        console.log(`[indexer] Sync done in ${elapsed}s — +${cycleTxs} txs, +${cycleTransfers} transfers (to block ${indexedBlock})`);
 
     } catch (e) {
         console.error('[indexer] Error:', e.message);
@@ -426,10 +430,20 @@ async function insertTokenTransfersWithClient(client, transfers) {
 }
 
 // ─── HTTP API ────────────────────────────────────────────────────────────────
-const STATS_TTL_MS = 30_000;
-let statsCache = { at: 0, body: null, inflight: null };
-async function computeStats() {
-    const [txCount, blockCount, addrCount, ttCount, day] = await Promise.all([
+// Exact totals without a table scan on every refresh: count(*) over transactions reads
+// 6.7M rows (distinct addresses, both address columns) on the Postgres the trade API
+// also uses. The counts run every 10 minutes; in between the indexer adds what it
+// inserts, so the numbers stay exact and keep moving.
+const TOTALS_TTL_MS = 10 * 60_000;
+const totals = { at: 0, base: null, since: { txs: 0, blocks: 0, transfers: 0 }, inflight: null };
+function noteInserted(txs, blocks, transfers) {
+    totals.since.txs += txs;
+    totals.since.blocks += blocks;
+    totals.since.transfers += transfers;
+}
+async function refreshTotals() {
+    const mark = { ...totals.since };
+    const [tx, bl, addr, tt] = await Promise.all([
         pool.query('SELECT count(*)::int as c FROM transactions'),
         pool.query('SELECT count(*)::int as c FROM blocks'),
         pool.query(`SELECT count(DISTINCT addr)::int as c FROM (
@@ -437,6 +451,29 @@ async function computeStats() {
             UNION SELECT to_addr as addr FROM transactions WHERE to_addr IS NOT NULL
         ) u`),
         pool.query('SELECT count(*)::int as c FROM token_transfers'),
+    ]);
+    totals.base = { txs: tx.rows[0].c, blocks: bl.rows[0].c, addresses: addr.rows[0].c, transfers: tt.rows[0].c };
+    // Rows inserted while the counts ran are not in them: keep those.
+    totals.since = { txs: totals.since.txs - mark.txs, blocks: totals.since.blocks - mark.blocks, transfers: totals.since.transfers - mark.transfers };
+    totals.at = Date.now();
+}
+async function currentTotals() {
+    if ((!totals.base || Date.now() - totals.at > TOTALS_TTL_MS) && !totals.inflight) {
+        totals.inflight = refreshTotals()
+            .catch((e) => console.error('[api] totals refresh failed:', e.message))
+            .finally(() => { totals.inflight = null; });
+    }
+    if (!totals.base) await totals.inflight;
+    if (!totals.base) return null;
+    const b = totals.base, s = totals.since;
+    return { txs: b.txs + s.txs, blocks: b.blocks + s.blocks, transfers: b.transfers + s.transfers, addresses: b.addresses };
+}
+
+const STATS_TTL_MS = 30_000;
+let statsCache = { at: 0, body: null, inflight: null };
+async function computeStats() {
+    const [t, day] = await Promise.all([
+        currentTotals(),
         // Executed vs reverted over the last day. A chain can look busy
         // while nothing works: 20–25 Sep, 91% of all transactions were
         // one bot's reverting orders and every dashboard stayed green.
@@ -444,12 +481,13 @@ async function computeStats() {
                       FROM transactions
                      WHERE "timestamp" >= extract(epoch from now() - interval '24 hours')::bigint`),
     ]);
+    if (!t) throw new Error('totals unavailable');
     const d = day.rows[0];
     return {
-        totalBlocks: blockCount.rows[0].c,
-        totalTransactions: txCount.rows[0].c,
-        totalAddresses: addrCount.rows[0].c,
-        totalTokenTransfers: ttCount.rows[0].c,
+        totalBlocks: t.blocks,
+        totalTransactions: t.txs,
+        totalAddresses: t.addresses,
+        totalTokenTransfers: t.transfers,
         transactions24h: d.total,
         successRate24h: d.total ? d.ok / d.total : null,
         chainHead,
@@ -573,18 +611,14 @@ const server = http.createServer(async (req, res) => {
 
         // ── Status ────────────────────────────────────
         if (path === '/api/status') {
-            const [txCount, blockCount, ttCount] = await Promise.all([
-                pool.query('SELECT count(*)::int as c FROM transactions'),
-                pool.query('SELECT count(*)::int as c FROM blocks'),
-                pool.query('SELECT count(*)::int as c FROM token_transfers'),
-            ]);
+            const t = await currentTotals().catch(() => null);
             return sendJSON(res, 200, {
                 ready: indexedBlock >= 0,
                 chainHead,
                 lastIndexedBlock: indexedBlock,
-                blocks: blockCount.rows[0].c,
-                transactions: txCount.rows[0].c,
-                tokenTransfers: ttCount.rows[0].c,
+                blocks: t ? t.blocks : null,
+                transactions: t ? t.txs : null,
+                tokenTransfers: t ? t.transfers : null,
                 uptime: Math.floor((Date.now() - startTime) / 1000),
             });
         }
@@ -609,11 +643,12 @@ const server = http.createServer(async (req, res) => {
         // ── Latest blocks ─────────────────────────────
         if (path === '/api/blocks') {
             const { page, limit, offset } = parsePagination(url);
-            const [data, total] = await Promise.all([
+            // The page total comes from the shared totals, not a count(*) per request.
+            const [data, t] = await Promise.all([
                 pool.query('SELECT * FROM blocks ORDER BY number DESC LIMIT $1 OFFSET $2', [limit, offset]),
-                pool.query('SELECT count(*)::int as c FROM blocks'),
+                currentTotals(),
             ]);
-            return sendJSON(res, 200, { total: total.rows[0].c, page, limit, blocks: data.rows });
+            return sendJSON(res, 200, { total: t ? t.blocks : null, page, limit, blocks: data.rows });
         }
 
         // ── Single block ──────────────────────────────
@@ -641,10 +676,12 @@ const server = http.createServer(async (req, res) => {
                     pool.query('SELECT count(*)::int as c FROM transactions WHERE block_number = $1', [blockNum]),
                 ]);
             } else {
-                [data, total] = await Promise.all([
+                let t;
+                [data, t] = await Promise.all([
                     pool.query('SELECT * FROM transactions ORDER BY block_number DESC, tx_index DESC LIMIT $1 OFFSET $2', [limit, offset]),
-                    pool.query('SELECT count(*)::int as c FROM transactions'),
+                    currentTotals(),
                 ]);
+                total = { rows: [{ c: t ? t.txs : null }] };
             }
             return sendJSON(res, 200, { total: total.rows[0].c, page, limit, transactions: data.rows });
         }
