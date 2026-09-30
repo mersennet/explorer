@@ -298,7 +298,26 @@ function wirePlayground() {
   pin.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') send(); });
 }
 
-// ---- live activity + fee market (samples recent block headers via RPC) ----
+// Recent blocks, newest first: { num, ts, gas, txs, baseFee (hex or null) }. One indexer
+// page plus one eth_feeHistory call (base fees); one RPC request per header only when
+// the indexer is down.
+async function sampleBlocks(latest, n) {
+  const [pg, fh] = await Promise.all([api.blocks(1, n), rpcSafe('eth_feeHistory', [n, 'latest', []])]);
+  if (pg && Array.isArray(pg.blocks) && pg.blocks.length) {
+    // baseFeePerGas has one entry per block from oldestBlock, plus a projection for the
+    // next block that the node fills with a placeholder, so only the per-block entries are used.
+    const oldest = fh ? hexToNum(fh.oldestBlock) : 0;
+    const perBlock = fh && Array.isArray(fh.baseFeePerGas) && Array.isArray(fh.gasUsedRatio) ? fh.baseFeePerGas.slice(0, fh.gasUsedRatio.length) : [];
+    const feeOf = (num) => (num >= oldest && num - oldest < perBlock.length ? perBlock[num - oldest] : null);
+    return pg.blocks.map((b) => ({ num: Number(b.number), ts: Number(b.timestamp), gas: Number(b.gas_used), txs: Number(b.tx_count), baseFee: feeOf(Number(b.number)) }));
+  }
+  const nums = []; for (let i = 0; i < n; i++) nums.push(latest - i);
+  const headers = (await rpcBatch(nums.map((b) => ({ method: 'eth_getBlockByNumber', params: ['0x' + b.toString(16), false] })))).filter(Boolean);
+  return headers.map((h) => ({ num: hexToNum(h.number), ts: hexToNum(h.timestamp), gas: hexToNum(h.gasUsed),
+    txs: Array.isArray(h.transactions) ? h.transactions.length : 0, baseFee: h.baseFeePerGas != null ? h.baseFeePerGas : null }));
+}
+
+// ---- live activity + fee market ----
 async function buildActivity() {
   const meta = document.getElementById('actMeta');
   let latest = 0;
@@ -307,20 +326,18 @@ async function buildActivity() {
   const fail = () => { if (meta) { meta.textContent = 'unavailable'; meta.className = 'badge warn'; }
     const b = document.getElementById('actBars'); if (b) b.innerHTML = '<div style="color:var(--text-3);font-size:var(--fs-sm)">Could not sample recent blocks.</div>'; };
   if (N <= 0) return fail();
-  const nums = []; for (let i = 0; i < N; i++) nums.push(latest - i);
-  const headers = (await rpcBatch(nums.map((n) => ({ method: 'eth_getBlockByNumber', params: ['0x' + n.toString(16), false] })))).filter(Boolean);
-  if (!headers.length) return fail();
+  const sample = await sampleBlocks(latest, N);
+  if (!sample.length) return fail();
 
-  const series = headers.map((h) => ({ num: hexToNum(h.number), gas: hexToNum(h.gasUsed), bf: hexToNum(h.baseFeePerGas || '0x0'),
-    txs: Array.isArray(h.transactions) ? h.transactions.length : 0 }));
+  const series = sample.map((s) => ({ num: s.num, gas: s.gas, bf: hexToNum(s.baseFee || '0x0'), txs: s.txs }));
   const chrono = series.slice().reverse();
   const maxGas = Math.max(1, ...series.map((s) => s.gas));
-  const baseFee = headers[0].baseFeePerGas != null ? hexToBig(headers[0].baseFeePerGas) : null;
-  const tsNew = hexToNum(headers[0].timestamp), tsOld = hexToNum(headers[headers.length - 1].timestamp);
-  const bt = headers.length > 1 ? (tsNew - tsOld) / (headers.length - 1) : null;
+  const baseFee = sample[0].baseFee != null ? hexToBig(sample[0].baseFee) : null;
+  const tsNew = sample[0].ts, tsOld = sample[sample.length - 1].ts;
+  const bt = sample.length > 1 ? (tsNew - tsOld) / (sample.length - 1) : null;
   const txTotal = series.reduce((a, s) => a + s.txs, 0);
 
-  if (meta) { meta.textContent = `${headers.length} blocks`; meta.className = 'badge accent'; }
+  if (meta) { meta.textContent = `${sample.length} blocks`; meta.className = 'badge accent'; }
 
   // Executed vs reverted over the last day, from the indexer. Throughput alone
   // hides a chain full of failing transactions (20–25 Sep: 91% reverts).
@@ -332,7 +349,7 @@ async function buildActivity() {
     actStat('blocks', 'Head', '#' + fmtNum(latest), timeAgo(tsNew)) +
     actStat('clock', 'Block time', bt != null ? bt.toFixed(2) + 's' : '—', 'measured') +
     actStat('bolt', 'Base fee', baseFee != null ? fmtNum(baseFee) + ' wei' : '—', 'current head') +
-    actStat('tx', 'Throughput', (txTotal / headers.length).toFixed(2) + ' tx/blk', fmtNum(txTotal) + ' tx in window') +
+    actStat('tx', 'Throughput', (txTotal / sample.length).toFixed(2) + ' tx/blk', fmtNum(txTotal) + ' tx in window') +
     actStat('check', 'Tx success', rate == null ? '—' : `<span class="rate${rateCls}">${(rate * 100).toFixed(1)}%</span>`,
       day && day.transactions24h != null ? `${fmtNum(day.transactions24h)} tx in 24 h executed` : 'indexer offline');
 
