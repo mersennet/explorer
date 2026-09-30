@@ -151,10 +151,12 @@ export default async function home() {
   // verifiable-chain + shielded-pool highlight chips
   const proofChip = document.getElementById('proofChip');
   if (proof && proof.proof !== null && proof.blockHeight) {
-    proofChip.textContent = (proof.proofType || 'SP1') + ' @ #' + proof.blockHeight;
-    document.getElementById('verifyHome').innerHTML = `Block <span class="mono">#${fmtNum(proof.blockHeight)}</span> is proven: state root <span class="mono" style="color:var(--teal)">${shortHash(proof.newStateRoot,8,6)}</span>${proof.prevStateRoot && proof.prevStateRoot !== proof.newStateRoot ? ` (from ${shortHash(proof.prevStateRoot,6,4)})` : ''}. Verify it yourself →`;
+    const devProof = (proof.proverMode || '').toLowerCase() === 'development'
+      || (proof.proofType || '').toLowerCase().includes('mock');
+    proofChip.textContent = (devProof ? 'dev proof' : (proof.proofType || 'SP1')) + ' @ #' + proof.blockHeight;
+    document.getElementById('verifyHome').innerHTML = `Block <span class="mono">#${fmtNum(proof.blockHeight)}</span> has a state proof${devProof ? ' from the development prover' : ''}: shielded state root <span class="mono" style="color:var(--teal)">${shortHash(proof.newStateRoot,8,6)}</span>${proof.prevStateRoot && proof.prevStateRoot !== proof.newStateRoot ? ` (from ${shortHash(proof.prevStateRoot,6,4)})` : ''}. Verify it yourself →`;
   } else { proofChip.textContent = 'fork pending'; proofChip.className = 'badge warn';
-    document.getElementById('verifyHome').textContent = 'SP1 state proofs activate at the privacy hard fork. The proof machinery is live and queryable.'; }
+    document.getElementById('verifyHome').textContent = 'State proofs for this block are not available yet.'; }
   const poolChip = document.getElementById('poolChip');
   if (shielded) { const anon = Math.max(0, (shielded.noteCount||0)-(shielded.nullifierCount||0));
     poolChip.textContent = anon > 0 ? anon + ' in set' : 'root live';
