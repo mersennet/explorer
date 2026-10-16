@@ -3,7 +3,7 @@
 // block time; completed ones show the real activation time (the block's
 // timestamp) against the estimate that was on record, so anyone can see how
 // far off we were. Data: trade API /protocol/upgrades (chain-derived).
-import { render, icon, hashLink } from '../ui.js';
+import { render, icon } from '../ui.js';
 import { fmtNum, fmtUtcShort, esc } from '../format.js';
 
 const API = 'https://trade.mersennet.com/api/v1/protocol/upgrades';
@@ -23,7 +23,12 @@ export function fmtDelta(sec) {
   return `${sign}${h} h${m ? ` ${m} min` : ''}`;
 }
 const deltaClass = (sec) => (sec == null ? 'neutral' : Math.abs(sec) < 600 ? 'ok' : Math.abs(sec) < 3600 ? 'warn' : 'fail');
-const rel = (etaSec) => (etaSec >= 3600 ? `~${Math.round(etaSec / 3600)} h` : `~${Math.max(1, Math.round(etaSec / 60))} min`);
+const rel = (etaSec) => {
+  const mins = Math.max(1, Math.round(etaSec / 60));
+  if (mins < 60) return `~${mins} min`;
+  if (mins >= 600) return `~${Math.round(mins / 60)} h`;
+  return `~${Math.floor(mins / 60)} h${mins % 60 ? ` ${mins % 60} min` : ''}`;
+};
 
 function groupByHeight(list) {
   const m = new Map();
@@ -89,7 +94,7 @@ function completedRows(list, q) {
       ? `<span class="badge ${deltaClass(est.deltaSec)}">${fmtDelta(est.deltaSec)}</span>${sub ? `<div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:4px">${sub}</div>` : ''}`
       : '<span class="badge neutral">—</span>';
     return `<tr>
-      <td>${hashLink(String(g.height), 'block', { short: false })}<div style="color:var(--text-3);font-size:var(--fs-xs)">${g.items.length} rule${g.items.length > 1 ? 's' : ''}</div></td>
+      <td><a class="hash link" href="/block/${Number(g.height)}">${fmtNum(g.height)}</a><div style="color:var(--text-3);font-size:var(--fs-xs)">${g.items.length} rule${g.items.length > 1 ? 's' : ''}</div></td>
       <td><span class="mono" style="color:var(--text)">${g.activatedAt ? utc(g.activatedAt, true) : '—'}</span></td>
       <td>${estCell}</td>
       <td>${deltaCell}</td>
