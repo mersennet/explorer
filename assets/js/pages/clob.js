@@ -44,7 +44,7 @@ export default async function clob(params = {}) {
     <div class="tabs" id="mktTabs">${tabsHtml(MARKETS, market)}</div>
 
     <div class="banner teal" style="margin-bottom:14px">${icon('lock',15)}
-      <span>Every resting order is fully funded on-chain — margin accepts native MRSN plus registered token collateral (test USDC at a 90% weight).</span></div>
+      <span>Every resting order is fully funded on-chain — margin is native MRSN (registered tokens count at their weight; test USDC counts 0 from block 2,670,700).</span></div>
 
     <div class="grid cols-4" id="mktStats" style="margin-bottom:14px">${statSkeleton()}</div>
 
