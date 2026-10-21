@@ -109,6 +109,7 @@ export function fmtEta(etaSec) {
 // validators on the current release.
 const TRADER_ACTION = {
   usdcMarginOffHeight: 'traders whose positions rest on test USDC need MRSN margin before the height, or they can be liquidated',
+  markPriceHeight: 'open ARB positions close at the last trade and ARB orders are cancelled at the height (ARB is relisted at its real price); close or adjust them before if you prefer',
 };
 /** What the given switches ask of traders, or that they have nothing to do. */
 export function traderNote(keys = []) {
