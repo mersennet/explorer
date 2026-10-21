@@ -3,8 +3,8 @@
 // block time; completed ones show the real activation time (the block's
 // timestamp) against the estimate that was on record, so anyone can see how
 // far off we were. Data: trade API /protocol/upgrades (chain-derived).
-import { render, icon, hashLink } from '../ui.js';
-import { fmtNum, fmtUtcShort, esc } from '../format.js';
+import { render, icon } from '../ui.js';
+import { fmtNum, fmtUtcShort, fmtEta, traderNote, esc } from '../format.js';
 
 const API = 'https://trade.mersennet.com/api/v1/protocol/upgrades';
 
@@ -23,7 +23,6 @@ export function fmtDelta(sec) {
   return `${sign}${h} h${m ? ` ${m} min` : ''}`;
 }
 const deltaClass = (sec) => (sec == null ? 'neutral' : Math.abs(sec) < 600 ? 'ok' : Math.abs(sec) < 3600 ? 'warn' : 'fail');
-const rel = (etaSec) => (etaSec >= 3600 ? `~${Math.round(etaSec / 3600)} h` : `~${Math.max(1, Math.round(etaSec / 60))} min`);
 
 function groupByHeight(list) {
   const m = new Map();
@@ -35,7 +34,8 @@ function groupByHeight(list) {
 }
 
 const UPCOMING_HEAD = '<thead><tr><th>Block</th><th>Estimated (UTC)</th><th>What changes</th></tr></thead>';
-const UPCOMING_NOTE = `<div style="padding:10px 16px;color:var(--text-3);font-size:var(--fs-xs)">Blocks are nominally 2 s; missed leader slots stretch the average, so an estimate a day out can move by tens of minutes. Validators run the current release before the height (<a href="https://mersennet.com/downloads/" target="_blank" rel="noopener">downloads</a>); traders have nothing to do.</div>`;
+// `keys` null while loading: the trader clause depends on which switches are scheduled.
+const upcomingNote = (keys) => `<div style="padding:10px 16px;color:var(--text-3);font-size:var(--fs-xs)">Blocks are nominally 2 s; missed leader slots stretch the average, so an estimate a day out can move by tens of minutes. Validators run the current release before the height (<a href="https://mersennet.com/downloads/" target="_blank" rel="noopener">downloads</a>)${keys ? `; ${esc(traderNote(keys))}` : ''}.</div>`;
 
 // The card's own frame with placeholder lines, so it keeps its height when the schedule arrives.
 function upcomingSkeleton() {
@@ -46,7 +46,7 @@ function upcomingSkeleton() {
       <td><div class="sk line" style="width:180px"></div><div class="sk line short" style="margin-top:6px"></div></td>
       <td><div class="sk line"></div><div class="sk line short" style="margin-top:6px"></div></td>
     </tr></tbody></table></div>
-    ${UPCOMING_NOTE}
+    ${upcomingNote(null)}
   </div>`;
 }
 
@@ -58,12 +58,12 @@ function upcomingCard(d) {
     <div style="overflow-x:auto"><table class="tbl">${UPCOMING_HEAD}<tbody>
     ${groups.map((g) => `<tr>
       <td><span class="mono" style="color:var(--text)">${fmtNum(g.height)}</span><div style="color:var(--text-3);font-size:var(--fs-xs)">${fmtNum(g.blocksLeft)} blocks to go</div></td>
-      <td><span class="badge warn">${rel(g.etaSec)} · ${utc(g.etaAt)}</span>
+      <td><span class="badge warn">${fmtEta(g.etaSec)} · ${utc(g.etaAt)}</span>
         ${g.announcedAt ? `<div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:4px">announced as ${utc(g.announcedAt)} — the live estimate ${fmtDelta(Math.round((new Date(g.etaAt) - new Date(g.announcedAt)) / 1000)) === 'on time' ? 'agrees' : `has moved ${fmtDelta(Math.round((new Date(g.etaAt) - new Date(g.announcedAt)) / 1000))}`}</div>` : ''}</td>
       <td>${g.items.map((s) => `<div><b style="color:var(--text)">${esc(s.label)}</b>${s.detail ? ` <span style="color:var(--text-3)">— ${esc(s.detail)}</span>` : ''}</div>`).join('')}</td>
     </tr>`).join('')}
     </tbody></table></div>
-    ${UPCOMING_NOTE}
+    ${upcomingNote(groups.flatMap((g) => g.items.map((s) => s.key)))}
   </div>`;
 }
 
@@ -89,7 +89,7 @@ function completedRows(list, q) {
       ? `<span class="badge ${deltaClass(est.deltaSec)}">${fmtDelta(est.deltaSec)}</span>${sub ? `<div style="color:var(--text-3);font-size:var(--fs-xs);margin-top:4px">${sub}</div>` : ''}`
       : '<span class="badge neutral">—</span>';
     return `<tr>
-      <td>${hashLink(String(g.height), 'block', { short: false })}<div style="color:var(--text-3);font-size:var(--fs-xs)">${g.items.length} rule${g.items.length > 1 ? 's' : ''}</div></td>
+      <td><a class="hash link" href="/block/${Number(g.height)}">${fmtNum(g.height)}</a><div style="color:var(--text-3);font-size:var(--fs-xs)">${g.items.length} rule${g.items.length > 1 ? 's' : ''}</div></td>
       <td><span class="mono" style="color:var(--text)">${g.activatedAt ? utc(g.activatedAt, true) : '—'}</span></td>
       <td>${estCell}</td>
       <td>${deltaCell}</td>

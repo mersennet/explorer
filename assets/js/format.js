@@ -97,6 +97,26 @@ export function fmtUtcShort(input, seconds = false) {
   return `${DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}, ${t}`;
 }
 
+/** Time to a block height: minutes under an hour, hours and minutes under ten hours. */
+export function fmtEta(etaSec) {
+  const mins = Math.max(1, Math.round(etaSec / 60));
+  if (mins < 60) return `~${mins} min`;
+  if (mins >= 600) return `~${Math.round(mins / 60)} h`;
+  return `~${Math.floor(mins / 60)} h${mins % 60 ? ` ${mins % 60} min` : ''}`;
+}
+
+// Switches that ask something of traders; every other one only needs
+// validators on the current release.
+const TRADER_ACTION = {
+  usdcMarginOffHeight: 'traders whose positions rest on test USDC need MRSN margin before the height, or they can be liquidated',
+  markPriceHeight: 'open ARB positions close at the last trade and ARB orders are cancelled at the height (ARB is relisted at its real price); close or adjust them before if you prefer',
+};
+/** What the given switches ask of traders, or that they have nothing to do. */
+export function traderNote(keys = []) {
+  const asks = [...new Set(keys.map((k) => TRADER_ACTION[k]).filter(Boolean))];
+  return asks.length ? asks.join('; ') : 'traders have nothing to do';
+}
+
 export function gasPct(used, limit) {
   const u = hexToNum(used), l = hexToNum(limit);
   return l > 0 ? Math.min(100, (u / l) * 100) : 0;

@@ -81,7 +81,7 @@ export function buildMarker(build, latest, outdated) {
   return `<span class="upgrade-wrap"><span class="mono" style="color:var(--text-3)">${esc(build)}</span> `
     + `<button type="button" class="badge warn upgrade-badge" data-upgrade title="Behind the current release${latest ? ' ' + esc(latest) : ''} — click for the command">Upgrade${to}</button>`
     + `<span class="upgrade-cmd" hidden><code>${esc(UPGRADE_CMD)}</code>${copyBtn(UPGRADE_CMD)}`
-    + `<span class="hint">Run on the node as root. Keeps keys, state and operator; ~1 min. <a href="https://docs.mersennet.com/validators/run-a-node/#step-4--keep-it-running" target="_blank" rel="noopener">Guide →</a></span></span></span>`;
+    + `<span class="hint">Run on the node as root. Keeps keys, state and operator; ~1 min. <a href="https://docs.mersennet.com/validators/run-a-node/#step-4--maintenance" target="_blank" rel="noopener">Guide →</a></span></span></span>`;
 }
 
 export function hashLink(hash, type = 'tx', { short = true, lead = 10, tail = 8 } = {}) {

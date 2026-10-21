@@ -9,7 +9,7 @@ import { getValidators, getStakingValidators, getBlockNumber, rpcBatch, rpcSafe 
 import { api } from '../api.js';
 import { ws } from '../ws.js';
 import { render, icon, addrLink, copyBtn, skeletonRows, emptyState, buildMarker } from '../ui.js';
-import { fmtNum, fmtMrsn, fmtUtcShort, compact, hexToBig, hexToNum, timeAgo, esc } from '../format.js';
+import { fmtNum, fmtMrsn, fmtUtcShort, fmtEta, traderNote, compact, hexToBig, hexToNum, timeAgo, esc } from '../format.js';
 
 const SECS_PER_YEAR = 31536000n;
 const WEI = 10n ** 18n;
@@ -283,8 +283,8 @@ async function fetchSwitches() {
     const j = await r.json();
     const byHeight = new Map();
     for (const sw of j.switches || []) {
-      const g = byHeight.get(sw.height) || { height: sw.height, etaSec: sw.etaSec, etaAt: sw.etaAt, labels: [] };
-      g.labels.push(sw.label); byHeight.set(sw.height, g);
+      const g = byHeight.get(sw.height) || { height: sw.height, etaSec: sw.etaSec, etaAt: sw.etaAt, labels: [], keys: [] };
+      g.labels.push(sw.label); g.keys.push(sw.key); byHeight.set(sw.height, g);
     }
     const groups = [...byHeight.values()].sort((a, b) => a.height - b.height);
     groups.blockTimeSec = j.blockTimeSec;
@@ -294,13 +294,11 @@ async function fetchSwitches() {
 function switchLine(groups) {
   if (!groups.length) return '';
   const fmt = (g) => {
-    const h = g.etaSec / 3600;
     const when = fmtUtcShort(g.etaAt);
-    const rel = h >= 1 ? `~${Math.round(h)} h` : `~${Math.max(1, Math.round(g.etaSec / 60))} min`;
-    return `<span class="mono" style="color:var(--text)">block ${fmtNum(g.height)}</span> <span class="badge warn">${rel} · ${when} UTC</span> <span style="color:var(--text-3)">${esc(g.labels.join(' · '))}</span>`;
+    return `<span class="mono" style="color:var(--text)">block ${fmtNum(g.height)}</span> <span class="badge warn">${fmtEta(g.etaSec)} · ${when} UTC</span> <span style="color:var(--text-3)">${esc(g.labels.join(' · '))}</span>`;
   };
   const spb = groups.blockTimeSec ? ` <span style="color:var(--text-3);font-weight:400">· estimated at ${groups.blockTimeSec.toFixed(2)} s per block</span>` : '';
-  return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px" id="switchSchedule"><b style="color:var(--text)">Upcoming protocol upgrade${groups.length > 1 ? 's' : ''}${spb}</b> ${groups.map((g) => `<div>${fmt(g)}</div>`).join('')}<span style="color:var(--text-3)">Validators run the current release before each height; traders have nothing to do. <a href="/upgrades" data-route="upgrades">Completed upgrades and how close the estimates were →</a></span></div>`;
+  return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px" id="switchSchedule"><b style="color:var(--text)">Upcoming protocol upgrade${groups.length > 1 ? 's' : ''}${spb}</b> ${groups.map((g) => `<div>${fmt(g)}</div>`).join('')}<span style="color:var(--text-3)">Validators run the current release before each height; ${esc(traderNote(groups.flatMap((g) => g.keys)))}. <a href="/upgrades" data-route="upgrades">Completed upgrades and how close the estimates were →</a></span></div>`;
 }
 async function renderOpenSet(v) {
   const note = document.getElementById('vsetNote');
