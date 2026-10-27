@@ -62,10 +62,11 @@ export default async function home() {
     const totalStake = (vals || []).reduce((a, v) => a + hexToBig(v.stake), 0n);
     const anon = shielded ? Math.max(0, (shielded.noteCount || 0) - (shielded.nullifierCount || 0)) : 0;
     const tps = tpsSeries.length ? (tpsSeries.reduce((a, b) => a + b, 0) / tpsSeries.length / CONFIG.blockTimeSecs) : 0;
+    const fee = gas != null ? Number(hexToBig(gas) * 21000n) / 1e18 : null; // a plain transfer
     document.getElementById('kpis').innerHTML = `
       ${stat('blocks', 'Latest block', '#' + fmtNum(latest), timeAgo(blocks[0]?.timestamp), sparkline(tpsSeries.map(x=>x+0.2)))}
       ${stat('pulse', 'Throughput', tps.toFixed(2) + ' tps', RECENT + '-block avg')}
-      ${stat('gas', 'Base fee', gas != null ? fmtGwei(hexToNum(gas)) : '—', 'EIP-1559')}
+      ${stat('gas', 'Network fee', fee != null ? `${+fee.toPrecision(2)} MRSN` : '—', fee != null ? `${mrsnUsd ? `≈ $${(fee * mrsnUsd).toFixed(4)} · ` : ''}a transfer · base fee ${fmtGwei(hexToNum(gas))}` : 'EIP-1559')}
       ${stat('validators', 'Validators', fmtNum((vals || []).length), compact(Number(totalStake / (10n ** 18n))) + ' MRSN staked')}
       ${stat('coins', 'Supply cap', '618.97M', '2⁸⁹−1 · Mersenne prime')}
       ${stat('clock', 'Block time', '~' + CONFIG.blockTimeSecs + 's', 'leader-gated BFT')}
@@ -127,6 +128,7 @@ export default async function home() {
   }
   const latest = hexToNum(headHex);
   const nums = []; for (let i = 0; i < RECENT && latest - i >= 0; i++) nums.push(latest - i);
+  loadMrsnUsd();
   const [gas, vals, shielded, proof] = await Promise.all([getGasPrice(), getValidators(), getShieldedRoot(), getLatestStateProof()]);
   const full = await rpcBatch(nums.map((n) => ({ method: 'eth_getBlockByNumber', params: ['0x' + n.toString(16), true] })));
   if (!alive) return;
@@ -184,6 +186,15 @@ export default async function home() {
   }, CONFIG.pollMs);
 
   return () => { alive = false; clearInterval(poll); try { unsub(); } catch {} };
+}
+
+// The MRSN price behind the network-fee card: the testnet's MRSN/USD market, via the trade API.
+let mrsnUsd = null;
+async function loadMrsnUsd() {
+  try {
+    const r = await fetch(`${CONFIG.links.trade}/api/v1/stats/fees`);
+    if (r.ok) mrsnUsd = (await r.json()).mrsnUsd || null;
+  } catch { /* the card shows MRSN only */ }
 }
 
 function kpiSkeleton() { let s = ''; for (let i = 0; i < 8; i++) s += `<div class="stat"><div class="sk line short"></div><div class="sk line" style="height:24px;margin-top:10px"></div></div>`; return s; }
