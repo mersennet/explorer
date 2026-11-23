@@ -76,12 +76,12 @@ echo "    done"
 # year — with the previous build's content (seen on 2026-09-19).
 STANDBY="${EXPLORER_STANDBY:-root@178.104.230.201}"
 echo "==> sync the standby ($STANDBY)"
+on_standby() { ssh -o BatchMode=yes "$STANDBY" "grep -q 'v=$SHA' $DEST/index.html" 2>/dev/null; }
 if ssh -o BatchMode=yes -o ConnectTimeout=10 "$STANDBY" 'systemctl start standby-sync.service' 2>/dev/null; then
-  for i in $(seq 1 12); do
-    ssh -o BatchMode=yes "$STANDBY" "grep -q 'v=$SHA' $DEST/index.html" 2>/dev/null && break
-    sleep 5
-  done
-  ssh -o BatchMode=yes "$STANDBY" "grep -q 'v=$SHA' $DEST/index.html" 2>/dev/null && echo "    standby serves $SHA" || { echo "    standby did NOT pick up $SHA — not purging; run standby-sync there and purge by hand"; exit 1; }
+  # A sync the timer started before the rsync above copies the old files, and
+  # `systemctl start` only waits for it to finish: then one more run is needed.
+  on_standby || ssh -o BatchMode=yes -o ConnectTimeout=10 "$STANDBY" 'systemctl start standby-sync.service' 2>/dev/null || true
+  on_standby && echo "    standby serves $SHA" || { echo "    standby did NOT pick up $SHA — not purging; run standby-sync there and purge by hand"; exit 1; }
 else
   echo "    standby unreachable — not purging (a stale origin would poison versioned URLs); retry when it is back"; exit 1
 fi
