@@ -225,6 +225,68 @@ function extractTokenTransfers(logs) {
     return transfers;
 }
 
+// ─── Reorg safety ────────────────────────────────────────────────────────────
+// After a network split heals, a node on the side that lost rolls back its
+// unfinalized blocks (up to 256) and follows the other branch. Blocks indexed
+// from the abandoned branch are found by hash, removed with their transactions
+// and transfers, and indexing resumes where the branches part.
+const REORG_SEARCH_DEPTH = parseInt(process.env.REORG_SEARCH_DEPTH) || 1024;
+
+async function storedHash(n) {
+    const r = await pool.query('SELECT hash FROM blocks WHERE number = $1', [n]);
+    return r.rows[0] ? r.rows[0].hash : null;
+}
+
+// The lowest indexed height the node no longer holds, or null when the index
+// still matches the node (or the node cannot be asked right now).
+async function findReorgPoint(tip) {
+    const top = await pool.query(
+        'SELECT number, hash FROM blocks WHERE number <= $1 ORDER BY number DESC LIMIT 1', [tip]);
+    if (!top.rows[0]) return null;
+    const topNum = Number(top.rows[0].number);
+    let nodeBlock;
+    try {
+        nodeBlock = await rpc('eth_getBlockByNumber', ['0x' + topNum.toString(16), false]);
+    } catch (e) {
+        return null;
+    }
+    if (nodeBlock && nodeBlock.hash === top.rows[0].hash) return null;
+    const floor = Math.max(0, topNum - REORG_SEARCH_DEPTH);
+    let fork = topNum;
+    for (let n = topNum - 1; n >= floor; n--) {
+        const mine = await storedHash(n);
+        if (!mine) continue; // a gap in the index: look further down
+        const b = await rpc('eth_getBlockByNumber', ['0x' + n.toString(16), false]);
+        if (b && b.hash === mine) return fork;
+        fork = n;
+    }
+    // Deeper than we look: rewind that far; the next cycle checks again below.
+    return fork;
+}
+
+async function rewindTo(fork) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const t = await client.query('DELETE FROM token_transfers WHERE block_number >= $1', [fork]);
+        const x = await client.query('DELETE FROM transactions WHERE block_number >= $1', [fork]);
+        const b = await client.query('DELETE FROM blocks WHERE number >= $1', [fork]);
+        await client.query(
+            `INSERT INTO indexer_state (key, value, updated_at) VALUES ('last_indexed_block', $1, NOW())
+             ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()`,
+            [String(fork - 1)]
+        );
+        await client.query('COMMIT');
+        console.warn(`[indexer] REORG: the node no longer holds blocks from ${fork} (it followed another branch); removed ${b.rowCount} blocks, ${x.rowCount} txs, ${t.rowCount} transfers; re-indexing from ${fork}`);
+    } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+    } finally {
+        client.release();
+    }
+    indexedBlock = fork - 1;
+}
+
 // ─── Main indexer loop ───────────────────────────────────────────────────────
 async function indexChain() {
     if (indexing) return;
@@ -237,6 +299,12 @@ async function indexChain() {
 
         const savedBlock = parseInt(await getState('last_indexed_block')) || -1;
         if (indexedBlock < savedBlock) indexedBlock = savedBlock;
+
+        // Before anything else: is what we indexed still the node's chain?
+        if (indexedBlock >= 0) {
+            const fork = await findReorgPoint(indexedBlock);
+            if (fork !== null) await rewindTo(fork);
+        }
 
         if (latest <= indexedBlock) { indexing = false; return; }
 
@@ -286,6 +354,23 @@ async function indexChain() {
             // Skip batch if all block fetches failed
             if (validBlocks.length === 0 && count > 0) {
                 console.error(`[indexer] All ${count} block fetches failed for ${start}-${end}, not advancing`);
+                break;
+            }
+
+            // The batch must continue what is stored (parent hashes link): a
+            // branch switch on the node between two requests is caught here and
+            // settled by the reorg check of the next cycle.
+            let prevHash = start > 0 ? await storedHash(start - 1) : null;
+            let prevNum = start - 1;
+            let linked = true;
+            for (const block of validBlocks) {
+                const n = hexToInt(block.number);
+                if (prevHash && n === prevNum + 1 && block.parentHash !== prevHash) { linked = false; break; }
+                prevHash = block.hash;
+                prevNum = n;
+            }
+            if (!linked) {
+                console.warn(`[indexer] blocks ${start}-${end} do not continue the indexed chain (the node switched branch); checking again next cycle`);
                 break;
             }
 
@@ -991,7 +1076,11 @@ async function shutdown(signal) {
     try { await pool.end(); } catch (e) { console.error('[indexer] Pool close error:', e.message); }
     process.exit(0);
 }
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
-
-start();
+if (require.main === module) {
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    start();
+} else {
+    // Tests (test/reorg.test.js) drive one indexing cycle at a time.
+    module.exports = { initSchema, indexChain, pool, getState };
+}

@@ -16,6 +16,15 @@ gracefully with an "indexer offline" note.
 It **bootstraps its own schema** (`CREATE TABLE IF NOT EXISTS` + indexes) on first
 run, so there is no separate migration step.
 
+**Branch switches.** A node can give up unfinalized blocks: after a network split
+heals, the side that lost rolls back (up to 256 blocks) and follows the other
+branch. Every cycle the indexer compares the hash of its last indexed block with
+the node's; on a difference it walks back to where they agree, deletes the blocks,
+transactions and token transfers above that point in one transaction, and indexes
+the node's branch from there (log line `REORG: ...`). A batch that does not link by
+parent hash to what is stored is not committed. Test: `deploy/test-reorg.sh` (a fake
+node switching branch, against a throwaway Postgres in Docker).
+
 ## Deploy (separate from the static site)
 
 Keep the indexer in its own directory so the static-site `rsync --delete` can
@@ -120,4 +129,5 @@ DB_PASS=… node seed-verified.js   # idempotent; re-run after a redeploy
 ## Configuration
 
 All via env (see `.env.example`): `RPC_URL`, `PORT`, `DB_*`, and ingestion
-tuning `BATCH_SIZE` / `POLL_INTERVAL` / `CONCURRENCY`.
+tuning `BATCH_SIZE` / `POLL_INTERVAL` / `CONCURRENCY`; `REORG_SEARCH_DEPTH` (1024)
+bounds how far back one cycle looks for where the branches part.
