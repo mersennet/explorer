@@ -54,10 +54,11 @@ const server = http.createServer((req, res) => {
 
 test('a branch switch on the node is undone in the index', async (t) => {
     await new Promise((r) => server.listen(0, '127.0.0.1', r));
+    t.after(() => server.close()); // first: a failed require must not leave it open
     process.env.RPC_URL = `http://127.0.0.1:${server.address().port}`;
     process.env.BATCH_SIZE = '8';
     const ix = require('../indexer');
-    t.after(async () => { server.close(); await ix.pool.end(); });
+    t.after(() => ix.pool.end());
     await ix.pool.query('DROP TABLE IF EXISTS indexer_state, blocks, transactions, token_transfers, verified_contracts');
     await ix.initSchema();
     const q = async (sql, p) => (await ix.pool.query(sql, p)).rows;
